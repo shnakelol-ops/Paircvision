@@ -1,0 +1,99 @@
+{
+ "counts": [
+  [
+   "Ballyhale Shamrocks",
+   "",
+   "Na Piarsaigh"
+  ],
+  [
+   "0",
+   "Goals",
+   "0"
+  ],
+  [
+   "9",
+   "Points",
+   "10"
+  ],
+  [
+   "15",
+   "Shots",
+   "20"
+  ],
+  [
+   "4",
+   "Wides",
+   "4"
+  ],
+  [
+   "4",
+   "Turnover Won",
+   "7"
+  ],
+  [
+   "7",
+   "Turnover Lost",
+   "4"
+  ],
+  [
+   "11",
+   "Kickout Won",
+   "16"
+  ],
+  [
+   "16",
+   "Kickout Lost",
+   "11"
+  ],
+  [
+   "2",
+   "Free Won",
+   "6"
+  ],
+  [
+   "6",
+   "Free Conceded",
+   "2"
+  ],
+  [
+   "1",
+   "65 Won",
+   "2"
+  ],
+  [
+   "2",
+   "65 Lost",
+   "1"
+  ],
+  [
+   "1",
+   "Sideline Won",
+   "1"
+  ],
+  [
+   "1",
+   "Sideline Lost",
+   "1"
+  ],
+  [
+   "1",
+   "Yellow Cards",
+   "0"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "0"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nBallyhale Shamrocks\n0-09\n—\n0-10\nNa Piarsaigh\nSHOOTING\nBallyhale Shamrocks\n9/15 (60%)\nNa Piarsaigh\n10/20 (50%)\nLONGEST SCORING RUN\nBallyhale Shamrocks\n2\nNa Piarsaigh\n3\nRESTARTS\nOUR KICKOUTS\n7/14 retained (50%)\nTHEIR KICKOUTS\n9/13 retained (69%)\nOur restart won\n→\n5 shots\n|\n3 scores\nOur restart lost\n→\n9 shots against\n|\n4 scores against\nTURNOVERS\nOUR TURNOVERS WON\n4\n→\n2 shots\n|\n2 scores\nOUR TURNOVERS LOST\n7\n→\n6 shots against\n|\n2 scores against\nFREES / PLACED BALLS\nFrees won\n2\nPlaced balls\n1/2 scored\nFrees conceded\n6",
+  "Counts Sheet\nBallyhale Shamrocks\nNa Piarsaigh\n0\nGoals\n0\n9\nPoints\n10\n15\nShots\n20\n4\nWides\n4\n4\nTurnover Won\n7\n7\nTurnover Lost\n4\n11\nKickout Won\n16\n16\nKickout Lost\n11\n2\nFree Won\n6\n6\nFree Conceded\n2\n1\n65 Won\n2\n2\n65 Lost\n1\n1\nSideline Won\n1\n1\nSideline Lost\n1\n1\nYellow Cards\n0\n0\nSin Bins\n0\n0\nRed Cards\n0",
+  "Segment Comparison — First Half\nEarly 0–10 · Mid 10–20 · Late 20+\nBALLYHALE SHAMROCKS\nEARLY\nMID\nLATE\nScore\n0-02\n0-03\n0-04\nShots\n4\n4\n7\nWides\n1\n1\n2\nTurnovers Won\n1\n1\n2\n↳ Own Half\n0\n0\n2\n↳ Opposition Half\n1\n1\n0\nTurnovers Lost\n1\n2\n4\n↳ Own Half\n1\n2\n3\n↳ Opposition Half\n0\n0\n1\nOwn KO Retained\n0/3 (0%)\n3/5 (60%)\n4/6 (67%)\nOpposition KO Retained\n1/3 (33%)\n4/4 (100%)\n4/6 (67%)\nNA PIARSAIGH\nEARLY\nMID\nLATE\nScore\n0-03\n0-05\n0-02\nShots\n5\n8\n7\nWides\n0\n0\n4\nTurnovers Won\n1\n2\n4\n↳ Own Half\n0\n0\n1\n↳ Opposition Half\n1\n2\n3\nTurnovers Lost\n1\n1\n2\n↳ Own Half\n1\n1\n0\n↳ Opposition Half\n0\n0\n2\nOwn KO Retained\n1/3 (33%)\n4/4 (100%)\n4/6 (67%)\nOpposition KO Retained\n0/3 (0%)\n3/5 (60%)\n4/6 (67%)"
+ ]
+}

@@ -13,8 +13,12 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 const id = process.argv[2];
 const root = new URL("..", import.meta.url).pathname;
 const fx = JSON.parse(readFileSync(`${root}/fixtures/match-${id}.json`, "utf8"));
-const L_FINAL = JSON.parse(readFileSync(`${root}/expected/ledger-${id}.json`, "utf8"));
-const liveLedgerPath = `${root}/expected/ledger-${id}-live.json`;
+// EXPECTED_DIR (default "expected") selects the ledger set; RESULTS_SUFFIX
+// keeps a second comparison next to the default one (repair batch).
+const EXPECTED_DIR = process.env.EXPECTED_DIR ?? "expected";
+const RESULTS_SUFFIX = process.env.RESULTS_SUFFIX ?? "";
+const L_FINAL = JSON.parse(readFileSync(`${root}/${EXPECTED_DIR}/ledger-${id}.json`, "utf8"));
+const liveLedgerPath = `${root}/${EXPECTED_DIR}/ledger-${id}-live.json`;
 // Live surfaces (HT/FT Quick Review, PDFs exported during the match) are judged
 // against the match as it stood then; reopened exports against the final match.
 const L_LIVE = existsSync(liveLedgerPath) ? JSON.parse(readFileSync(liveLedgerPath, "utf8")) : L_FINAL;
@@ -305,8 +309,12 @@ function fullReview(pages, label) {
     check(surf, "p1 Match Summary", "FULL", hurling ? "65 (row)" : "45", team, b.fortyFivesWon, val(p1, hurling ? "65" : "45", { side }) ?? val(p1, "45", { side }), "shots that went out for a 45/65 — recorded by the 45/65 family");
     R("Block / Save", b.shotBlockSave);
     R("Restart Share Won", b.restartsWon); R("Restart Share Conceded", b.restartsLost); R("Restart Share", pctS(b.restartShare));
-    R("Clean Won", b.restartMethods.wonClean); R("Break Won", b.restartMethods.wonBreak); R("Foul Won", b.restartMethods.wonFoul);
-    R("Clean Lost", b.restartMethods.lostClean); R("Break Lost", b.restartMethods.lostBreak); R("Foul Conceded", b.restartMethods.lostFoul);
+    // Repair batch: these rows were renamed "Restart Share — <method>" (they count
+    // all restarts won / lost, not own kickouts). The statistic name is kept so
+    // the before/after join stays like-for-like; either label is read.
+    const RS = (lab, exp) => check(surf, "p1 Match Summary", "FULL", lab, team, exp, val(p1, `Restart Share — ${lab}`, { side }) ?? val(p1, lab, { side }));
+    RS("Clean Won", b.restartMethods.wonClean); RS("Break Won", b.restartMethods.wonBreak); RS("Foul Won", b.restartMethods.wonFoul);
+    RS("Clean Lost", b.restartMethods.lostClean); RS("Break Lost", b.restartMethods.lostBreak); RS("Foul Conceded", b.restartMethods.lostFoul);
     R("T/O Won", b.turnoversWon); R("T/O Lost", b.turnoversLost);
     const net = b.turnoversWon - b.turnoversLost; R("Net T/O", net >= 0 ? `+${net}` : `${net}`);
     R("Tackle / Press", b.turnoverMethodsWon.Tackle, "won by tackle");
@@ -685,5 +693,5 @@ blockSavePages.push(sumBS, effBS);
 check("Cross-page", "Match Summary vs Shot Efficiency", "FULL", `${HOME} blocked/saved shots agree`, "FOR", sumBS, effBS);
 
 const summary = { match: id, total: checks.length, pass: checks.filter((c) => c.status === "PASS").length, fail: checks.filter((c) => c.status === "FAIL").length, missing: checks.filter((c) => c.status === "MISSING").length, unverified: checks.filter((c) => c.status === "UNVERIFIED").length, limitation: checks.filter((c) => c.status === "LIMITATION").length };
-writeFileSync(`${root}/results/compare-${id}.json`, JSON.stringify({ summary, checks, captureMismatches, presentation: pres }, null, 1));
+writeFileSync(`${root}/results/compare-${id}${RESULTS_SUFFIX}.json`, JSON.stringify({ summary, checks, captureMismatches, presentation: pres }, null, 1));
 console.log(JSON.stringify(summary));

@@ -4,7 +4,8 @@
 
 **Code:**
 - Repair branch: `claude/event-stats-red-repairs`, based on main `a2384fd`.
-- Commit `55df080`; PR #374 (draft, not merged).
+- Commits `55df080` (F-01 – F-06) and `98f2a57` (approved F-05 label rename); PR #374 (draft, not merged).
+- Intelligence issues I-1 – I-3 are in a **separate** stacked draft PR #376: see `INTELLIGENCE-REPAIRS.md` and `KICKOUT-ORIGIN-DEFINITION.md`.
 
 **Fixtures and references:** the audit pack at `a8581a5` (`audit/event-stats-ultra-test/`) is unchanged.
 - `fixtures/`, `expected/` and the audit `scripts/` here are byte-identical copies, verified by SHA-256.
@@ -12,10 +13,9 @@
 
 **Recommendation for this repair batch: AMBER.**
 - All six findings are resolved against the unchanged independent ledgers, with no regressions.
-- Event Stats as a whole is **not GREEN**: F-07 – F-15 remain open (listed below).
-- Two follow-ups need a decision before this batch is GREEN:
-  - The "Clean Won" label covers two populations (Match Summary vs own-restart panels).
-  - The pre-existing Intelligence observations I-1 and I-2 (`results/LAYER-IMPACT.md`).
+- The approved "Clean Won" rename is done (below).
+- Event Stats as a whole is **not GREEN**: F-07 – F-15 remain open, and every one of the 62 remaining failing checks is classified in `results/REMAINING-FAILURES.md`.
+- CI on this PR is only the Vercel preview build (green). The repository has no GitHub Actions, so the test suite is not run by CI (see [CI status](#ci-status)).
 
 ## Layer-by-layer root cause and fix
 
@@ -97,9 +97,9 @@ Full check-level detail: `results/F01-F06-BEFORE-AFTER.md`.
 
 ## Tests
 
-- **Unit / integration (vitest): 2,878 / 2,878 passing**, 213 files.
+- **Unit / integration (vitest): 2,879 / 2,879 passing**, 213 files.
   - Before this batch: 2,849 tests.
-  - New: 29 (18 core, 5 boundary, 6 PDF-layer).
+  - New: 30 (18 core, 5 boundary, 7 PDF-layer, including the label-population test for the rename).
 - **Type check:** no new errors. Matches main's pre-existing baseline exactly (14 files, unrelated to this batch).
 - **Proof the new tests guard the defects:**
   - The core tests fail on main's logic for F-01, F-02, F-03 and F-06.
@@ -146,10 +146,18 @@ Full check-level detail: `results/F01-F06-BEFORE-AFTER.md`.
 - Restart Analysis ↔ Restart Chain "Clean / Break / Foul Won": 27 / 27.
 - Summary ↔ Efficiency "Block / Save": equal in every match.
 
-**Open, needs a decision:** the label **"Clean / Break / Foul Won"** covers two correct populations.
-- **Match Summary rows** sit under "Restart Share". They count every restart the team won by that method: A Ballyboden 10 / 14 / 3.
-- **Restart Analysis and Restart Chain** sit under "Own kickouts retained": A 7 / 7 / 2.
-- Both match the ledger and neither counts a lost restart. Renaming the Match Summary rows (for example "Restart Share — Clean") would change report copy, so it is left for approval.
+**"Clean Won" labels: renamed as approved (`98f2a57`).** The same labels used to show two correct populations:
+- **Match Summary rows** count every restart the team won or lost by method (the Restart Share population): A Ballyboden 10 / 14 / 3.
+- **Restart Analysis and Restart Chain panels** count own kickouts retained / conceded: A 7 / 7 / 2.
+
+**The rename:**
+- The six Match Summary rows (Clean / Break / Foul Won, Clean / Break Lost, Foul Conceded) are now **"Restart Share — <method>"**.
+- The own-kickout panels keep "Clean Won" etc.
+- "Dead Ball Won" and "Kicked Dead" have no conflicting counterpart and are unchanged.
+- Values, row order and layout are unchanged, and the labels fit the existing column (checked on the rendered page).
+- The capture tiles (Rapid Capture / Match Stats "Clean Lost" etc.) are untouched.
+- A PDF-layer test pins each label to its population.
+- The harness reads either label, so before/after stays like-for-like.
 
 ## Remaining open findings (unchanged by this batch)
 
@@ -159,18 +167,38 @@ Full check-level detail: `results/F01-F06-BEFORE-AFTER.md`.
 | **F-08** Review "Edit" changes only the type, offers sport-invalid types, leaves stale fields | Open | Not re-tested (no code touched) |
 | **F-09** Kickout owner toggle resets to OUR K/O after every tagged event | Open | Not re-tested (no code touched) |
 | **F-10** 45/65 and Sideline events absent from PDFs | Open | Match Summary "45" row: A 0 (exp 2), B 0 (exp 2 / 1), C 0 (exp 1 / 3); no "65" source row |
-| **F-11** "Avg secs to score (won)" averages both teams | Open | A 36s (exp 38s), B 30s (exp 23s / 22s), C 36s (exp 30s) |
+| **F-11** "Avg secs to score (won)" averages both teams | Open | A 36s (exp 38s), B 30s (exp 23s / 22s), C 36s (exp 30s). The only *statistical* error left (4 checks) |
 | **F-12** Labels that misstate what is counted | Open | Raw "TWO_POINTER Scores" on every Efficiency page; Chain Intelligence "Won → Shot" shows shots-without-score |
 | **F-13** Layout / clipping | Open | Text-overlap and off-page counts unchanged |
 | **F-14** Player Contributions top-12 cap | Open | Not re-tested (no code touched) |
 | **F-15** Minor inconsistencies | Open | Not re-tested (no code touched) |
 
-**New pre-existing Intelligence observations** (not in F-01 – F-15; not fixed):
-- **I-1:** the possession-outcomes engine values two-point scores as 1 in `scoreValue` / `netOutcome`.
-- **I-2:** the possession engine and the chain kickout dataset use different "kickout → score" windows, so pages can show different numbers for the same idea.
-- **I-3:** restart-origin scans do not stop at a possession change. This is consistent with the reference, so it is noted, not flagged.
+**Classification of the 62 remaining FAIL checks** (`results/REMAINING-FAILURES.md`, one row per check with evidence):
 
-Details: `results/LAYER-IMPACT.md`.
+| Category | Checks | What they are |
+|---|---|---|
+| Genuine statistical error | **4** | F-11 "Avg secs to score (won)" (A, B live, B after edits, C) |
+| Presentation (numbers correct) | **39** | Hurling terminology (F-07); the raw "TWO_POINTER Scores" label and the "Won → Shot" label on a correct shot-without-score count (F-12); layout (F-13) |
+| Unsupported functionality | **11** | The Match Summary "45" / "65" row cannot read the Event Stats 45/65 family, so it prints 0 (F-10, 7 checks); the football-only 2-POINT PROFILE block on hurling pages (F-07, 4 checks) |
+| Test-harness problem | **8** | 6 duplicates (the "internal enum names" check counts the same TWO_POINTER strings as the "raw enum label" check); 2 disputed expectations (the reference assumes hurling has no sin-bin sanction, but hurling has a 10-minute sin bin for a cynical foul denying a goal chance; owner to confirm) |
+
+Plus 4 MISSING checks: there is no "65" source row on the hurling efficiency table (F-07 / F-10, unsupported).
+
+**Layout checks, item by item.** These are counted as presentation because real items remain, but the counts include harness false positives:
+- 9 pitch-marker halos. Each "↓" is drawn twice, a shadow plus the glyph.
+- 3 `maxWidth`-squeezed footnotes measured at natural width. They are squeezed, not clipped.
+
+**Pre-existing Intelligence observations I-1 – I-3** are investigated and fixed in the separate stacked PR (`INTELLIGENCE-REPAIRS.md`, `KICKOUT-ORIGIN-DEFINITION.md`), not in this one.
+
+## CI status
+
+PR #374, head `98f2a57`:
+- **Vercel Preview:** build and deployment ✅ success. This is the only check on the PR.
+- **GitHub Actions:** the repository has no workflows, so no tests or lint run in CI. The verification here was run locally:
+  - vitest 2,879 / 2,879;
+  - type check against main's baseline;
+  - three full end-to-end UI rounds.
+- **Reviews and comments:** none besides the Vercel bot. No review threads.
 
 ## Did the Intelligence engine contribute to the RED failures?
 
@@ -203,6 +231,6 @@ node scripts/findings-table.mjs && node scripts/report-tables.mjs
 ## Branch, commit and PR
 
 - Repair branch: `claude/event-stats-red-repairs`
-- Repair commit: `55df080` (single commit on main `a2384fd`)
+- Repair commits: `55df080` (F-01 – F-06) and `98f2a57` (F-05 label rename), on main `a2384fd`
 - Pull request: https://github.com/shnakelol-ops/Paircvision/pull/374 (draft, **not merged**; awaiting approval)
 - Verification pack: this directory, on `claude/pairc-event-stats-audit-ca55sj` (the original audit commit `a8581a5` is unchanged)

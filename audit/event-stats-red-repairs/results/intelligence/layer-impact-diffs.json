@@ -1,0 +1,3859 @@
+[
+ {
+  "path": "A-live|1H.core.kickoutDataset.outcomes[9].nextShotOrScore",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.results[9].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.results[9].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.kickouts.results[9].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.conceded.scoreValue",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.results[3].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.results[3].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.ourKickouts.results[3].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.turnovers.netOutcome",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.turnovers.netLabel",
+  "main": "-2",
+  "repair": "-3"
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.frees.netOutcome",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.frees.netLabel",
+  "main": "-1",
+  "repair": "-2"
+ },
+ {
+  "path": "A-live|1H.intelligence.possessions.overallNetOutcome",
+  "main": 1,
+  "repair": -2
+ },
+ {
+  "path": "A-live|1H.intelligence.intelligenceSummary.overallNetOutcome",
+  "main": "FOR",
+  "repair": "OPP"
+ },
+ {
+  "path": "A-live|FULL.core.restarts.restartToScore.num",
+  "main": 11,
+  "repair": 10
+ },
+ {
+  "path": "A-live|FULL.core.restarts.restartToScore.pct",
+  "main": 41,
+  "repair": 37
+ },
+ {
+  "path": "A-live|FULL.core.restarts.restartLossPunishment.num",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "A-live|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 63,
+  "repair": 58
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.wonToScore",
+  "main": 11,
+  "repair": 10
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.wonToScorePercent",
+  "main": 41,
+  "repair": 37
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 63,
+  "repair": 58
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[9].nextShotOrScore",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a917679c-853d-4d7a-bcf0-c90d40fa9a91",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a917679c-853d-4d7a-bcf0-c90d40fa9a91",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 56,
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[37].nextScore",
+  "main": "#43127ea0-9449-47e1-868e-1e72a7d0c7e8",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[37].nextShotOrScore",
+  "main": "#43127ea0-9449-47e1-868e-1e72a7d0c7e8",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.core.kickoutDataset.outcomes[37].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.rows[0].us.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.rows[0].us.value",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.rows[0].net",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.rows[2].us.scores",
+  "main": 10,
+  "repair": 9
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.rows[2].us.value",
+  "main": 13,
+  "repair": 12
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.rows[2].net",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.restartLossContext.themConcededValue",
+  "main": 13,
+  "repair": 12
+ },
+ {
+  "path": "A-live|FULL.intelligence.ledger.verdicts[1]",
+  "main": "The placed-ball battle cost Ballyboden 2 points: Ballyboden scored 4/4 against Na Fianna's 5/7. Worth reviewing free-taking options.",
+  "repair": "Na Fianna outscored Ballyboden from general play by 1 point (2 to 1). Worth reviewing how those chances were created."
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.retained.scoreValue",
+  "main": 11,
+  "repair": 13
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 13,
+  "repair": 15
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.results[9].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.results[9].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.kickouts.results[9].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.retained.scoreValue",
+  "main": 8,
+  "repair": 9
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.conceded.scoreValue",
+  "main": 4,
+  "repair": 6
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.results[3].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.results[3].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.ourKickouts.results[3].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.theirKickouts.retained.scoreValue",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.theirKickouts.netOutcome",
+  "main": -6,
+  "repair": -5
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.theirKickouts.netLabel",
+  "main": "-6",
+  "repair": "-5"
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.turnovers.netOutcome",
+  "main": -5,
+  "repair": -7
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.turnovers.netLabel",
+  "main": "-5",
+  "repair": "-7"
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.frees.netOutcome",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.frees.netLabel",
+  "main": "-1",
+  "repair": "-2"
+ },
+ {
+  "path": "A-live|FULL.intelligence.possessions.overallNetOutcome",
+  "main": -8,
+  "repair": -11
+ },
+ {
+  "path": "A-live|FULL.intelligence.prompts[0].text",
+  "main": "Ballyboden held 59% Restart Share (27 of 46) — 41% of won kickouts produced restart-origin point value (1 Goal, 8 Points & 2 Two-Point scores (15 pts)).",
+  "repair": "Ballyboden held 59% Restart Share (27 of 46) — 37% of won kickouts produced restart-origin point value (1 Goal, 7 Points & 2 Two-Point scores (14 pts))."
+ },
+ {
+  "path": "A-live|FULL.intelligence.prompts[1].text",
+  "main": "41% of Ballyboden's kickout wins produced restart-origin point value; 63% of their losses produced restart-origin point value for Na Fianna.",
+  "repair": "37% of Ballyboden's kickout wins produced restart-origin point value; 58% of their losses produced restart-origin point value for Na Fianna."
+ },
+ {
+  "path": "A-live|FULL.intelligence.prompts[1].evidenceTag",
+  "main": "kickout:netAdv=-22",
+  "repair": "kickout:netAdv=-21"
+ },
+ {
+  "path": "A-live|FULL.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Fianna winning the possession battle overall (-8)",
+  "repair": "Na Fianna winning the possession battle overall (-11)"
+ },
+ {
+  "path": "B-live|1H.core.restarts.restartToScore.num",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "B-live|1H.core.restarts.restartToScore.pct",
+  "main": 25,
+  "repair": 20
+ },
+ {
+  "path": "B-live|1H.core.restarts.restartLossPunishment.num",
+  "main": 6,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.core.restarts.restartLossPunishment.pct",
+  "main": 43,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.wonToScore",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.wonToScorePercent",
+  "main": 25,
+  "repair": 20
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.lostAllowedScore",
+  "main": 6,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 43,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[1].nextShotOrScore",
+  "main": "#45e240d9-9621-4580-92bb-0b77d7451520",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[8].nextScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[8].nextShotOrScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[8].secondsToScore",
+  "main": 36,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[10].nextScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[10].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[13].nextShotOrScore",
+  "main": "#e6030345-40bc-467a-90f8-04ba1cfb03ca",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[14].nextScore",
+  "main": "#c9aa93b7-7858-4f85-b543-20a8ee09675c",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[14].nextShotOrScore",
+  "main": "#60eb9ff0-ad42-4eb7-bccc-847e872ed7a8",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[14].secondsToScore",
+  "main": 57,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[18].nextScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[18].nextShotOrScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[18].secondsToScore",
+  "main": 17,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[22].nextShotOrScore",
+  "main": "#42759daf-968b-4e91-863c-ce4a23a8320c",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[23].nextScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[23].nextShotOrScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[23].secondsToScore",
+  "main": 54,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[24].nextShotOrScore",
+  "main": "#c1b49268-3010-40b7-84e3-dceb2cfd8473",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[25].nextScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[25].nextShotOrScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[25].secondsToScore",
+  "main": 51,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 38,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.rows[0].them.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.rows[0].them.value",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.rows[0].net",
+  "main": 0,
+  "repair": -1
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.rows[2].them.scores",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.rows[2].them.value",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.rows[2].net",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.restartLossContext.usConcededValue",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.intelligence.ledger.verdicts[1]",
+  "main": "Kilmacud Crokes won the restart battle by 3 points: 4 direct restart points against 1 by St Brigid's.",
+  "repair": "Kilmacud Crokes won the restart battle by 4 points: 4 direct restart points against 0 by St Brigid's."
+ },
+ {
+  "path": "B-live|1H.intelligence.possessions.kickouts.results[32].outcome",
+  "main": "WIDE",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-live|1H.intelligence.possessions.kickouts.results[32].outcomingEvent",
+  "main": "#490cda78-3942-4c2b-be72-d6d02ff68e49",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-live|1H.intelligence.possessions.kickouts.results[32].secondsToOutcome",
+  "main": 73,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.intelligence.possessions.theirKickouts.results[15].outcome",
+  "main": "WIDE",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-live|1H.intelligence.possessions.theirKickouts.results[15].outcomingEvent",
+  "main": "#490cda78-3942-4c2b-be72-d6d02ff68e49",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-live|1H.intelligence.possessions.theirKickouts.results[15].secondsToOutcome",
+  "main": 73,
+  "repair": null
+ },
+ {
+  "path": "B-live|1H.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 59% Restart Share (20 of 34) — 25% of won kickouts produced restart-origin point value (1 Goal, 4 Points (7 pts)).",
+    "evidenceTag": "kickout:restartShare=59"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "25% of Kilmacud Crokes's kickout wins produced restart-origin point value; 43% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-18"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 29 turnovers but only 10% produced turnover-origin point value.",
+    "evidenceTag": "turnover:convPct=10"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 29 turnovers; 17 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=17,won=29"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (3 vs 1).",
+    "evidenceTag": "momentum:runsOpp=3,runsFor=1"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "The final scoring run of the match was by St Brigid's (2 scores).",
+    "evidenceTag": "momentum:latestRunOpp=2"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 59% Restart Share (20 of 34) — 20% of won kickouts produced restart-origin point value (1 Goal, 3 Points (6 pts)).",
+    "evidenceTag": "kickout:restartShare=59"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 29 turnovers but only 10% produced turnover-origin point value.",
+    "evidenceTag": "turnover:convPct=10"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 29 turnovers; 17 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=17,won=29"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (3 vs 1).",
+    "evidenceTag": "momentum:runsOpp=3,runsFor=1"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "The final scoring run of the match was by St Brigid's (2 scores).",
+    "evidenceTag": "momentum:latestRunOpp=2"
+   }
+  ]
+ },
+ {
+  "path": "B-live|FULL.core.restarts.restartToScore.num",
+  "main": 11,
+  "repair": 9
+ },
+ {
+  "path": "B-live|FULL.core.restarts.restartToScore.pct",
+  "main": 27,
+  "repair": 22
+ },
+ {
+  "path": "B-live|FULL.core.restarts.restartLossPunishment.num",
+  "main": 18,
+  "repair": 8
+ },
+ {
+  "path": "B-live|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 51,
+  "repair": 23
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.wonToScore",
+  "main": 11,
+  "repair": 9
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.wonToScorePercent",
+  "main": 27,
+  "repair": 22
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 18,
+  "repair": 8
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 51,
+  "repair": 23
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[1].nextShotOrScore",
+  "main": "#45e240d9-9621-4580-92bb-0b77d7451520",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[8].nextScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[8].nextShotOrScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[8].secondsToScore",
+  "main": 36,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[10].nextScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[10].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[13].nextShotOrScore",
+  "main": "#e6030345-40bc-467a-90f8-04ba1cfb03ca",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[14].nextScore",
+  "main": "#c9aa93b7-7858-4f85-b543-20a8ee09675c",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[14].nextShotOrScore",
+  "main": "#60eb9ff0-ad42-4eb7-bccc-847e872ed7a8",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[14].secondsToScore",
+  "main": 57,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[18].nextScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[18].nextShotOrScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[18].secondsToScore",
+  "main": 17,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[22].nextShotOrScore",
+  "main": "#42759daf-968b-4e91-863c-ce4a23a8320c",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[23].nextScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[23].nextShotOrScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[23].secondsToScore",
+  "main": 54,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[24].nextShotOrScore",
+  "main": "#c1b49268-3010-40b7-84e3-dceb2cfd8473",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[25].nextScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[25].nextShotOrScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[25].secondsToScore",
+  "main": 51,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 38,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[38].nextScore",
+  "main": "#277d24ec-12ac-48bc-b49f-05d3b99bb089",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[38].nextShotOrScore",
+  "main": "#277d24ec-12ac-48bc-b49f-05d3b99bb089",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[38].secondsToScore",
+  "main": 69,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[43].nextScore",
+  "main": "#cdd6dfb1-c75d-4482-8c0e-e4b15a798ca1",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[43].nextShotOrScore",
+  "main": "#cdd6dfb1-c75d-4482-8c0e-e4b15a798ca1",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[43].secondsToScore",
+  "main": 55,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[48].nextScore",
+  "main": "#c948f252-dd68-4778-8da1-ef550eab402c",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[48].nextShotOrScore",
+  "main": "#c948f252-dd68-4778-8da1-ef550eab402c",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[48].secondsToScore",
+  "main": 41,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[57].nextScore",
+  "main": "#663e55b3-47b3-4eee-be7f-bdfc7c4b7749",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[57].nextShotOrScore",
+  "main": "#663e55b3-47b3-4eee-be7f-bdfc7c4b7749",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[57].secondsToScore",
+  "main": 30,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[63].nextShotOrScore",
+  "main": "#8b2ed48d-6608-4407-b52b-47a5fa42c741",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[65].nextScore",
+  "main": "#1c465f3f-7906-4a60-97f2-1fa0399c4469",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[65].nextShotOrScore",
+  "main": "#1c465f3f-7906-4a60-97f2-1fa0399c4469",
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.core.kickoutDataset.outcomes[65].secondsToScore",
+  "main": 20,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[0].them.scores",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[0].them.value",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[0].net",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[2].them.scores",
+  "main": 6,
+  "repair": 5
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[2].them.value",
+  "main": 7,
+  "repair": 6
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[2].net",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.restartLossContext.usConcededValue",
+  "main": 7,
+  "repair": 6
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.verdicts[1]",
+  "main": "Kilmacud Crokes won the restart battle by 3 points: 10 direct restart points against 7 by St Brigid's.",
+  "repair": "Kilmacud Crokes won the restart battle by 4 points: 10 direct restart points against 6 by St Brigid's."
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.retained.wides",
+  "main": 6,
+  "repair": 7
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.retained.turnovers",
+  "main": 20,
+  "repair": 19
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.results[32].outcome",
+  "main": "WIDE",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.results[32].outcomingEvent",
+  "main": "#490cda78-3942-4c2b-be72-d6d02ff68e49",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.results[32].secondsToOutcome",
+  "main": 73,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.results[72].outcome",
+  "main": "TURNOVER",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.results[72].outcomingEvent",
+  "main": "#a43c0a8a-cd26-4f67-91a2-fbb41aafea68",
+  "repair": "#1b122ae5-2e43-45e2-b528-07fe317e3daa"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.kickouts.results[72].secondsToOutcome",
+  "main": 33,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.ourKickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.ourKickouts.netOutcome",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.ourKickouts.netLabel",
+  "main": "+1",
+  "repair": "0"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.retained.wides",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.retained.turnovers",
+  "main": 8,
+  "repair": 7
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.results[15].outcome",
+  "main": "WIDE",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.results[15].outcomingEvent",
+  "main": "#490cda78-3942-4c2b-be72-d6d02ff68e49",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.results[15].secondsToOutcome",
+  "main": 73,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.results[34].outcome",
+  "main": "TURNOVER",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.results[34].outcomingEvent",
+  "main": "#a43c0a8a-cd26-4f67-91a2-fbb41aafea68",
+  "repair": "#1b122ae5-2e43-45e2-b528-07fe317e3daa"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.theirKickouts.results[34].secondsToOutcome",
+  "main": 33,
+  "repair": null
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 9,
+  "repair": 10
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 14,
+  "repair": 15
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.frees.retained.scoreValue",
+  "main": 9,
+  "repair": 11
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 13,
+  "repair": 16
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.frees.netOutcome",
+  "main": -4,
+  "repair": -5
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.frees.netLabel",
+  "main": "-4",
+  "repair": "-5"
+ },
+ {
+  "path": "B-live|FULL.intelligence.possessions.overallNetOutcome",
+  "main": -5,
+  "repair": -7
+ },
+ {
+  "path": "B-live|FULL.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 54% Restart Share (41 of 76) — 27% of won kickouts produced restart-origin point value (2 Goals, 9 Points (15 pts)).",
+    "evidenceTag": "kickout:restartShare=54"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "27% of Kilmacud Crokes's kickout wins produced restart-origin point value; 51% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-24"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 52% of turnovers (48 of 93); 23% of wins produced turnover-origin point value, against 40% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=52,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 48 turnovers; 25 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=25,won=48"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsFor=3"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (8 vs 5).",
+    "evidenceTag": "momentum:runsOpp=8,runsFor=5"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 54% Restart Share (41 of 76) — 22% of won kickouts produced restart-origin point value (2 Goals, 7 Points (13 pts)).",
+    "evidenceTag": "kickout:restartShare=54"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 52% of turnovers (48 of 93); 23% of wins produced turnover-origin point value, against 40% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=52,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 48 turnovers; 25 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=25,won=48"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsFor=3"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (8 vs 5).",
+    "evidenceTag": "momentum:runsOpp=8,runsFor=5"
+   }
+  ]
+ },
+ {
+  "path": "B-live|FULL.intelligence.intelligenceSummary.overallInsight",
+  "main": "St Brigid's winning the possession battle overall (-5)",
+  "repair": "St Brigid's winning the possession battle overall (-7)"
+ },
+ {
+  "path": "C-live|1H.core.restarts.restartLossPunishment.num",
+  "main": 8,
+  "repair": 7
+ },
+ {
+  "path": "C-live|1H.core.restarts.restartLossPunishment.pct",
+  "main": 50,
+  "repair": 44
+ },
+ {
+  "path": "C-live|1H.core.kickoutDataset.lostAllowedScore",
+  "main": 8,
+  "repair": 7
+ },
+ {
+  "path": "C-live|1H.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 50,
+  "repair": 44
+ },
+ {
+  "path": "C-live|1H.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#8ce0a9d7-ffd1-4566-aaa9-e991d209849d",
+  "repair": null
+ },
+ {
+  "path": "C-live|1H.core.kickoutDataset.outcomes[12].nextScore",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": null
+ },
+ {
+  "path": "C-live|1H.core.kickoutDataset.outcomes[12].secondsToScore",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.conceded.points",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.conceded.wides",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.conceded.scoringPct",
+  "main": 31,
+  "repair": 25
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.damagePct",
+  "main": 31,
+  "repair": 25
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.escapePct",
+  "main": 69,
+  "repair": 75
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.netOutcome",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.netLabel",
+  "main": "-2",
+  "repair": "-1"
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.results[12].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.results[12].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.results[12].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.kickouts.results[12].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.conceded.points",
+  "main": 3,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.conceded.wides",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.conceded.scoringPct",
+  "main": 33,
+  "repair": 22
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.damagePct",
+  "main": 33,
+  "repair": 22
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.escapePct",
+  "main": 67,
+  "repair": 78
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.netOutcome",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.netLabel",
+  "main": "-2",
+  "repair": "-1"
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.results[6].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.results[6].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.results[6].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.theirKickouts.results[6].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-live|1H.intelligence.possessions.overallNetOutcome",
+  "main": -4,
+  "repair": -3
+ },
+ {
+  "path": "C-live|1H.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Ballyhale Shamrock held 41% Restart Share (11 of 27).",
+    "evidenceTag": "kickout:restartShare=41"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "36% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for Na Piarsaigh.",
+    "evidenceTag": "kickout:netAdv=-14"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "50% of Ballyhale Shamrock's won turnovers produced turnover-origin point value (2 Points (2 pts) from 4 wins).",
+    "evidenceTag": "turnover:convPct=50"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Na Piarsaigh had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsOpp=3"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Ballyhale Shamrock held 41% Restart Share (11 of 27).",
+    "evidenceTag": "kickout:restartShare=41"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "50% of Ballyhale Shamrock's won turnovers produced turnover-origin point value (2 Points (2 pts) from 4 wins).",
+    "evidenceTag": "turnover:convPct=50"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Na Piarsaigh had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsOpp=3"
+   }
+  ]
+ },
+ {
+  "path": "C-live|1H.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Piarsaigh winning the possession battle overall (-4)",
+  "repair": "Na Piarsaigh winning the possession battle overall (-3)"
+ },
+ {
+  "path": "C-live|FULL.core.restarts.restartLossPunishment.num",
+  "main": 15,
+  "repair": 14
+ },
+ {
+  "path": "C-live|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 50,
+  "repair": 47
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 15,
+  "repair": 14
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 50,
+  "repair": 47
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#8ce0a9d7-ffd1-4566-aaa9-e991d209849d",
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.outcomes[12].nextScore",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.outcomes[12].secondsToScore",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.outcomes[44].nextShotOrScore",
+  "main": "#68ccadff-0fa6-4746-8c08-4776b1832f5a",
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.core.kickoutDataset.outcomes[50].nextShotOrScore",
+  "main": "#4aa6916f-29b5-4499-9032-85f5a5bdd549",
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.retained.wides",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.retained.recycled",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.conceded.points",
+  "main": 9,
+  "repair": 8
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.conceded.wides",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.conceded.scoringPct",
+  "main": 33,
+  "repair": 30
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.damagePct",
+  "main": 33,
+  "repair": 30
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.escapePct",
+  "main": 67,
+  "repair": 70
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.netOutcome",
+  "main": -7,
+  "repair": -6
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.netLabel",
+  "main": "-7",
+  "repair": "-6"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.results[12].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.results[12].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.results[12].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.results[12].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.results[50].outcome",
+  "main": "SHOT",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.kickouts.results[50].outcomingEvent",
+  "main": "#4aa6916f-29b5-4499-9032-85f5a5bdd549",
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.ourKickouts.retained.wides",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.ourKickouts.retained.recycled",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.ourKickouts.results[26].outcome",
+  "main": "SHOT",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.ourKickouts.results[26].outcomingEvent",
+  "main": "#4aa6916f-29b5-4499-9032-85f5a5bdd549",
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.conceded.points",
+  "main": 6,
+  "repair": 5
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.conceded.wides",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.conceded.scoreValue",
+  "main": 6,
+  "repair": 5
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.conceded.scoringPct",
+  "main": 43,
+  "repair": 36
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.damagePct",
+  "main": 43,
+  "repair": 36
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.escapePct",
+  "main": 57,
+  "repair": 64
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.netOutcome",
+  "main": -3,
+  "repair": -2
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.netLabel",
+  "main": "-3",
+  "repair": "-2"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.results[6].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.results[6].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.results[6].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.theirKickouts.results[6].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-live|FULL.intelligence.possessions.overallNetOutcome",
+  "main": -10,
+  "repair": -9
+ },
+ {
+  "path": "C-live|FULL.intelligence.prompts[1].text",
+  "main": "29% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for Na Piarsaigh.",
+  "repair": "29% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 47% of their losses produced restart-origin point value for Na Piarsaigh."
+ },
+ {
+  "path": "C-live|FULL.intelligence.prompts[1].evidenceTag",
+  "main": "kickout:netAdv=-21",
+  "repair": "kickout:netAdv=-18"
+ },
+ {
+  "path": "C-live|FULL.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Piarsaigh winning the possession battle overall (-10)",
+  "repair": "Na Piarsaigh winning the possession battle overall (-9)"
+ },
+ {
+  "path": "A-final|1H.core.kickoutDataset.outcomes[9].nextShotOrScore",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.results[9].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.results[9].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.kickouts.results[9].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.conceded.scoreValue",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.results[3].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.results[3].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.ourKickouts.results[3].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.turnovers.netOutcome",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.turnovers.netLabel",
+  "main": "-2",
+  "repair": "-3"
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.frees.netOutcome",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.frees.netLabel",
+  "main": "-1",
+  "repair": "-2"
+ },
+ {
+  "path": "A-final|1H.intelligence.possessions.overallNetOutcome",
+  "main": 1,
+  "repair": -2
+ },
+ {
+  "path": "A-final|1H.intelligence.intelligenceSummary.overallNetOutcome",
+  "main": "FOR",
+  "repair": "OPP"
+ },
+ {
+  "path": "A-final|FULL.core.restarts.restartToScore.num",
+  "main": 11,
+  "repair": 10
+ },
+ {
+  "path": "A-final|FULL.core.restarts.restartToScore.pct",
+  "main": 41,
+  "repair": 37
+ },
+ {
+  "path": "A-final|FULL.core.restarts.restartLossPunishment.num",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "A-final|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 63,
+  "repair": 58
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.wonToScore",
+  "main": 11,
+  "repair": 10
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.wonToScorePercent",
+  "main": 41,
+  "repair": 37
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 63,
+  "repair": 58
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[9].nextShotOrScore",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a917679c-853d-4d7a-bcf0-c90d40fa9a91",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a917679c-853d-4d7a-bcf0-c90d40fa9a91",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 56,
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[37].nextScore",
+  "main": "#43127ea0-9449-47e1-868e-1e72a7d0c7e8",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[37].nextShotOrScore",
+  "main": "#43127ea0-9449-47e1-868e-1e72a7d0c7e8",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.core.kickoutDataset.outcomes[37].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.rows[0].us.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.rows[0].us.value",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.rows[0].net",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.rows[2].us.scores",
+  "main": 10,
+  "repair": 9
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.rows[2].us.value",
+  "main": 13,
+  "repair": 12
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.rows[2].net",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.restartLossContext.themConcededValue",
+  "main": 13,
+  "repair": 12
+ },
+ {
+  "path": "A-final|FULL.intelligence.ledger.verdicts[1]",
+  "main": "The placed-ball battle cost Ballyboden 2 points: Ballyboden scored 4/4 against Na Fianna's 5/7. Worth reviewing free-taking options.",
+  "repair": "Na Fianna outscored Ballyboden from general play by 1 point (2 to 1). Worth reviewing how those chances were created."
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.retained.scoreValue",
+  "main": 11,
+  "repair": 13
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 13,
+  "repair": 15
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.results[9].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.results[9].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.kickouts.results[9].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.retained.scoreValue",
+  "main": 8,
+  "repair": 9
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.conceded.scoreValue",
+  "main": 4,
+  "repair": 6
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.results[3].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.results[3].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.ourKickouts.results[3].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.theirKickouts.retained.scoreValue",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.theirKickouts.netOutcome",
+  "main": -6,
+  "repair": -5
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.theirKickouts.netLabel",
+  "main": "-6",
+  "repair": "-5"
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.turnovers.netOutcome",
+  "main": -5,
+  "repair": -7
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.turnovers.netLabel",
+  "main": "-5",
+  "repair": "-7"
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.frees.netOutcome",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.frees.netLabel",
+  "main": "-1",
+  "repair": "-2"
+ },
+ {
+  "path": "A-final|FULL.intelligence.possessions.overallNetOutcome",
+  "main": -8,
+  "repair": -11
+ },
+ {
+  "path": "A-final|FULL.intelligence.prompts[0].text",
+  "main": "Ballyboden held 59% Restart Share (27 of 46) — 41% of won kickouts produced restart-origin point value (1 Goal, 8 Points & 2 Two-Point scores (15 pts)).",
+  "repair": "Ballyboden held 59% Restart Share (27 of 46) — 37% of won kickouts produced restart-origin point value (1 Goal, 7 Points & 2 Two-Point scores (14 pts))."
+ },
+ {
+  "path": "A-final|FULL.intelligence.prompts[1].text",
+  "main": "41% of Ballyboden's kickout wins produced restart-origin point value; 63% of their losses produced restart-origin point value for Na Fianna.",
+  "repair": "37% of Ballyboden's kickout wins produced restart-origin point value; 58% of their losses produced restart-origin point value for Na Fianna."
+ },
+ {
+  "path": "A-final|FULL.intelligence.prompts[1].evidenceTag",
+  "main": "kickout:netAdv=-22",
+  "repair": "kickout:netAdv=-21"
+ },
+ {
+  "path": "A-final|FULL.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Fianna winning the possession battle overall (-8)",
+  "repair": "Na Fianna winning the possession battle overall (-11)"
+ },
+ {
+  "path": "B-final|1H.core.restarts.restartToScore.num",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "B-final|1H.core.restarts.restartToScore.pct",
+  "main": 25,
+  "repair": 20
+ },
+ {
+  "path": "B-final|1H.core.restarts.restartLossPunishment.num",
+  "main": 7,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.core.restarts.restartLossPunishment.pct",
+  "main": 50,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.wonToScore",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.wonToScorePercent",
+  "main": 25,
+  "repair": 20
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.lostAllowedScore",
+  "main": 7,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 50,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[1].nextShotOrScore",
+  "main": "#45e240d9-9621-4580-92bb-0b77d7451520",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[8].nextScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[8].nextShotOrScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[8].secondsToScore",
+  "main": 36,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[10].nextScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[10].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[13].nextShotOrScore",
+  "main": "#e6030345-40bc-467a-90f8-04ba1cfb03ca",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[14].nextScore",
+  "main": "#c9aa93b7-7858-4f85-b543-20a8ee09675c",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[14].nextShotOrScore",
+  "main": "#60eb9ff0-ad42-4eb7-bccc-847e872ed7a8",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[14].secondsToScore",
+  "main": 57,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[18].nextScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[18].nextShotOrScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[18].secondsToScore",
+  "main": 17,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[22].nextShotOrScore",
+  "main": "#42759daf-968b-4e91-863c-ce4a23a8320c",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[23].nextScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[23].nextShotOrScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[23].secondsToScore",
+  "main": 54,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[24].nextShotOrScore",
+  "main": "#c1b49268-3010-40b7-84e3-dceb2cfd8473",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[25].nextScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[25].nextShotOrScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[25].secondsToScore",
+  "main": 51,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 38,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[32].nextScore",
+  "main": "#7e561bb4-3d4e-450f-9cfc-10c47c3bd624",
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.core.kickoutDataset.outcomes[32].secondsToScore",
+  "main": 40,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.rows[0].them.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.rows[0].them.value",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.rows[0].net",
+  "main": 0,
+  "repair": -1
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.rows[2].them.scores",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.rows[2].them.value",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.rows[2].net",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.restartLossContext.usConcededValue",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.ledger.verdicts[1]",
+  "main": "Kilmacud Crokes won the restart battle by 3 points: 4 direct restart points against 1 by St Brigid's.",
+  "repair": "Kilmacud Crokes won the restart battle by 4 points: 4 direct restart points against 0 by St Brigid's."
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.conceded.points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.conceded.wides",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.conceded.scoringPct",
+  "main": 7,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.damagePct",
+  "main": 7,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.escapePct",
+  "main": 93,
+  "repair": 100
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.netOutcome",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.netLabel",
+  "main": "+3",
+  "repair": "+4"
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.results[32].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.results[32].outcomingEvent",
+  "main": "#7e561bb4-3d4e-450f-9cfc-10c47c3bd624",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.results[32].secondsToOutcome",
+  "main": 40,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.kickouts.results[32].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.conceded.points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.conceded.wides",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.conceded.scoreValue",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.conceded.scoringPct",
+  "main": 10,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.damagePct",
+  "main": 10,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.escapePct",
+  "main": 90,
+  "repair": 100
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.netOutcome",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.netLabel",
+  "main": "0",
+  "repair": "+1"
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.results[15].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.results[15].outcomingEvent",
+  "main": "#7e561bb4-3d4e-450f-9cfc-10c47c3bd624",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.results[15].secondsToOutcome",
+  "main": 40,
+  "repair": null
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.theirKickouts.results[15].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.possessions.overallNetOutcome",
+  "main": -5,
+  "repair": -4
+ },
+ {
+  "path": "B-final|1H.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 59% Restart Share (20 of 34) — 25% of won kickouts produced restart-origin point value (1 Goal, 4 Points (7 pts)).",
+    "evidenceTag": "kickout:restartShare=59"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "25% of Kilmacud Crokes's kickout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-25"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers but only 11% produced turnover-origin point value.",
+    "evidenceTag": "turnover:convPct=11"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers; 16 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=16,won=28"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (3 vs 1).",
+    "evidenceTag": "momentum:runsOpp=3,runsFor=1"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "The final scoring run of the match was by St Brigid's (2 scores).",
+    "evidenceTag": "momentum:latestRunOpp=2"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 59% Restart Share (20 of 34) — 20% of won kickouts produced restart-origin point value (1 Goal, 3 Points (6 pts)).",
+    "evidenceTag": "kickout:restartShare=59"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers but only 11% produced turnover-origin point value.",
+    "evidenceTag": "turnover:convPct=11"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers; 16 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=16,won=28"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (3 vs 1).",
+    "evidenceTag": "momentum:runsOpp=3,runsFor=1"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "The final scoring run of the match was by St Brigid's (2 scores).",
+    "evidenceTag": "momentum:latestRunOpp=2"
+   }
+  ]
+ },
+ {
+  "path": "B-final|1H.intelligence.intelligenceSummary.overallInsight",
+  "main": "St Brigid's winning the possession battle overall (-5)",
+  "repair": "St Brigid's winning the possession battle overall (-4)"
+ },
+ {
+  "path": "B-final|FULL.core.restarts.restartToScore.num",
+  "main": 12,
+  "repair": 10
+ },
+ {
+  "path": "B-final|FULL.core.restarts.restartToScore.pct",
+  "main": 30,
+  "repair": 25
+ },
+ {
+  "path": "B-final|FULL.core.restarts.restartLossPunishment.num",
+  "main": 20,
+  "repair": 8
+ },
+ {
+  "path": "B-final|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 56,
+  "repair": 22
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.wonToScore",
+  "main": 12,
+  "repair": 10
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.wonToScorePercent",
+  "main": 30,
+  "repair": 25
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 20,
+  "repair": 8
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 56,
+  "repair": 22
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[1].nextShotOrScore",
+  "main": "#45e240d9-9621-4580-92bb-0b77d7451520",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[8].nextScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[8].nextShotOrScore",
+  "main": "#33c7f91a-a655-48db-bfeb-62dc2f386eb9",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[8].secondsToScore",
+  "main": 36,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[10].nextScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#5636d2df-024b-4969-b35c-075b1d07ac13",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[10].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[13].nextShotOrScore",
+  "main": "#e6030345-40bc-467a-90f8-04ba1cfb03ca",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[14].nextScore",
+  "main": "#c9aa93b7-7858-4f85-b543-20a8ee09675c",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[14].nextShotOrScore",
+  "main": "#60eb9ff0-ad42-4eb7-bccc-847e872ed7a8",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[14].secondsToScore",
+  "main": 57,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[18].nextScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[18].nextShotOrScore",
+  "main": "#76ba3905-8afd-4960-a3d8-7acdfcc37f15",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[18].secondsToScore",
+  "main": 17,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[22].nextShotOrScore",
+  "main": "#42759daf-968b-4e91-863c-ce4a23a8320c",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[23].nextScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[23].nextShotOrScore",
+  "main": "#d97bc050-0ecb-4e56-9a10-4ed841777362",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[23].secondsToScore",
+  "main": 54,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[24].nextShotOrScore",
+  "main": "#c1b49268-3010-40b7-84e3-dceb2cfd8473",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[25].nextScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[25].nextShotOrScore",
+  "main": "#209423f4-e145-4171-82ed-06c948d08205",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[25].secondsToScore",
+  "main": 51,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a0a7a114-98d9-425d-ac63-e17536f0af9a",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 38,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[32].nextScore",
+  "main": "#7e561bb4-3d4e-450f-9cfc-10c47c3bd624",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[32].secondsToScore",
+  "main": 40,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[37].nextScore",
+  "main": "#ce0aa15f-22d8-434c-882b-6ce372ef0ca5",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[37].nextShotOrScore",
+  "main": "#ce0aa15f-22d8-434c-882b-6ce372ef0ca5",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[37].secondsToScore",
+  "main": 24,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[38].nextScore",
+  "main": "#277d24ec-12ac-48bc-b49f-05d3b99bb089",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[38].nextShotOrScore",
+  "main": "#277d24ec-12ac-48bc-b49f-05d3b99bb089",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[38].secondsToScore",
+  "main": 69,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[43].nextScore",
+  "main": "#cdd6dfb1-c75d-4482-8c0e-e4b15a798ca1",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[43].nextShotOrScore",
+  "main": "#cdd6dfb1-c75d-4482-8c0e-e4b15a798ca1",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[43].secondsToScore",
+  "main": 55,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[48].nextScore",
+  "main": "#c948f252-dd68-4778-8da1-ef550eab402c",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[48].nextShotOrScore",
+  "main": "#c948f252-dd68-4778-8da1-ef550eab402c",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[48].secondsToScore",
+  "main": 41,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[57].nextScore",
+  "main": "#663e55b3-47b3-4eee-be7f-bdfc7c4b7749",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[57].nextShotOrScore",
+  "main": "#663e55b3-47b3-4eee-be7f-bdfc7c4b7749",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[57].secondsToScore",
+  "main": 30,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[63].nextShotOrScore",
+  "main": "#8b2ed48d-6608-4407-b52b-47a5fa42c741",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[65].nextScore",
+  "main": "#1c465f3f-7906-4a60-97f2-1fa0399c4469",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[65].nextShotOrScore",
+  "main": "#1c465f3f-7906-4a60-97f2-1fa0399c4469",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.core.kickoutDataset.outcomes[65].secondsToScore",
+  "main": 20,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[0].them.scores",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[0].them.value",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[0].net",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[2].them.scores",
+  "main": 6,
+  "repair": 5
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[2].them.value",
+  "main": 7,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[2].net",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.restartLossContext.usConcededValue",
+  "main": 7,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.verdicts[1]",
+  "main": "Kilmacud Crokes won the restart battle by 4 points: 11 direct restart points against 7 by St Brigid's.",
+  "repair": "Kilmacud Crokes won the restart battle by 5 points: 11 direct restart points against 6 by St Brigid's."
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.retained.wides",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.retained.turnovers",
+  "main": 19,
+  "repair": 18
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.conceded.points",
+  "main": 7,
+  "repair": 5
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.conceded.wides",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 7,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.conceded.scoringPct",
+  "main": 19,
+  "repair": 14
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.damagePct",
+  "main": 19,
+  "repair": 14
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.escapePct",
+  "main": 81,
+  "repair": 86
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.netOutcome",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.netLabel",
+  "main": "+3",
+  "repair": "+4"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[32].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[32].outcomingEvent",
+  "main": "#7e561bb4-3d4e-450f-9cfc-10c47c3bd624",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[32].secondsToOutcome",
+  "main": 40,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[32].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[37].outcome",
+  "main": "POINT",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[37].outcomingEvent",
+  "main": "#ce0aa15f-22d8-434c-882b-6ce372ef0ca5",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[37].secondsToOutcome",
+  "main": 24,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[37].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[72].outcome",
+  "main": "TURNOVER",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[72].outcomingEvent",
+  "main": "#a43c0a8a-cd26-4f67-91a2-fbb41aafea68",
+  "repair": "#1b122ae5-2e43-45e2-b528-07fe317e3daa"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.kickouts.results[72].secondsToOutcome",
+  "main": 33,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.conceded.points",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.conceded.recycled",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.conceded.scoringPct",
+  "main": 22,
+  "repair": 17
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.damagePct",
+  "main": 22,
+  "repair": 17
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.escapePct",
+  "main": 78,
+  "repair": 83
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.results[20].outcome",
+  "main": "POINT",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.results[20].outcomingEvent",
+  "main": "#ce0aa15f-22d8-434c-882b-6ce372ef0ca5",
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.results[20].secondsToOutcome",
+  "main": 24,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.ourKickouts.results[20].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.retained.wides",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.retained.turnovers",
+  "main": 8,
+  "repair": 7
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.conceded.points",
+  "main": 3,
+  "repair": 2
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.conceded.wides",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 2
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.conceded.scoringPct",
+  "main": 17,
+  "repair": 11
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.damagePct",
+  "main": 17,
+  "repair": 11
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.escapePct",
+  "main": 83,
+  "repair": 89
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.netOutcome",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.netLabel",
+  "main": "+2",
+  "repair": "+3"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[15].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[15].outcomingEvent",
+  "main": "#7e561bb4-3d4e-450f-9cfc-10c47c3bd624",
+  "repair": "#2341c622-8adf-46d1-99eb-c74aeb499e53"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[15].secondsToOutcome",
+  "main": 40,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[15].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[34].outcome",
+  "main": "TURNOVER",
+  "repair": "SHOT"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[34].outcomingEvent",
+  "main": "#a43c0a8a-cd26-4f67-91a2-fbb41aafea68",
+  "repair": "#1b122ae5-2e43-45e2-b528-07fe317e3daa"
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.theirKickouts.results[34].secondsToOutcome",
+  "main": 33,
+  "repair": null
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 9,
+  "repair": 10
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 16,
+  "repair": 17
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.frees.retained.scoreValue",
+  "main": 9,
+  "repair": 11
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 13,
+  "repair": 16
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.frees.netOutcome",
+  "main": -4,
+  "repair": -5
+ },
+ {
+  "path": "B-final|FULL.intelligence.possessions.frees.netLabel",
+  "main": "-4",
+  "repair": "-5"
+ },
+ {
+  "path": "B-final|FULL.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 53% Restart Share (40 of 76) — 30% of won kickouts produced restart-origin point value (2 Goals, 10 Points (16 pts)).",
+    "evidenceTag": "kickout:restartShare=53"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "30% of Kilmacud Crokes's kickout wins produced restart-origin point value; 56% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-26"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 51% of turnovers (47 of 93); 23% of wins produced turnover-origin point value, against 39% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=51,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 47 turnovers; 24 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=24,won=47"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsFor=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (9 vs 5).",
+    "evidenceTag": "momentum:runsOpp=9,runsFor=5"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 53% Restart Share (40 of 76) — 25% of won kickouts produced restart-origin point value (2 Goals, 8 Points (14 pts)).",
+    "evidenceTag": "kickout:restartShare=53"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 51% of turnovers (47 of 93); 23% of wins produced turnover-origin point value, against 39% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=51,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 47 turnovers; 24 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=24,won=47"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsFor=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (9 vs 5).",
+    "evidenceTag": "momentum:runsOpp=9,runsFor=5"
+   }
+  ]
+ },
+ {
+  "path": "B-final|FULL.intelligence.intelligenceSummary.dangerInsights[0]",
+  "main": "St Brigid's scored from 4 of the 18 Kilmacud Crokes Kickouts they won",
+  "repair": "St Brigid's scored from 3 of the 18 Kilmacud Crokes Kickouts they won"
+ },
+ {
+  "path": "B-final|FULL.intelligence.intelligenceSummary.coachingPriorities[1]",
+  "main": "Win the Kickout — St Brigid's scored from 4 of the 18 Kilmacud Crokes Kickouts they won",
+  "repair": "Win the Kickout — St Brigid's scored from 3 of the 18 Kilmacud Crokes Kickouts they won"
+ },
+ {
+  "path": "C-final|1H.core.restarts.restartLossPunishment.num",
+  "main": 8,
+  "repair": 7
+ },
+ {
+  "path": "C-final|1H.core.restarts.restartLossPunishment.pct",
+  "main": 50,
+  "repair": 44
+ },
+ {
+  "path": "C-final|1H.core.kickoutDataset.lostAllowedScore",
+  "main": 8,
+  "repair": 7
+ },
+ {
+  "path": "C-final|1H.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 50,
+  "repair": 44
+ },
+ {
+  "path": "C-final|1H.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#8ce0a9d7-ffd1-4566-aaa9-e991d209849d",
+  "repair": null
+ },
+ {
+  "path": "C-final|1H.core.kickoutDataset.outcomes[12].nextScore",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": null
+ },
+ {
+  "path": "C-final|1H.core.kickoutDataset.outcomes[12].secondsToScore",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.conceded.points",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.conceded.wides",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.conceded.scoringPct",
+  "main": 31,
+  "repair": 25
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.damagePct",
+  "main": 31,
+  "repair": 25
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.escapePct",
+  "main": 69,
+  "repair": 75
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.netOutcome",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.netLabel",
+  "main": "-2",
+  "repair": "-1"
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.results[12].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.results[12].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.results[12].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.kickouts.results[12].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.conceded.points",
+  "main": 3,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.conceded.wides",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.conceded.scoringPct",
+  "main": 33,
+  "repair": 22
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.damagePct",
+  "main": 33,
+  "repair": 22
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.escapePct",
+  "main": 67,
+  "repair": 78
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.netOutcome",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.netLabel",
+  "main": "-2",
+  "repair": "-1"
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.results[6].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.results[6].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.results[6].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.theirKickouts.results[6].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-final|1H.intelligence.possessions.overallNetOutcome",
+  "main": -4,
+  "repair": -3
+ },
+ {
+  "path": "C-final|1H.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Ballyhale Shamrock held 41% Restart Share (11 of 27).",
+    "evidenceTag": "kickout:restartShare=41"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "36% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for Na Piarsaigh.",
+    "evidenceTag": "kickout:netAdv=-14"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "50% of Ballyhale Shamrock's won turnovers produced turnover-origin point value (2 Points (2 pts) from 4 wins).",
+    "evidenceTag": "turnover:convPct=50"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Na Piarsaigh had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsOpp=3"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Ballyhale Shamrock held 41% Restart Share (11 of 27).",
+    "evidenceTag": "kickout:restartShare=41"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "50% of Ballyhale Shamrock's won turnovers produced turnover-origin point value (2 Points (2 pts) from 4 wins).",
+    "evidenceTag": "turnover:convPct=50"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Na Piarsaigh had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsOpp=3"
+   }
+  ]
+ },
+ {
+  "path": "C-final|1H.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Piarsaigh winning the possession battle overall (-4)",
+  "repair": "Na Piarsaigh winning the possession battle overall (-3)"
+ },
+ {
+  "path": "C-final|FULL.core.restarts.restartLossPunishment.num",
+  "main": 15,
+  "repair": 14
+ },
+ {
+  "path": "C-final|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 50,
+  "repair": 47
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 15,
+  "repair": 14
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 50,
+  "repair": 47
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.outcomes[10].nextShotOrScore",
+  "main": "#8ce0a9d7-ffd1-4566-aaa9-e991d209849d",
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.outcomes[12].nextScore",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.outcomes[12].secondsToScore",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.outcomes[44].nextShotOrScore",
+  "main": "#68ccadff-0fa6-4746-8c08-4776b1832f5a",
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.core.kickoutDataset.outcomes[50].nextShotOrScore",
+  "main": "#4aa6916f-29b5-4499-9032-85f5a5bdd549",
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.retained.wides",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.retained.recycled",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.conceded.points",
+  "main": 9,
+  "repair": 8
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.conceded.wides",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.conceded.scoringPct",
+  "main": 33,
+  "repair": 30
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.damagePct",
+  "main": 33,
+  "repair": 30
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.escapePct",
+  "main": 67,
+  "repair": 70
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.netOutcome",
+  "main": -7,
+  "repair": -6
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.netLabel",
+  "main": "-7",
+  "repair": "-6"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.results[12].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.results[12].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.results[12].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.results[12].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.results[50].outcome",
+  "main": "SHOT",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.kickouts.results[50].outcomingEvent",
+  "main": "#4aa6916f-29b5-4499-9032-85f5a5bdd549",
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.ourKickouts.retained.wides",
+  "main": 5,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.ourKickouts.retained.recycled",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.ourKickouts.results[26].outcome",
+  "main": "SHOT",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.ourKickouts.results[26].outcomingEvent",
+  "main": "#4aa6916f-29b5-4499-9032-85f5a5bdd549",
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.conceded.points",
+  "main": 6,
+  "repair": 5
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.conceded.wides",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.conceded.scoreValue",
+  "main": 6,
+  "repair": 5
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.conceded.scoringPct",
+  "main": 43,
+  "repair": 36
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.damagePct",
+  "main": 43,
+  "repair": 36
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.escapePct",
+  "main": 57,
+  "repair": 64
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.netOutcome",
+  "main": -3,
+  "repair": -2
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.netLabel",
+  "main": "-3",
+  "repair": "-2"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.results[6].outcome",
+  "main": "POINT",
+  "repair": "SHOT"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.results[6].outcomingEvent",
+  "main": "#e67f0fe9-5e01-49ce-bbab-2524b35d0e4c",
+  "repair": "#7ae97025-745f-4eae-875b-dda541ea9560"
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.results[6].secondsToOutcome",
+  "main": 70,
+  "repair": null
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.theirKickouts.results[6].points",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "C-final|FULL.intelligence.possessions.overallNetOutcome",
+  "main": -10,
+  "repair": -9
+ },
+ {
+  "path": "C-final|FULL.intelligence.prompts[1].text",
+  "main": "29% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for Na Piarsaigh.",
+  "repair": "29% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 47% of their losses produced restart-origin point value for Na Piarsaigh."
+ },
+ {
+  "path": "C-final|FULL.intelligence.prompts[1].evidenceTag",
+  "main": "kickout:netAdv=-21",
+  "repair": "kickout:netAdv=-18"
+ },
+ {
+  "path": "C-final|FULL.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Piarsaigh winning the possession battle overall (-10)",
+  "repair": "Na Piarsaigh winning the possession battle overall (-9)"
+ },
+ {
+  "path": "A-legacy|1H.core.kickoutDataset.outcomes[9].nextShotOrScore",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.netOutcome",
+  "main": 4,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.netLabel",
+  "main": "+4",
+  "repair": "+3"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.results[9].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.results[9].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.kickouts.results[9].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.turnovers.netOutcome",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.turnovers.netLabel",
+  "main": "-2",
+  "repair": "-3"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.frees.netOutcome",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.frees.netLabel",
+  "main": "-1",
+  "repair": "-2"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.overallNetOutcome",
+  "main": 1,
+  "repair": -2
+ },
+ {
+  "path": "A-legacy|1H.intelligence.intelligenceSummary.overallNetOutcome",
+  "main": "FOR",
+  "repair": "OPP"
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.restartToScore.num",
+  "main": 11,
+  "repair": 10
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.restartToScore.pct",
+  "main": 41,
+  "repair": 37
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.restartLossPunishment.num",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.restartLossPunishment.pct",
+  "main": 63,
+  "repair": 58
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.wonToScore",
+  "main": 11,
+  "repair": 10
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.wonToScorePercent",
+  "main": 41,
+  "repair": 37
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.lostAllowedScore",
+  "main": 12,
+  "repair": 11
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.lostAllowedScorePercent",
+  "main": 63,
+  "repair": 58
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[9].nextShotOrScore",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[28].nextScore",
+  "main": "#a917679c-853d-4d7a-bcf0-c90d40fa9a91",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[28].nextShotOrScore",
+  "main": "#a917679c-853d-4d7a-bcf0-c90d40fa9a91",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[28].secondsToScore",
+  "main": 56,
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[37].nextScore",
+  "main": "#43127ea0-9449-47e1-868e-1e72a7d0c7e8",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[37].nextShotOrScore",
+  "main": "#43127ea0-9449-47e1-868e-1e72a7d0c7e8",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.core.kickoutDataset.outcomes[37].secondsToScore",
+  "main": 63,
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.rows[0].us.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.rows[0].us.value",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.rows[0].net",
+  "main": -2,
+  "repair": -1
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.rows[2].us.scores",
+  "main": 10,
+  "repair": 9
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.rows[2].us.value",
+  "main": 13,
+  "repair": 12
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.rows[2].net",
+  "main": -2,
+  "repair": -3
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.restartLossContext.themConcededValue",
+  "main": 13,
+  "repair": 12
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.ledger.verdicts[1]",
+  "main": "The placed-ball battle cost Ballyboden 2 points: Ballyboden scored 4/4 against Na Fianna's 5/7. Worth reviewing free-taking options.",
+  "repair": "Na Fianna outscored Ballyboden from general play by 1 point (2 to 1). Worth reviewing how those chances were created."
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.retained.scoreValue",
+  "main": 11,
+  "repair": 13
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.conceded.wides",
+  "main": 1,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.conceded.recycled",
+  "main": 2,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.conceded.scoreValue",
+  "main": 13,
+  "repair": 15
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.results[9].outcome",
+  "main": "WIDE",
+  "repair": "RECYCLED"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.results[9].outcomingEvent",
+  "main": "#d4c7f401-e811-4e6d-b255-7088a1ca1107",
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.kickouts.results[9].secondsToOutcome",
+  "main": 32,
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.turnovers.retained.scoreValue",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.turnovers.conceded.scoreValue",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.turnovers.netOutcome",
+  "main": -5,
+  "repair": -7
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.turnovers.netLabel",
+  "main": "-5",
+  "repair": "-7"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.frees.conceded.scoreValue",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.frees.netOutcome",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.frees.netLabel",
+  "main": "-1",
+  "repair": "-2"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.overallNetOutcome",
+  "main": -8,
+  "repair": -11
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.prompts[0].text",
+  "main": "Ballyboden held 59% Restart Share (27 of 46) — 41% of won kickouts produced restart-origin point value (1 Goal, 8 Points & 2 Two-Point scores (15 pts)).",
+  "repair": "Ballyboden held 59% Restart Share (27 of 46) — 37% of won kickouts produced restart-origin point value (1 Goal, 7 Points & 2 Two-Point scores (14 pts))."
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.prompts[1].text",
+  "main": "41% of Ballyboden's kickout wins produced restart-origin point value; 63% of their losses produced restart-origin point value for Na Fianna.",
+  "repair": "37% of Ballyboden's kickout wins produced restart-origin point value; 58% of their losses produced restart-origin point value for Na Fianna."
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.prompts[1].evidenceTag",
+  "main": "kickout:netAdv=-22",
+  "repair": "kickout:netAdv=-21"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.intelligenceSummary.overallInsight",
+  "main": "Na Fianna winning the possession battle overall (-8)",
+  "repair": "Na Fianna winning the possession battle overall (-11)"
+ }
+]

@@ -1,0 +1,104 @@
+{
+ "counts": [
+  [
+   "Kilmacud Crokes",
+   "",
+   "St Brigid's"
+  ],
+  [
+   "1",
+   "Goals",
+   "1"
+  ],
+  [
+   "6",
+   "Points",
+   "10"
+  ],
+  [
+   "0",
+   "2PT",
+   "0"
+  ],
+  [
+   "18",
+   "Shots",
+   "21"
+  ],
+  [
+   "9",
+   "Wides",
+   "7"
+  ],
+  [
+   "29",
+   "Turnover Won",
+   "31"
+  ],
+  [
+   "31",
+   "Turnover Lost",
+   "29"
+  ],
+  [
+   "20",
+   "Kickout Won",
+   "14"
+  ],
+  [
+   "14",
+   "Kickout Lost",
+   "20"
+  ],
+  [
+   "6",
+   "Free Won",
+   "9"
+  ],
+  [
+   "9",
+   "Free Conceded",
+   "6"
+  ],
+  [
+   "0",
+   "45 Won",
+   "1"
+  ],
+  [
+   "1",
+   "45 Lost",
+   "0"
+  ],
+  [
+   "1",
+   "Sideline Won",
+   "2"
+  ],
+  [
+   "2",
+   "Sideline Lost",
+   "1"
+  ],
+  [
+   "1",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "0"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nKilmacud Crokes\n1-06\n—\n1-10\nSt Brigid's\nSHOOTING\nKilmacud Crokes\n7/18 (39%)\nSt Brigid's\n11/21 (52%)\nLONGEST SCORING RUN\nKilmacud Crokes\n2\nSt Brigid's\n4\nRESTARTS\nOUR KICKOUTS\n14/18 retained (78%)\nTHEIR KICKOUTS\n10/16 retained (63%)\nOur restart won\n→\n3 shots\n|\n2 scores\nOur restart lost\n→\n3 shots against\n|\n0 scores against\nTURNOVERS\nOUR TURNOVERS WON\n29\n→\n11 shots\n|\n4 scores\nOUR TURNOVERS LOST\n31\n→\n11 shots against\n|\n7 scores against\nFREES / PLACED BALLS\nFrees won\n6\nPlaced balls\n2/3 scored\nFrees conceded\n9",
+  "Counts Sheet\nKilmacud Crokes\nSt Brigid's\n1\nGoals\n1\n6\nPoints\n10\n0\n2PT\n0\n18\nShots\n21\n9\nWides\n7\n29\nTurnover Won\n31\n31\nTurnover Lost\n29\n20\nKickout Won\n14\n14\nKickout Lost\n20\n6\nFree Won\n9\n9\nFree Conceded\n6\n0\n45 Won\n1\n1\n45 Lost\n0\n1\nSideline Won\n2\n2\nSideline Lost\n1\n1\nYellow Cards\n1\n0\nSin Bins\n0\n0\nRed Cards\n0",
+  "Segment Comparison — First Half\nEarly 0–10 · Mid 10–20 · Late 20+\nKILMACUD CROKES\nEARLY\nMID\nLATE\nScore\n0-01\n1-02\n0-03\nShots\n4\n6\n8\nWides\n2\n2\n5\nTurnovers Won\n6\n9\n14\n↳ Own Half\n2\n3\n6\n↳ Opposition Half\n4\n6\n8\nTurnovers Lost\n11\n9\n11\n↳ Own Half\n6\n5\n3\n↳ Opposition Half\n5\n4\n8\nOwn KO Retained\n5/6 (83%)\n6/6 (100%)\n3/6 (50%)\nOpposition KO Retained\n1/3 (33%)\n4/5 (80%)\n5/8 (63%)\nST BRIGID'S\nEARLY\nMID\nLATE\nScore\n1-04\n0-03\n0-03\nShots\n8\n5\n8\nWides\n2\n2\n3\nTurnovers Won\n11\n9\n11\n↳ Own Half\n5\n4\n8\n↳ Opposition Half\n6\n5\n3\nTurnovers Lost\n6\n9\n14\n↳ Own Half\n4\n6\n8\n↳ Opposition Half\n2\n3\n6\nOwn KO Retained\n1/3 (33%)\n4/5 (80%)\n5/8 (63%)\nOpposition KO Retained\n5/6 (83%)\n6/6 (100%)\n3/6 (50%)"
+ ]
+}

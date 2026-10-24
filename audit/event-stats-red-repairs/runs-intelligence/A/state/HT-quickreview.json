@@ -1,0 +1,104 @@
+{
+ "counts": [
+  [
+   "Ballyboden",
+   "",
+   "Na Fianna"
+  ],
+  [
+   "1",
+   "Goals",
+   "0"
+  ],
+  [
+   "6",
+   "Points",
+   "4"
+  ],
+  [
+   "1",
+   "2PT",
+   "4"
+  ],
+  [
+   "13",
+   "Shots",
+   "12"
+  ],
+  [
+   "2",
+   "Wides",
+   "4"
+  ],
+  [
+   "8",
+   "Turnover Won",
+   "8"
+  ],
+  [
+   "8",
+   "Turnover Lost",
+   "8"
+  ],
+  [
+   "13",
+   "Kickout Won",
+   "8"
+  ],
+  [
+   "8",
+   "Kickout Lost",
+   "13"
+  ],
+  [
+   "5",
+   "Free Won",
+   "3"
+  ],
+  [
+   "3",
+   "Free Conceded",
+   "5"
+  ],
+  [
+   "1",
+   "45 Won",
+   "0"
+  ],
+  [
+   "0",
+   "45 Lost",
+   "1"
+  ],
+  [
+   "2",
+   "Sideline Won",
+   "1"
+  ],
+  [
+   "1",
+   "Sideline Lost",
+   "2"
+  ],
+  [
+   "0",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "0"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nBallyboden\n1-08\n—\n0-12\nNa Fianna\nSHOOTING\nBallyboden\n8/13 (62%)\nNa Fianna\n8/12 (67%)\nLONGEST SCORING RUN\nBallyboden\n3\nNa Fianna\n3\nRESTARTS\nOUR KICKOUTS\n7/12 retained (58%)\nTHEIR KICKOUTS\n3/9 retained (33%)\nOur restart won\n→\n6 shots\n|\n5 scores\nOur restart lost\n→\n3 shots against\n|\n3 scores against\nTURNOVERS\nOUR TURNOVERS WON\n8\n→\n3 shots\n|\n1 score\nOUR TURNOVERS LOST\n8\n→\n5 shots against\n|\n3 scores against\nFREES / PLACED BALLS\nFrees won\n5\nPlaced balls\n3/3 scored\nFrees conceded\n3",
+  "Counts Sheet\nBallyboden\nNa Fianna\n1\nGoals\n0\n6\nPoints\n4\n1\n2PT\n4\n13\nShots\n12\n2\nWides\n4\n8\nTurnover Won\n8\n8\nTurnover Lost\n8\n13\nKickout Won\n8\n8\nKickout Lost\n13\n5\nFree Won\n3\n3\nFree Conceded\n5\n1\n45 Won\n0\n0\n45 Lost\n1\n2\nSideline Won\n1\n1\nSideline Lost\n2\n0\nYellow Cards\n1\n0\nSin Bins\n0\n0\nRed Cards\n0",
+  "Segment Comparison — First Half\nEarly 0–10 · Mid 10–20 · Late 20+\nBALLYBODEN\nEARLY\nMID\nLATE\nScore\n0-02\n0-04\n1-02\nShots\n5\n5\n3\nWides\n1\n1\n0\nTurnovers Won\n5\n1\n2\n↳ Own Half\n2\n0\n0\n↳ Opposition Half\n3\n1\n2\nTurnovers Lost\n2\n2\n4\n↳ Own Half\n1\n2\n2\n↳ Opposition Half\n1\n0\n2\nOwn KO Retained\n1/2 (50%)\n2/3 (67%)\n4/7 (57%)\nOpposition KO Retained\n1/2 (50%)\n1/4 (25%)\n1/3 (33%)\nNA FIANNA\nEARLY\nMID\nLATE\nScore\n0-01\n0-02\n0-09\nShots\n2\n3\n7\nWides\n1\n1\n2\nTurnovers Won\n2\n2\n4\n↳ Own Half\n1\n0\n2\n↳ Opposition Half\n1\n2\n2\nTurnovers Lost\n5\n1\n2\n↳ Own Half\n3\n1\n2\n↳ Opposition Half\n2\n0\n0\nOwn KO Retained\n1/2 (50%)\n1/4 (25%)\n1/3 (33%)\nOpposition KO Retained\n1/2 (50%)\n2/3 (67%)\n4/7 (57%)"
+ ]
+}

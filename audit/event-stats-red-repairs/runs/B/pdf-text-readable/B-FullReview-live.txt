@@ -73,33 +73,33 @@
   910   592  54%
  1012   592  Restart Share
  1838   592  46%
-   84   611  Clean Won
+   84   611  Restart Share — Clean Won
   910   611  22
- 1012   611  Clean Won
+ 1012   611  Restart Share — Clean Won
  1838   611  15
-   84   630  Break Won
+   84   630  Restart Share — Break Won
   910   630  16
- 1012   630  Break Won
+ 1012   630  Restart Share — Break Won
  1838   630  17
-   84   649  Foul Won
+   84   649  Restart Share — Foul Won
   910   649  3
- 1012   649  Foul Won
+ 1012   649  Restart Share — Foul Won
  1838   649  3
    84   668  Dead Ball Won
   910   668  0
  1012   668  Dead Ball Won
  1838   668  0
-   84   687  Clean Lost
+   84   687  Restart Share — Clean Lost
   910   687  15
- 1012   687  Clean Lost
+ 1012   687  Restart Share — Clean Lost
  1838   687  22
-   84   706  Break Lost
+   84   706  Restart Share — Break Lost
   910   706  17
- 1012   706  Break Lost
+ 1012   706  Restart Share — Break Lost
  1838   706  16
-   84   725  Foul Conceded
+   84   725  Restart Share — Foul Conceded
   910   725  3
- 1012   725  Foul Conceded
+ 1012   725  Restart Share — Foul Conceded
  1838   725  3
    84   744  Kicked Dead
   910   744  0

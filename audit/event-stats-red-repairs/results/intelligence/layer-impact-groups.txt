@@ -1,0 +1,24 @@
+core.kickoutDataset.lostAllowedScore                           A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|FULL
+core.kickoutDataset.lostAllowedScorePercent                    A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|FULL
+core.kickoutDataset.outcomes[]                                 A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.kickoutDataset.wonToScore                                 A-live|FULL B-live|1H B-live|FULL A-final|FULL B-final|1H B-final|FULL A-legacy|FULL
+core.kickoutDataset.wonToScorePercent                          A-live|FULL B-live|1H B-live|FULL A-final|FULL B-final|1H B-final|FULL A-legacy|FULL
+core.restarts.restartLossPunishment                            A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|FULL
+core.restarts.restartToScore                                   A-live|FULL B-live|1H B-live|FULL A-final|FULL B-final|1H B-final|FULL A-legacy|FULL
+intelligence.intelligenceSummary.coachingPriorities[]          B-final|FULL
+intelligence.intelligenceSummary.dangerInsights[]              B-final|FULL
+intelligence.intelligenceSummary.overallInsight                A-live|FULL B-live|FULL C-live|1H C-live|FULL A-final|FULL B-final|1H C-final|1H C-final|FULL A-legacy|FULL
+intelligence.intelligenceSummary.overallNetOutcome             A-live|1H A-final|1H A-legacy|1H
+intelligence.ledger.restartLossContext                         A-live|FULL B-live|1H B-live|FULL A-final|FULL B-final|1H B-final|FULL A-legacy|FULL
+intelligence.ledger.rows[]                                     A-live|FULL B-live|1H B-live|FULL A-final|FULL B-final|1H B-final|FULL A-legacy|FULL
+intelligence.ledger.verdicts[]                                 A-live|FULL B-live|1H B-live|FULL A-final|FULL B-final|1H B-final|FULL A-legacy|FULL
+intelligence.possessions.frees                                 A-live|1H A-live|FULL B-live|FULL A-final|1H A-final|FULL B-final|FULL A-legacy|1H A-legacy|FULL
+intelligence.possessions.kickouts                              A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+intelligence.possessions.ourKickouts                           A-live|1H A-live|FULL B-live|FULL C-live|FULL A-final|1H A-final|FULL B-final|FULL C-final|FULL
+intelligence.possessions.overallNetOutcome                     A-live|1H A-live|FULL B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+intelligence.possessions.theirKickouts                         A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL
+intelligence.possessions.turnovers                             A-live|1H A-live|FULL B-live|FULL A-final|1H A-final|FULL B-final|FULL A-legacy|1H A-legacy|FULL
+intelligence.prompts                                           B-live|1H B-live|FULL C-live|1H B-final|1H B-final|FULL C-final|1H
+intelligence.prompts[].evidenceTag                             A-live|FULL C-live|FULL A-final|FULL C-final|FULL A-legacy|FULL
+intelligence.prompts[].text                                    A-live|FULL C-live|FULL A-final|FULL C-final|FULL A-legacy|FULL
+leaf diffs: 703

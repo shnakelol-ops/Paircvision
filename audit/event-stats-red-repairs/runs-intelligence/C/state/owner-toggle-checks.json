@@ -1,0 +1,392 @@
+[
+ {
+  "afterEvent": "C-004",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-007",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-017",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-025",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-029",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-036",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-044",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-065",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-069",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-076",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-079",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-085",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-087",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-091",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-093",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-095",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-100",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-113",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-119",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-125",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-130",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-138",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-153",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-159",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-170",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-174",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ }
+]

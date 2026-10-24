@@ -68,13 +68,15 @@ Identical in every dataset (main vs repair):
    - F-04: legacy owner-split possession families.
    - F-01, F-05 and F-06 changed no Intelligence output. The chain and possession engines read none of the translated tags (`INTERCEPT`, `SLACK_*`, `FOUL_*`, `BLOCK_SAVE`).
 
-## Pre-existing Intelligence observations (not fixed, outside F-01 – F-06)
+## Pre-existing Intelligence observations (outside F-01 – F-06; fixed in the separate Intelligence PR)
 
-- **I-1: two-point scores valued at 1.** The possession-outcomes engine puts `TWO_POINTER` and `FORTY_FIVE_TWO_POINT` in `POINT_KINDS` (1 point each). As a result, `scoreValue` and `netOutcome` undervalue two-point scores. These feed the Intelligence card "net" badges and the turnover/free outcomes card. Score counts ("scored from N") are unaffected, and so is the core scoreline.
-- **I-2: two "kickout → score" definitions.**
-  - The possession engine stops at the first wide, shot or turnover.
-  - The chain kickout dataset takes the next score before the next restart, within 60 s.
-  - So the same idea yields different numbers on different pages. Legacy A: Intelligence Summary "9 of 27" vs Restart Chain "Won → Score (origin) 11".
-  - Both match their own documented definitions. They are separate layers by design (`matchReport.ts`), but a coach sees two numbers.
-- **I-3: different origin rules for restarts and turnovers.** The kickout forward scan does not end at a possession change (turnover); the turnover scan now does. The independent reference uses the same restart rule, so every restart-origin check passes, and the ledger resolves overlaps by nearer origin.
-- The averages in F-11 ("Avg secs to score (won)") and the "Won → Shot" label in F-12 are also chain-layer figures. They remain open (see `REPAIR-VERIFICATION.md`).
+Investigated and repaired on `claude/event-stats-intelligence-repairs`, a separate draft PR stacked on #374. See `../INTELLIGENCE-REPAIRS.md` and `../KICKOUT-ORIGIN-DEFINITION.md`.
+
+- **I-1: two-point scores valued at 1.** The possession-outcomes engine puts `TWO_POINTER` and `FORTY_FIVE_TWO_POINT` in `POINT_KINDS` (1 point each), so `scoreValue`, `netOutcome` and `overallNetOutcome` undervalued them. These feed the net badges on the Match Intelligence and Restart Outcomes cards. Score counts and the core scoreline were never affected. **Fixed:** each scoring possession now adds its point value.
+- **I-2: two "kickout → score" boundaries.**
+  - *Corrected description:* the possession engine stops at the kicking-out side's first score or wide, at a turnover, or at the next kickout or free. A non-scoring shot does not end it.
+  - The chain kickout dataset took the winner's first score before the next kickout, within **90 s**.
+  - Legacy A: Intelligence Summary "9 of 27" vs Restart Chain "Won → Score (origin) 11".
+  - **Fixed:** both engines classify events with one function, `kickoutPhaseStep()`. The one remaining difference is documented.
+- **I-3: the kickout scan ignored possession changes.** Against possession roots from the simulator truth, it credited 14 of 74 kickout-origin scores to possessions that had already changed hands. The original reference used the same rule, so the audit's checks could not see it. **Fixed:** the possession ends when the ball changes hands. The original ledgers are kept; the authoritative expectations are in `expected-authoritative/`.
+- F-11 ("Avg secs to score (won)", which averages both teams) and the F-12 "Won → Shot" label are also chain-layer figures. They remain open.

@@ -10,7 +10,7 @@ const checks = [];
 for (const id of ["A", "B", "C"]) {
   const fx = JSON.parse(readFileSync(`${root}/fixtures/match-${id}.json`, "utf8"));
   const L = JSON.parse(readFileSync(`${root}/expected/ledger-${id}${id === "B" ? "-live" : ""}.json`, "utf8"));
-  const pages = JSON.parse(readFileSync(`${root}/runs/${id}/pdf-text/${id}-FullReview-live.json`, "utf8")).pages;
+  const pages = JSON.parse(readFileSync(`${root}/${process.env.RUNS_DIR ?? "runs"}/${id}/pdf-text/${id}-FullReview-live.json`, "utf8")).pages;
   const page = (title) => pages.find((p) => p.texts.some((t) => t.t === title && Math.abs(t.y - 38) < 3));
   const valRight = (p, label, x0, x1, nth = 0) => {
     const lab = p.texts.filter((t) => t.t === label && t.x >= x0 && t.x < x1)[nth];
@@ -31,6 +31,6 @@ for (const id of ["A", "B", "C"]) {
   }
 }
 const summary = { total: checks.length, pass: checks.filter((c) => c.status === "PASS").length, fail: checks.filter((c) => c.status === "FAIL").length };
-writeFileSync(`${root}/results/compare-repairs-extra.json`, JSON.stringify({ summary, checks }, null, 1));
+writeFileSync(`${root}/${process.env.OUT_DIR ?? "results"}/compare-repairs-extra.json`, JSON.stringify({ summary, checks }, null, 1));
 console.log(JSON.stringify(summary));
 for (const c of checks.filter((x) => x.status === "FAIL")) console.log("FAIL", c.match, c.surface, c.stat, c.team, "exp", c.expected, "act", c.actual);
