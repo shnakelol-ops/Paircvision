@@ -28,6 +28,8 @@ import type {
   PossessionOutcomeSummary,
   PossessionResult,
 } from "./chain-types";
+import { KICKOUT_PHASE_WINDOW_SECS, kickoutPhaseStep } from "./kickout-phase";
+import { scoreValue as pointsValueOf } from "../ledger/scoreLedger";
 
 // ─── Clock resolution (mirrors chain-engine.ts — kept independent) ────────────
 
@@ -169,6 +171,69 @@ function resolveOutcome<TEvent extends ChainableEvent>(
   return { outcome: "RECYCLED", outcomingEvent: null, secondsToOutcome: null, goals: 0, points: 0 };
 }
 
+/**
+ * Immediate outcome of a kickout, using the shared change-of-possession rule
+ * (kickout-phase.ts) so this family and the chain engine's kickout dataset
+ * agree whenever the ball changes hands. As documented for this engine, a
+ * free won by the team in possession starts a new phase (the "frees"
+ * family); a 45 / 65 or sideline it keeps does not.
+ *
+ * TURNOVER is reported only when a recorded event shows the acting side
+ * losing the ball. Other possession changes (an opposition attempt, a
+ * restart awarded to the other team, or the acting side winning a turnover
+ * it must have lost unrecorded) end the phase without a recorded outcome.
+ */
+function resolveKickoutPhaseOutcome<TEvent extends ChainableEvent>(
+  originIdx: number,
+  sorted: readonly Timed<TEvent>[],
+  actingSide: "FOR" | "OPP",
+  originEntry: Timed<TEvent>,
+): ResolvedOutcome<TEvent> {
+  let latestShotEvent: TEvent | null = null;
+  const secs = (fwd: Timed<TEvent>): number | null =>
+    originEntry.clockIsReal && fwd.clockIsReal ? Math.max(0, fwd.clock - originEntry.clock) : null;
+
+  for (let j = originIdx + 1; j < sorted.length; j++) {
+    const fwd = sorted[j];
+    if (
+      originEntry.clockIsReal &&
+      fwd.clockIsReal &&
+      fwd.clock - originEntry.clock > KICKOUT_PHASE_WINDOW_SECS
+    ) break;
+
+    const { kind, teamSide } = fwd.event;
+    const step = kickoutPhaseStep(fwd.event, actingSide);
+    if (step === "SCORE") {
+      return GOAL_KINDS.has(kind)
+        ? { outcome: "GOAL", outcomingEvent: fwd.event, secondsToOutcome: secs(fwd), goals: 1, points: 0 }
+        : { outcome: "POINT", outcomingEvent: fwd.event, secondsToOutcome: secs(fwd), goals: 0, points: 1 };
+    }
+    if (step === "MISS") {
+      return { outcome: "WIDE", outcomingEvent: fwd.event, secondsToOutcome: secs(fwd), goals: 0, points: 0 };
+    }
+    if (step === "SHOT") {
+      if (latestShotEvent === null) latestShotEvent = fwd.event;
+      continue;
+    }
+    if (step === "POSSESSION_CHANGE") {
+      const actingLostBall =
+        ((kind === "TURNOVER_LOST" || kind === "POSSESSION_LOST") && teamSide === actingSide) ||
+        ((kind === "TURNOVER_WON" || kind === "POSSESSION_WON") && teamSide !== actingSide);
+      if (actingLostBall) {
+        return { outcome: "TURNOVER", outcomingEvent: fwd.event, secondsToOutcome: secs(fwd), goals: 0, points: 0 };
+      }
+      break;
+    }
+    if (step === "NEXT_KICKOUT") break;
+    if (step === "RESTART_RETAINED" && FREE_KINDS.has(kind)) break;
+  }
+
+  if (latestShotEvent !== null) {
+    return { outcome: "SHOT", outcomingEvent: latestShotEvent, secondsToOutcome: null, goals: 0, points: 0 };
+  }
+  return { outcome: "RECYCLED", outcomingEvent: null, secondsToOutcome: null, goals: 0, points: 0 };
+}
+
 // ─── Aggregate builders ───────────────────────────────────────────────────────
 
 function buildFamilySummary<TEvent extends ChainableEvent>(
@@ -181,15 +246,21 @@ function buildFamilySummary<TEvent extends ChainableEvent>(
   let turnovers = 0;
   let recycled = 0;
 
+  let scoreValue = 0;
+
   for (const r of results) {
     goals += r.goals;
     points += r.points;
+    // Point value of the scoring event: a goal is 3, a two-pointer 2.
+    // `points` counts point-scoring possessions; the value must not.
+    scoreValue += r.outcomingEvent && (r.goals > 0 || r.points > 0)
+      ? pointsValueOf(r.outcomingEvent.kind)
+      : r.goals * 3 + r.points;
     if (r.outcome === "WIDE" || r.outcome === "SHOT") wides++;
     if (r.outcome === "TURNOVER") turnovers++;
     if (r.outcome === "RECYCLED") recycled++;
   }
 
-  const scoreValue = goals * 3 + points;
   const scoringPct = count > 0 ? Math.round(((goals + points) / count) * 100) : 0;
 
   return { count, goals, points, wides, turnovers, recycled, scoreValue, scoringPct };
@@ -246,7 +317,7 @@ const KICKOUT_KINDS = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"
 const TURNOVER_KINDS = new Set<MatchEventKind>(["TURNOVER_WON", "TURNOVER_LOST"]);
 const FREE_KINDS = new Set<MatchEventKind>(["FREE_WON", "FREE_CONCEDED"]);
 
-const KICKOUT_WINDOW_SECS = 90;
+const KICKOUT_WINDOW_SECS = KICKOUT_PHASE_WINDOW_SECS;
 const TURNOVER_WINDOW_SECS = 60;
 const FREE_WINDOW_SECS = 45;
 
@@ -299,7 +370,9 @@ export function buildPossessionOutcomeSummary<TEvent extends ChainableEvent>(
     if (targetArray === null) continue;
 
     const actingSide = actingSideFor(entry.event);
-    const resolved = resolveOutcome(i, sorted, actingSide, entry, windowSecs);
+    const resolved = targetArray === kickoutResults
+      ? resolveKickoutPhaseOutcome(i, sorted, actingSide, entry)
+      : resolveOutcome(i, sorted, actingSide, entry, windowSecs);
 
     targetArray.push({
       originEvent: entry.event,

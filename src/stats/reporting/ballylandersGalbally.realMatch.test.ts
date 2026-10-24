@@ -76,7 +76,18 @@ describe("Ballylanders v Galbally real fixture — Match Markers sentences", () 
 
   it("produces exactly the verified observations", () => {
     expect(texts).toEqual([
-      "Ballylanders held 58% Restart Share (14 of 24) — 50% of won kickouts produced restart-origin point value (2 Goals, 4 Points & 1 Two-Point score (12 pts)).",
+      // Authoritative kickout-origin definition (chains/kickout-phase.ts):
+      // the possession won from a kickout ends when the ball changes hands.
+      // Ballylanders scored in 4 of their 14 kickout-won possessions (vg-017
+      // goal, vg-023 point, and points from frees they won inside the
+      // possession after vg-036 and vg-071), not 7. vg-004 was intercepted
+      // 9 s after the kickout; after vg-057 Ballylanders shot short and had
+      // to win the ball back with a tackle; after vg-078 the free went to
+      // Galbally. Galbally: 5 of 10. Verified independently against the
+      // stored log (audit/event-stats-red-repairs/scripts/diagnostics/
+      // real-kickouts.mjs, no src/ imports).
+      "Ballylanders held 58% Restart Share (14 of 24) — 29% of won kickouts produced restart-origin point value (1 Goal, 3 Points (6 pts)).",
+      "29% of Ballylanders's kickout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for Galbally.",
       // F-03 repair: Galbally scored from 3 of their 10 turnover wins (30%),
       // not 5. The other two scores were made after Ballylanders had won the
       // ball back inside the 60 s window, so they belong to a later

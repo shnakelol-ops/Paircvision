@@ -251,7 +251,7 @@ export type PossessionFamilySummary = {
   wides: number;
   turnovers: number;
   recycled: number;
-  /** Equivalent point value: goals × 3 + points × 1. */
+  /** Point value of the scoring possessions: goal 3, two-pointer 2, point 1. */
   scoreValue: number;
   /** (goals + points) / count × 100; 0 when count = 0. */
   scoringPct: number;

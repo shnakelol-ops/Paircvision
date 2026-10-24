@@ -65,27 +65,34 @@ describe("quickReviewMatchOverview — structural provenance guard", () => {
     }
   });
 
-  describe("restart won → shots/scores: immediate possession outcome vs chain-origin genuinely disagree on this fixture", () => {
+  describe("restart won → turnover → later score: one kickout-origin definition for both engines", () => {
     // FOR wins a kickout, immediately turns it over (no shot), then — much
     // later in the same 90s window — scores from an unrelated phase. The
     // immediate consequence of THIS kickout was a turnover, not a score.
+    //
+    // This fixture used to pin a disagreement: the chain-origin engine
+    // credited the later score to the kickout. Both engines now use the
+    // authoritative kickout phase (chains/kickout-phase.ts), which ends at
+    // the turnover, so they agree. Quick Review's provenance is still
+    // guarded by the forbidden-key scan above and the turnover case below.
     const events: ChainableEvent[] = [
       e({ id: "k1", kind: "KICKOUT_WON", teamSide: "FOR", restartOwner: "FOR", matchClockSeconds: 0 }),
       e({ id: "t1", kind: "TURNOVER_LOST", teamSide: "FOR", matchClockSeconds: 10 }),
       e({ id: "p1", kind: "POINT", teamSide: "FOR", matchClockSeconds: 50 }),
     ];
 
-    it("possession-outcomes engine (correct, immediate) reports zero shots/scores from this kickout win", () => {
+    it("possession-outcomes engine reports zero shots/scores from this kickout win", () => {
       const report = buildMatchReport({ events, scope: "FULL", homeTeam: "Home", awayTeam: "Away" });
       expect(report.possessions.kickouts.retained.goals + report.possessions.kickouts.retained.points).toBe(0);
     });
 
-    it("chain-origin engine (wrong source for Quick Review) DOES attribute the later score to this kickout — proving the two are not interchangeable", () => {
+    it("chain-origin engine no longer attributes the later score to this kickout", () => {
       const report = buildMatchReport({ events, scope: "FULL", homeTeam: "Home", awayTeam: "Away" });
-      expect(report.restarts.restartToScore.num).toBe(1);
+      expect(report.restarts.restartToScore.num).toBe(0);
+      expect(report.chain.kickouts.outcomes[0].nextScore).toBeNull();
     });
 
-    it("Quick Review's restart won → scores matches the possession-outcome figure (0), not the chain-origin figure (1)", () => {
+    it("Quick Review's restart won → scores is 0", () => {
       const model = buildQuickReviewMatchOverview(events, "Home", "Away");
       expect(model.restarts.won.scores).toBe(0);
       expect(model.restarts.won.shots).toBe(0);

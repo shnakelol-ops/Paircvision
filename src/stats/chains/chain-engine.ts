@@ -21,6 +21,7 @@
 
 import type { MatchEventKind, MatchEventPeriod, MatchEventSegment } from "../../core/stats/stats-event-model";
 import { CHAIN_RULES } from "./chain-rules";
+import { KICKOUT_PHASE_WINDOW_SECS, kickoutPhaseStep } from "./kickout-phase";
 import type {
   ChainableEvent,
   ChainAnalysis,
@@ -220,7 +221,10 @@ const KICKOUT_KINDS = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"
 
 /**
  * Builds the kickout chain dataset by scanning all kickout events and
- * identifying the first score within 90 seconds by each side.
+ * identifying the kickout-origin score (and first attempt) of each kickout
+ * winner, as defined in kickout-phase.ts: the possession ends at a change of
+ * possession, the next kickout, the winner's score or wide, or 90 s. Frees,
+ * 45s and sidelines won by the team in possession do not end it.
  *
  * This is independent of the rules engine and intended to power a dedicated
  * "Kickout Analysis" page in the future.
@@ -234,7 +238,7 @@ function buildKickoutDataset<TEvent extends ChainableEvent>(
   let wonToScore = 0;
   let lostAllowedScore = 0;
 
-  const MAX_GAP = 90;
+  const MAX_GAP = KICKOUT_PHASE_WINDOW_SECS;
 
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i];
@@ -246,16 +250,13 @@ function buildKickoutDataset<TEvent extends ChainableEvent>(
 
     if (winningSide === "FOR") won++; else lost++;
 
-    // Look forward for first score by the winning side
+    // Look forward through the kickout-origin possession (kickout-phase.ts)
     let nextScore: TEvent | null = null;
     let nextShotOrScore: TEvent | null = null;
     let secondsToScore: number | null = null;
 
     for (let j = i + 1; j < sorted.length; j++) {
       const fwd = sorted[j];
-
-      // Stop if another kickout event is encountered (new possession reset)
-      if (KICKOUT_KINDS.has(fwd.event.kind)) break;
 
       // Time window cap
       if (
@@ -264,12 +265,13 @@ function buildKickoutDataset<TEvent extends ChainableEvent>(
         fwd.clock - entry.clock > MAX_GAP
       ) break;
 
-      if (fwd.event.teamSide !== winningSide) continue;
+      const step = kickoutPhaseStep(fwd.event, winningSide);
+      if (step === "NEXT_KICKOUT" || step === "POSSESSION_CHANGE") break;
+      if (step === "CONTINUE" || step === "RESTART_RETAINED") continue;
 
-      if (SHOT_OR_SCORE_KINDS.has(fwd.event.kind) && nextShotOrScore == null) {
-        nextShotOrScore = fwd.event;
-      }
-      if (SCORE_KINDS.has(fwd.event.kind) && nextScore == null) {
+      // SCORE / MISS / SHOT — an attempt by the kickout winner
+      if (nextShotOrScore == null) nextShotOrScore = fwd.event;
+      if (step === "SCORE") {
         nextScore = fwd.event;
         secondsToScore =
           entry.clockIsReal && fwd.clockIsReal
@@ -277,6 +279,7 @@ function buildKickoutDataset<TEvent extends ChainableEvent>(
             : null;
         break;
       }
+      if (step === "MISS") break;
     }
 
     if (winningSide === "FOR" && nextScore != null) wonToScore++;
