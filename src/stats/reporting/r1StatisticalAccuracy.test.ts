@@ -5,7 +5,7 @@
  *   F-11  "Avg secs to score (won)" uses the intended team's restarts only
  *   F-10  45 / 65 row counts Event Stats' 45 / 65 records (football / hurling)
  *   Runs  scoring runs are counted in scoring events, labelled "scores"
- *   Opp.  Opposition Origin restart rows — what each measures
+ *   Opp.  Opposition Origin: one restart-origin headline + its genuine subset
  *   101%  exhaustive two-way splits always total 100%
  *
  * Events are built through the real Event Stats capture adapter. Expected
@@ -22,6 +22,8 @@ import {
   makeChainSummaryPage,
   makeKickoutChainPage,
   makeMomentumRunsPage,
+  makeOppositionOriginPage,
+  OPP_RESTART_ORIGIN_HEADLINE,
   makeRestartVisualPage,
   makeShotEfficiencyPage,
   makeSummaryPage,
@@ -32,7 +34,13 @@ import { avgSecondsToScore } from "../restarts/restartMetrics";
 import { normalizeEventsForReporting } from "./eventTagClassification";
 import { loadBallylandersGalballyFixture } from "./ballylanders-galbally-real-fixture";
 import { buildMatchReport } from "./matchReport";
-import { viewRestartOriginConcededFor, viewScoringPossessionOrigins } from "./scoringBreakdownViews";
+import {
+  viewOwnKickoutLossOriginConcededFor,
+  viewRestartOriginConcededFor,
+  viewScoringPossessionOrigins,
+} from "./scoringBreakdownViews";
+import { formatScoringBreakdownOrDash, scoringBreakdownTotal, type ScoringBreakdown } from "./scoringBreakdownFormat";
+import type { MatchReport } from "./matchReport";
 import { buildTeamSummaryBlock } from "./teamStatsViews";
 
 class CaptureCanvasContext {
@@ -197,14 +205,43 @@ describe("Scoring runs are counted in scoring events, labelled scores", () => {
 
 // ─── Opposition Origin rows ──────────────────────────────────────────────────
 
-describe("Opposition Origin — de-duplicated and raw restart-origin rows", () => {
-  it("coincide on a real match under the possession-based kickout definition", () => {
+/**
+ * The headline (de-duplicated restart-origin scores for the opposition), the
+ * restart-loss fraction printed with it, and the own-kickout-loss subset must
+ * stay mathematically consistent:
+ *   - the headline equals the raw "conceded" view (the removed duplicate row);
+ *   - one restart lost produces at most one origin score, so the headline's
+ *     score count is the fraction's numerator;
+ *   - the subset is contained in the headline, category by category.
+ */
+function expectOriginConsistent(report: MatchReport<ChainableEvent>) {
+  const headline = viewScoringPossessionOrigins(report, "OPP").restartOrigin;
+  const subset = viewOwnKickoutLossOriginConcededFor(report.chain);
+  const loss = report.restarts.restartLossPunishment;
+  expect(headline).toEqual(viewRestartOriginConcededFor(report.chain));
+  expect(headline.goals + headline.points + headline.twoPointers).toBe(loss.num);
+  for (const k of ["goals", "points", "twoPointers"] as const satisfies readonly (keyof ScoringBreakdown)[]) {
+    expect(subset[k]).toBeLessThanOrEqual(headline[k]);
+  }
+  expect(scoringBreakdownTotal(subset)).toBeLessThanOrEqual(scoringBreakdownTotal(headline));
+  return { headline, subset, loss };
+}
+
+describe("Opposition Origin — one restart-origin headline and its subset", () => {
+  it("headline, % and subset are consistent on a real match and print once each", () => {
     const { events, homeTeam, awayTeam } = loadBallylandersGalballyFixture();
     const report = buildMatchReport({ events, homeTeam, awayTeam });
-    expect(viewScoringPossessionOrigins(report, "OPP").restartOrigin).toEqual(viewRestartOriginConcededFor(report.chain));
+    const { headline, subset, loss } = expectOriginConsistent(report);
+    expect(loss.den).toBeGreaterThan(0);
+    const t = texts(makeOppositionOriginPage(report.events as readonly PdfExportEvent[], report as MatchReport<PdfExportEvent>, homeTeam, awayTeam, 1, 1));
+    expect(after(t, OPP_RESTART_ORIGIN_HEADLINE)).toBe(`${formatScoringBreakdownOrDash(headline)}  (${loss.pct}%)`);
+    expect(t.filter((x) => x.startsWith("% = ")).length).toBe(1);
+    expect(t).toContain(`% = ${homeTeam} restarts lost that led to a ${awayTeam} score (${loss.num} of ${loss.den})`);
+    expect(after(t, "Of which: from our kickout losses")).toBe(formatScoringBreakdownOrDash(subset));
+    expect(t.some((x) => x.startsWith("Restart-origin scores"))).toBe(false);
   });
 
-  it("coincide when a turnover before the kickout also claims the score (the nearer origin is the kickout)", () => {
+  it("stays consistent when a turnover before the kickout also claims the score (the nearer origin is the kickout)", () => {
     const stored = [
       tap(100, { familyId: "TURNOVER", tileLabel: "Tackle", teamSide: "OPP" }),     // Na Fianna win the ball
       tap(105, { familyId: "WIDE", tileLabel: "Play", teamSide: "FOR" }),           // ...then Ballyboden shoot wide (unrecorded loss)
@@ -212,9 +249,37 @@ describe("Opposition Origin — de-duplicated and raw restart-origin rows", () =
       tap(120, { familyId: "POINT", tileLabel: "Play", teamSide: "OPP" }),
     ];
     const { report } = input(stored);
-    const dedup = viewScoringPossessionOrigins(report, "OPP");
-    expect(dedup.restartOrigin).toEqual(viewRestartOriginConcededFor(report.chain));
-    expect(dedup.restartOrigin.points).toBe(1);
+    const { headline } = expectOriginConsistent(report);
+    expect(headline.points).toBe(1);
+  });
+
+  it("subset counts only our own kickouts lost; the % names its denominator; hurling says puckout", () => {
+    // Ballyboden lose two of their own kickouts (one leads to a Na Fianna
+    // goal) and Na Fianna retain two of theirs (one leads to a point; one to
+    // a two-pointer). Ballyboden win one restart. Restarts lost: 4, of which
+    // 3 led to a Na Fianna score → 75%.
+    const stored = [
+      tap(100, { familyId: "RESTART", tileLabel: "Clean", teamSide: "OPP", restartOwner: "FOR" }),
+      tap(120, { familyId: "GOAL", tileLabel: "Play", teamSide: "OPP" }),
+      tap(200, { familyId: "RESTART", tileLabel: "Break", teamSide: "OPP", restartOwner: "FOR" }),
+      tap(220, { familyId: "WIDE", tileLabel: "Play", teamSide: "OPP" }),
+      tap(300, { familyId: "RESTART", tileLabel: "Clean", teamSide: "OPP", restartOwner: "OPP" }),
+      tap(320, { familyId: "POINT", tileLabel: "Play", teamSide: "OPP" }),
+      tap(400, { familyId: "RESTART", tileLabel: "Clean", teamSide: "OPP", restartOwner: "OPP" }),
+      tap(420, { familyId: "TWO_POINT", tileLabel: "Play", teamSide: "OPP" }),
+      tap(500, { familyId: "RESTART", tileLabel: "Clean", teamSide: "FOR", restartOwner: "FOR" }),
+    ];
+    const { events, report } = input(stored);
+    const { headline, subset, loss } = expectOriginConsistent(report);
+    expect(headline).toEqual({ goals: 1, points: 1, twoPointers: 1 });
+    expect(subset).toEqual({ goals: 1, points: 0, twoPointers: 0 });
+    expect(loss).toEqual({ num: 3, den: 4, pct: 75 });
+    const t = texts(makeOppositionOriginPage(events, report, HOME, AWAY, 1, 1));
+    expect(after(t, OPP_RESTART_ORIGIN_HEADLINE)).toBe(`${formatScoringBreakdownOrDash(headline)}  (75%)`);
+    expect(t).toContain("% = Ballyboden restarts lost that led to a Na Fianna score (3 of 4)");
+    expect(after(t, "Of which: from our kickout losses")).toBe(formatScoringBreakdownOrDash(subset));
+    const h = texts(makeOppositionOriginPage(events, report, HOME, AWAY, 1, 1, "hurling"));
+    expect(after(h, "Of which: from our puckout losses")).toBe(formatScoringBreakdownOrDash(subset));
   });
 });
 
