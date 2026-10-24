@@ -50,7 +50,8 @@ export type QuickReviewRestartSide = {
   retained: number;
   total: number;
   pct: number;
-  /** "3/7 retained (43%)"; "—" in place of the percentage when total is 0. */
+  /** "3/7 retained (43%)"; "—" in place of the percentage when total is 0;
+   *  "Not recorded" when the restart taker was not recorded (historical data). */
   text: string;
 };
 
@@ -172,13 +173,15 @@ function buildShootingSide<T extends ChainableEvent>(
   };
 }
 
-function buildRestartSide(retained: number, total: number): QuickReviewRestartSide {
+function buildRestartSide(retained: number, total: number, ownerUnknown: number): QuickReviewRestartSide {
   const f = fraction(retained, total);
   return {
     retained,
     total,
     pct: f.pct,
-    text: `${retained}/${total} retained (${pctOrDash(f.pct, total)})`,
+    text: total === 0 && ownerUnknown > 0
+      ? "Not recorded"
+      : `${retained}/${total} retained (${pctOrDash(f.pct, total)})`,
   };
 }
 
@@ -249,8 +252,8 @@ export function buildQuickReviewMatchOverview<T extends ChainableEvent>(
       opp: report.chain.scoringRuns.maxConsecutiveOpp,
     },
     restarts: {
-      ours: buildRestartSide(report.restartTeams.for.ownRestartsRetained, report.restartTeams.for.ownRestartsTaken),
-      theirs: buildRestartSide(report.restartTeams.opp.ownRestartsRetained, report.restartTeams.opp.ownRestartsTaken),
+      ours: buildRestartSide(report.restartTeams.for.ownRestartsRetained, report.restartTeams.for.ownRestartsTaken, report.restartTeams.for.unknownOwnerRestarts),
+      theirs: buildRestartSide(report.restartTeams.opp.ownRestartsRetained, report.restartTeams.opp.ownRestartsTaken, report.restartTeams.opp.unknownOwnerRestarts),
       won: shotsAndScores(kickouts.retained),
       lost: shotsAndScores(kickouts.conceded),
     },

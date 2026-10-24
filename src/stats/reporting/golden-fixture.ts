@@ -8,7 +8,9 @@
 
 import type { ChainableEvent } from "../chains/chain-types";
 
-export type GoldenFixtureEvent = ChainableEvent;
+// Stored-data shape: a saved restart's owner is FOR / OPP / absent, never the
+// report-time "UNKNOWN" state.
+export type GoldenFixtureEvent = Omit<ChainableEvent, "restartOwner"> & { restartOwner?: "FOR" | "OPP" | null };
 
 let nextId = 0;
 

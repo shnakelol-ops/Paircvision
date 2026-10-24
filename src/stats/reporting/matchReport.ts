@@ -22,6 +22,7 @@ import { computeTurnoverMetrics, type TurnoverMetrics } from "./turnoverMetrics"
 import { computeRestartTeamMetrics, type RestartTeamMetrics } from "./restartTeamMetrics";
 import { computePlacedBallMetrics, type PlacedBallMetrics } from "./placedBallMetrics";
 import { type ReportScope, scopeToPeriod } from "./report-types";
+import { normalizeEventsForReporting } from "./eventTagClassification";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -76,7 +77,8 @@ export function buildMatchReport<TEvent extends ChainableEvent>(
   input: BuildMatchReportInput<TEvent>,
 ): MatchReport<TEvent> {
   const scope = input.scope ?? "FULL";
-  const events = filterEventsForScope(input.events, scope);
+  // Capture-surface tags → canonical report tags (eventTagClassification.ts).
+  const events = filterEventsForScope(normalizeEventsForReporting(input.events), scope);
 
   const chain = selectChainAnalysis(events);
   const possessions = selectPossessionOutcomeSummary(events);

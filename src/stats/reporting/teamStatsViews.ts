@@ -11,6 +11,7 @@ import type { ChainableEvent } from "../chains/chain-types";
 import type { MatchReport } from "./matchReport";
 import type { MetricFraction } from "./report-types";
 import { fraction } from "./report-types";
+import { isBlockedOrSavedAttempt } from "./eventTagClassification";
 import {
   viewMirroredPossessionCounts,
   viewRestartShare,
@@ -255,8 +256,7 @@ export function buildTeamSummaryBlock<T extends ChainableEvent>(
     shotShort: countTagOnKinds(ownEvts, "SHORT", ...SHOT_KINDS),
     shotPost: countTagOnKinds(ownEvts, "POST", ...SHOT_KINDS),
     shot45: countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS),
-    shotBlock: countKindWithAnyTag(ownEvts, "SHOT", "BLOCK_SAVE", "BLOCKED")
-      + countKindWithAnyTag(ownEvts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
+    shotBlock: ownEvts.filter(isBlockedOrSavedAttempt).length,
     restartShareWon,
     restartShareConceded,
     ownRestartsRetained: teamRestarts.ownRestartsRetained,
@@ -371,7 +371,7 @@ function applyShareTagCounts(
     if (hasTag(tags, "SHORT")) b.short++;
     if (hasTag(tags, "POST")) b.post++;
     if (hasTag(tags, "FORTY_FIVE")) b.fortyFive++;
-    if (hasTag(tags, "BLOCKED")) b.blocked++;
+    if (isBlockedOrSavedAttempt(e)) b.blocked++;
   }
   if (k === "WIDE") { b.wides++; b.shots++; }
   if (k === "GOAL") { b.goals++; b.scores++; b.shots++; }

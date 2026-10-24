@@ -77,8 +77,13 @@ describe("Ballylanders v Galbally real fixture — Match Markers sentences", () 
   it("produces exactly the verified observations", () => {
     expect(texts).toEqual([
       "Ballylanders held 58% Restart Share (14 of 24) — 50% of won kickouts produced restart-origin point value (2 Goals, 4 Points & 1 Two-Point score (12 pts)).",
-      "Ballylanders won 50% of turnovers (10 of 20); 30% of wins produced turnover-origin point value, against 50% for Galbally.",
-      "50% of the turnovers Galbally won against Ballylanders produced turnover-origin point value (5 Points (5 pts) from 10 losses).",
+      // F-03 repair: Galbally scored from 3 of their 10 turnover wins (30%),
+      // not 5. The other two scores were made after Ballylanders had won the
+      // ball back inside the 60 s window, so they belong to a later
+      // possession — verified independently against the stored log. At 30%
+      // the separate "Galbally won against Ballylanders" sentence no longer
+      // meets its reporting threshold.
+      "Ballylanders won 50% of turnovers (10 of 20); 30% of wins produced turnover-origin point value, against 30% for Galbally.",
       "Ballylanders won 10 turnovers; 6 did not lead to a shot.",
     ]);
   });

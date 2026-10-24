@@ -362,7 +362,15 @@ function buildTurnoverDataset<TEvent extends ChainableEvent>(
         fwd.clock - entry.clock > MAX_GAP
       ) break;
 
-      if (fwd.event.teamSide !== actingSide) continue;
+      // Any later turnover ends this possession, whichever teamSide it is
+      // stored under: either the acting side lost the ball, or it won the
+      // ball again — which means possession changed hands in between. A
+      // teamSide check alone missed this, because Event Stats stores every
+      // turnover (won and lost) with teamSide "FOR": when the opposition was
+      // acting, us winning the ball back was skipped and their later score
+      // was still credited to the earlier turnover.
+      const isTurnover = TURNOVER_KINDS.has(fwd.event.kind);
+      if (!isTurnover && fwd.event.teamSide !== actingSide) continue;
       if (!RELEVANT_FOLLOWUP_KINDS.has(fwd.event.kind)) continue;
 
       nextEvent = fwd.event;

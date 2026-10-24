@@ -1,5 +1,6 @@
 import type { MatchEventKind, MatchEventPeriod, MatchEventSegment } from "../core/stats/stats-event-model";
 import type { PitchSport } from "../core/pitch/pitch-config";
+import type { RestartOwnerValue } from "./chains/chain-types";
 import { buildMatchReport } from "./reporting/matchReport";
 import { viewPossessionRetention, viewTargetsKickoutWinRate } from "./reporting/reportViews";
 import { buildTeamSummaryBlock, viewShootingConversion } from "./reporting/teamStatsViews";
@@ -63,7 +64,7 @@ type TargetableEvent = {
   nx: number;
   ny: number;
   matchClockSeconds?: number | null;
-  restartOwner?: "FOR" | "OPP" | null;
+  restartOwner?: RestartOwnerValue | null;
   tags?: string[] | null;
 };
 

@@ -13,7 +13,7 @@ import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ShareSheet } from "../features/shared/ShareSheet";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
-import { buildLivePdfInput, buildLiveSnapshotInput } from "./pro-tagger-review-adapter";
+import { buildLivePdfInput, buildLiveSnapshotInput, toEventStatsReportEvents } from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { buildPendingWinnerSummary } from "./pro-tagger-team-labels";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
@@ -1100,8 +1100,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // then re-opening Quick Review reflects the latest state. Page 2 (Counts
   // Sheet) keeps its own original computeProTaggerCounts values above; Page 1
   // never reads from them — see quickReviewMatchOverview.ts.
+  // Report-layer view of the events (historical restarts without an owner →
+  // explicit UNKNOWN); the stored loggedEvents are never modified.
+  const reportEvents = ctsOpen ? toEventStatsReportEvents(loggedEvents) : loggedEvents;
   const quickReviewModel = ctsOpen
-    ? buildQuickReviewMatchOverview(loggedEvents, homeLabel, awayLabel)
+    ? buildQuickReviewMatchOverview(reportEvents, homeLabel, awayLabel)
     : null;
 
   // Quick Review Page 3 model — same "build fresh, no caching" pattern as
@@ -1111,7 +1114,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // real recorded direction, never guessed or independently re-derived.
   const quickReviewSegmentModel = ctsOpen && quickReviewPage3Unlocked
     ? buildQuickReviewSegmentBreakdown(
-        loggedEvents,
+        reportEvents,
         homeLabel,
         awayLabel,
         session.attackDirection === "left" ? "LEFT" : "RIGHT",
@@ -1123,7 +1126,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const quickReviewPage3FullTime = matchState === "FULL_TIME";
   const quickReviewSecondHalfSegmentModel = quickReviewSegmentModel && quickReviewPage3FullTime
     ? buildQuickReviewSegmentBreakdown(
-        loggedEvents,
+        reportEvents,
         homeLabel,
         awayLabel,
         session.attackDirection === "left" ? "LEFT" : "RIGHT",
