@@ -137,7 +137,7 @@ describe("Opposition Origin & Chain Analysis (Part 3) — provenance", () => {
     const canvas = makeOppositionOriginPage(events, report, GOLDEN_TEAMS.home, GOLDEN_TEAMS.away, 1, 7) as unknown as CaptureCanvas;
     const texts = canvas.ctx.texts;
 
-    expect(texts.some((t) => t.includes("Restart-origin scores"))).toBe(true);
+    expect(texts.some((t) => t === "Opposition scores from restart-origin attacks")).toBe(true);
     expect(texts.some((t) => t.includes("Turnover-origin scores"))).toBe(true);
   });
 });
