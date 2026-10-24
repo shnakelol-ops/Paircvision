@@ -207,3 +207,27 @@ The full UI rerun (Playwright, all 636 taps through the real screens) stays as t
 7. F-14: show all players, or a "+N more" note.
 8. Sin bin: confirm the current hurling and camogie rules. Then the audit expectation is corrected and the row is kept.
 9. Approve the golden-match suite and the CI workflow as scoped above.
+
+---
+
+## Merge record (2026-10-24)
+
+Both PRs were merged with a merge commit, not a squash, at the verified head SHAs:
+
+| PR | Head merged | Merge commit |
+|---|---|---|
+| #374 (F-01 – F-06 and the label rename) | `98f2a57` | `42ea937` |
+| #376 (I-1 – I-3) | `bb8b522` | `4c14a6d` (current main) |
+
+**Pre-merge checks.** Main had moved to `4752acf` (#375, two Tactical Slate engine files, no overlap). The type check, full suite and `vite build` were rerun on main + #374 and main + #374 + #376: 2,940 and 2,960 tests passing, no new type errors, builds passing.
+
+**After #374 merged:**
+- #376 was retargeted to `main`. It then contributed exactly one commit (`bb8b522`, 7 files), with nothing from #374 repeated.
+- Main's tree was byte-identical to the gated #374 merge tree.
+
+**After #376 merged:**
+- Main's tree (`75b82e9`) is byte-identical to the gated tree.
+- 2,960 / 2,960 tests pass.
+- Type-check error files are unchanged (the 14 pre-existing files).
+- `vite build` passes.
+- Vercel previews were successful on both PR heads. The production deployment status of `4c14a6d` was not visible from the verification session.
