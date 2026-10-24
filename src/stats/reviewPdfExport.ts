@@ -5232,7 +5232,7 @@ export function makeOppositionOriginPage(
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText(
-        `% = ${truncTeam(homeTeam, 18)} restarts lost that led to a ${truncTeam(awayTeam, 18)} score (${koLostScore} of ${koLostScoreDen})`,
+        `% = ${truncTeam(homeTeam, 24)} restarts lost that led to a ${truncTeam(awayTeam, 24)} score (${koLostScore} of ${koLostScoreDen})`,
         L_COL_X + 16, cy + 11,
       );
       cy += 22;
