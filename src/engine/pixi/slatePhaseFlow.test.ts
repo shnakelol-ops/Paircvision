@@ -276,6 +276,138 @@ describe("boundary speed between phases", () => {
     return track;
   };
   const holders = (count: number) => Array.from({ length: count }, () => null);
+  /** A phase slower than the moving phases on both sides of it. */
+  const isSlowerThanBothNeighbours = (timeline: SlatePlaybackTimeline, id: string, index: number) =>
+    index > 0 &&
+    index < timeline.segments.length - 1 &&
+    averageSpeed(timeline, id, index) < averageSpeed(timeline, id, index - 1) &&
+    averageSpeed(timeline, id, index) < averageSpeed(timeline, id, index + 1);
+  /** The speed carried through boundary `index` (straight runs, no reversal). */
+  const expectedBoundarySpeed = (timeline: SlatePlaybackTimeline, id: string, index: number) => {
+    const before = averageSpeed(timeline, id, index - 1);
+    const after = averageSpeed(timeline, id, index);
+    return isSlowerThanBothNeighbours(timeline, id, index - 1) || isSlowerThanBothNeighbours(timeline, id, index)
+      ? Math.min(before, after)
+      : Math.min(Math.sqrt(before * after), 2 * Math.min(before, after));
+  };
+  /** Interior speeds: from the middle of the first phase to the middle of the last (excludes the authored start/finish easing). */
+  const interior = (timeline: SlatePlaybackTimeline, speeds: number[]) =>
+    speeds.slice(
+      Math.round(timeline.segments[0]!.durationMs / 2),
+      Math.round(timeline.totalDurationMs - timeline.segments[timeline.segments.length - 1]!.durationMs / 2),
+    );
+  /** Exact landing on every authored phase position, and never backwards along a straight run. */
+  const expectExactAndForward = (timeline: SlatePlaybackTimeline, path: TimelineSnapshot[]) => {
+    timeline.segments.forEach((segment, index) => {
+      for (const authored of path[index + 1]!.players) {
+        const at = sampleSlatePlaybackTimeline(timeline, segment.startMs + segment.durationMs - 1e-9).players.find(
+          (entry) => entry.id === authored.id,
+        )!;
+        expect(at.x).toBeCloseTo(authored.x, 6);
+        expect(at.y).toBeCloseTo(authored.y, 6);
+      }
+    });
+  };
+
+  describe("alternating short and long moves", () => {
+    for (const steps of [
+      [4, 12, 4, 12],
+      [3, 8, 3, 8],
+      [2, 6, 2, 6],
+      [2, 8, 2, 8],
+      [3, 5, 3, 5],
+    ]) {
+      it(`${steps.join(", ")}: a short move between two longer ones keeps its own pace (no mid-move near-stop)`, () => {
+        const path = board({ p: run(steps) }, holders(steps.length + 1));
+        const timeline = compileSlatePlaybackTimeline(path);
+        const speeds = profile(timeline, "p");
+        // The short phase between two longer ones (phase 3) runs at its own average speed throughout.
+        const short = timeline.segments[2]!;
+        const shortAverage = averageSpeed(timeline, "p", 2);
+        expect(isSlowerThanBothNeighbours(timeline, "p", 2)).toBe(true);
+        for (let ms = short.startMs + 1; ms < short.startMs + short.durationMs - 2; ms += 1) {
+          expect(Math.abs(speeds[ms]! - shortAverage) / shortAverage).toBeLessThan(0.01);
+        }
+        // Never slower than the slowest phase average anywhere mid-run.
+        const slowestAverage = Math.min(...timeline.segments.map((_, index) => averageSpeed(timeline, "p", index)));
+        expect(Math.min(...interior(timeline, speeds))).toBeGreaterThan(slowestAverage * 0.99);
+        // Every boundary continuous, at the rule's speed.
+        for (let index = 1; index < timeline.segments.length; index += 1) {
+          const boundary = timeline.segments[index]!.startMs;
+          const before = speedAt(timeline, "p", boundary - 1);
+          expect(Math.abs(speedAt(timeline, "p", boundary) - before) / before).toBeLessThan(0.01);
+          expect(before).toBeCloseTo(expectedBoundarySpeed(timeline, "p", index), 3);
+        }
+        for (let ms = 1; ms < speeds.length; ms += 1) expect(speeds[ms]!).toBeGreaterThanOrEqual(0);
+        // Never past the final authored position.
+        let furthest = -Infinity;
+        for (let ms = 0; ms <= timeline.totalDurationMs; ms += 5) furthest = Math.max(furthest, playerAt(timeline, "p", ms).x);
+        expect(furthest).toBeLessThanOrEqual(path[path.length - 1]!.players[0]!.x + 1e-9);
+        expectExactAndForward(timeline, path);
+      });
+    }
+
+    it("a long move between two short ones still uses the geometric mean (6, 15, 6)", () => {
+      const timeline = compileSlatePlaybackTimeline(board({ p: run([6, 15, 6]) }, holders(4)));
+      for (const index of [1, 2]) {
+        expect(speedAt(timeline, "p", timeline.segments[index]!.startMs)).toBeCloseTo(
+          Math.sqrt(averageSpeed(timeline, "p", index - 1) * averageSpeed(timeline, "p", index)),
+          3,
+        );
+      }
+    });
+
+    it("mixed directions (zigzag of short and long legs at 90°): exact positions, continuous, steady short legs", () => {
+      const legs: Point[] = [{ x: 40, y: 40 }, { x: 43, y: 40 }, { x: 43, y: 48 }, { x: 46, y: 48 }, { x: 46, y: 56 }];
+      const path = board({ p: legs }, holders(legs.length));
+      const timeline = compileSlatePlaybackTimeline(path);
+      const speeds = profile(timeline, "p");
+      expect(isSlowerThanBothNeighbours(timeline, "p", 2)).toBe(true);
+      const short = timeline.segments[2]!;
+      const shortAverage = averageSpeed(timeline, "p", 2);
+      for (let ms = short.startMs + 1; ms < short.startMs + short.durationMs - 2; ms += 1) {
+        expect(Math.abs(speeds[ms]! - shortAverage) / shortAverage).toBeLessThan(0.01);
+      }
+      for (let index = 1; index < timeline.segments.length; index += 1) {
+        const boundary = timeline.segments[index]!.startMs;
+        const before = speedAt(timeline, "p", boundary - 1);
+        expect(Math.abs(speedAt(timeline, "p", boundary) - before) / before).toBeLessThan(0.01);
+      }
+      // Each leg moves only forward along its own direction.
+      timeline.segments.forEach((segment, index) => {
+        const from = legs[index]!;
+        const to = legs[index + 1]!;
+        let previous = -Infinity;
+        for (let ms = segment.startMs; ms <= segment.startMs + segment.durationMs - 1e-6; ms += 5) {
+          const at = playerAt(timeline, "p", ms);
+          const along = (at.x - from.x) * (to.x - from.x) + (at.y - from.y) * (to.y - from.y);
+          expect(along).toBeGreaterThanOrEqual(previous - 1e-9);
+          previous = along;
+        }
+      });
+      expectExactAndForward(timeline, path);
+    });
+
+    it("a short move next to a stationary phase is not between two moving phases: it still stops at the stationary side", () => {
+      const path = board({ p: [{ x: 30, y: 50 }, { x: 38, y: 50 }, { x: 40, y: 50 }, { x: 40, y: 50 }, { x: 48, y: 50 }] }, holders(5));
+      const timeline = compileSlatePlaybackTimeline(path);
+      expect(speedAt(timeline, "p", timeline.segments[2]!.startMs - 1)).toBeLessThan(1e-4);
+      expect(speedAt(timeline, "p", timeline.segments[3]!.startMs)).toBeLessThan(1e-4);
+      expect(timeline.playerSlopes[2]!.has("p")).toBe(false);
+      expectExactAndForward(timeline, path);
+    });
+
+    it("a short move between two longer ones that ends in a reversal still stops at the reversal", () => {
+      const path = board({ p: [{ x: 30, y: 50 }, { x: 38, y: 50 }, { x: 40, y: 50 }, { x: 32, y: 50 }] }, holders(4));
+      const timeline = compileSlatePlaybackTimeline(path);
+      const reversal = timeline.segments[2]!.startMs;
+      expect(speedAt(timeline, "p", reversal - 1)).toBeLessThan(1e-4);
+      expect(speedAt(timeline, "p", reversal)).toBeLessThan(1e-4);
+      // The other end of the short move keeps the slower speed.
+      expect(speedAt(timeline, "p", timeline.segments[1]!.startMs)).toBeCloseTo(averageSpeed(timeline, "p", 1), 3);
+      expectExactAndForward(timeline, path);
+    });
+  });
 
   it("speeding up across a boundary no longer slows down into it first (6 → 15 → 6 units)", () => {
     const timeline = compileSlatePlaybackTimeline(board({ p: run([6, 15, 6]) }, holders(4)));
@@ -334,7 +466,7 @@ describe("boundary speed between phases", () => {
         const boundary = timeline.segments[index]!.startMs;
         const before = speedAt(timeline, id, boundary - 1);
         expect(Math.abs(speedAt(timeline, id, boundary) - before) / before).toBeLessThan(0.01);
-        expect(before).toBeCloseTo(Math.sqrt(averageSpeed(timeline, id, index - 1) * averageSpeed(timeline, id, index)), 3);
+        expect(before).toBeCloseTo(expectedBoundarySpeed(timeline, id, index), 3);
       }
       let previousX = -Infinity;
       for (let ms = 0; ms <= timeline.totalDurationMs; ms += 5) {
@@ -344,6 +476,10 @@ describe("boundary speed between phases", () => {
       }
       expect(peakAcceleration(speeds)).toBeLessThanOrEqual(peakAcceleration(legacyProfile(timeline, id)) + 1e-9);
     }
+    // c's sprint stretches phase 2, so a (6 units every phase) is slower there
+    // than on either side and keeps the slower speed at both its ends.
+    expect(averageSpeed(timeline, "a", 1)).toBeLessThan(averageSpeed(timeline, "a", 0));
+    expect(speedAt(timeline, "a", timeline.segments[1]!.startMs)).toBeCloseTo(averageSpeed(timeline, "a", 1), 3);
     // c stands, sprints, stands: deliberate starts and stops stay eased to zero.
     expect(timeline.playerSlopes.every((segment) => !segment.has("c"))).toBe(true);
   });

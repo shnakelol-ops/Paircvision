@@ -17,7 +17,8 @@ import { resolveStoredRoutePolyline } from "./routeFollowInterpolation";
  * and one who starts from rest still eases in. Where a player keeps moving
  * through a boundary, α/β carry a shared non-zero speed across it instead of
  * forcing zero velocity there. That shared speed is the geometric mean of
- * the two segments' average speeds (see resolveBoundaryWorldSpeed).
+ * the two segments' average speeds, or the slower of the two at either end of
+ * a walk slower than both of its neighbours (see resolveBoundaryWorldSpeed).
  *
  * Boundary speeds are matched in world units (the 160×100 world, where
  * normalized x is stretched 1.6× relative to y), so a corner from a
@@ -189,29 +190,42 @@ export function resolveTurnDegrees(a: { x: number; y: number }, b: { x: number; 
 }
 
 /**
+ * How the speed carried through a boundary is chosen from the two segments'
+ * average speeds: their geometric mean, or the slower of the two.
+ */
+export type BoundarySpeedRule = "geometric-mean" | "slower";
+
+/**
  * World speed (world units per 1× ms) a player carries through the boundary
  * between two consecutive walks: 0 unless they move on both sides without
- * reversing; otherwise the geometric mean of the two segments' average
- * speeds, so each side changes speed by the same ratio to meet it.
+ * reversing; otherwise, by default, the geometric mean of the two segments'
+ * average speeds, so each side changes speed by the same ratio to meet it.
  *
- * The slower segment's average (the earlier rule) made a player who speeds
- * up across a boundary slow down into it first and then surge through the
- * faster segment; the geometric mean speeds up (or slows down) through the
- * boundary instead. It is capped so neither walk's boundary slope exceeds
+ * The slower segment's average (the earlier rule everywhere) made a player
+ * who speeds up across a boundary slow down into it first and then surge
+ * through the faster segment; the geometric mean speeds up (or slows down)
+ * through the boundary instead. compilePlayerContinuitySlopes still uses the
+ * slower average ("slower") at both ends of a walk slower than both of its
+ * neighbours: carrying the faster mean into such a walk would make it sag to
+ * as little as half its own average speed mid-walk, which reads as a
+ * hesitation in short/long/short sequences.
+ *
+ * The result is capped so neither walk's boundary slope exceeds
  * MAX_BOUNDARY_SLOPE (beyond a 4× speed ratio on a straight walk), which
  * keeps both curves monotonic and the speed identical on both sides.
  */
 export function resolveBoundaryWorldSpeed(
   before: { walk: PlayerWalkGeometry | null; durationMs: number } | null,
   after: { walk: PlayerWalkGeometry | null; durationMs: number } | null,
+  rule: BoundarySpeedRule = "geometric-mean",
 ): number {
   if (!before?.walk || !after?.walk) return 0;
   if (before.durationMs <= 0 || after.durationMs <= 0) return 0;
   const turn = resolveTurnDegrees(before.walk.endDirection, after.walk.startDirection);
   if (isReversalTurn(turn)) return 0;
-  const meanSpeed = Math.sqrt(
-    (before.walk.worldLength / before.durationMs) * (after.walk.worldLength / after.durationMs),
-  );
+  const beforeSpeed = before.walk.worldLength / before.durationMs;
+  const afterSpeed = after.walk.worldLength / after.durationMs;
+  const meanSpeed = rule === "slower" ? Math.min(beforeSpeed, afterSpeed) : Math.sqrt(beforeSpeed * afterSpeed);
   // Largest speed each side can take at this boundary within MAX_BOUNDARY_SLOPE
   // (the inverse of the slope conversion in compilePlayerContinuitySlopes).
   const beforeLimit =
@@ -252,6 +266,25 @@ export function compilePlayerContinuitySlopes(
     walks.push(segmentWalks);
   }
 
+  // A player's average world speed over segment `index`; null when they
+  // stand still or are absent from either of its snapshots.
+  const averageSpeed = (index: number, id: string): number | null => {
+    const walk = walks[index]?.get(id);
+    const durationMs = durationsMs[index] ?? 0;
+    return walk && durationMs > 0 ? walk.worldLength / durationMs : null;
+  };
+  // A walk slower than the moving walks on both sides of it.
+  const isSlowerThanBothNeighbours = (index: number, id: string): boolean => {
+    const here = averageSpeed(index, id);
+    const before = index > 0 ? averageSpeed(index - 1, id) : null;
+    const after = index < segmentCount - 1 ? averageSpeed(index + 1, id) : null;
+    return here !== null && before !== null && after !== null && here < before && here < after;
+  };
+  const boundaryRule = (beforeIndex: number, id: string): BoundarySpeedRule =>
+    isSlowerThanBothNeighbours(beforeIndex, id) || isSlowerThanBothNeighbours(beforeIndex + 1, id)
+      ? "slower"
+      : "geometric-mean";
+
   const slopes: Map<string, PlayerSegmentSlopes>[] = [];
   for (let index = 0; index < segmentCount; index += 1) {
     const segmentSlopes = new Map<string, PlayerSegmentSlopes>();
@@ -265,8 +298,8 @@ export function compilePlayerContinuitySlopes(
       const next = index < segmentCount - 1 && walks[index + 1]!.has(id)
         ? { walk: walks[index + 1]!.get(id) ?? null, durationMs: durationsMs[index + 1] ?? 0 }
         : null;
-      const startSpeed = resolveBoundaryWorldSpeed(previous, here);
-      const endSpeed = resolveBoundaryWorldSpeed(here, next);
+      const startSpeed = resolveBoundaryWorldSpeed(previous, here, boundaryRule(index - 1, id));
+      const endSpeed = resolveBoundaryWorldSpeed(here, next, boundaryRule(index, id));
       // Convert a world speed at an end of the walk into a slope relative to
       // the walk's average normalized speed (what interpolatePath's progress
       // is measured in): slope = v_world · T / (L_normalized · worldPerNormalized).
