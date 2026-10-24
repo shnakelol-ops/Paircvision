@@ -220,8 +220,8 @@ describe("Tactical Slate renderers — supersampled token styles", () => {
 });
 
 describe("Player Tokens style consolidation", () => {
-  it("offers Vision V3 (first, the default), Pixi, Phosphor and Name Badge only", () => {
-    expect(SELECTABLE_PLAYER_TOKEN_STYLES).toEqual(["vision-v3", "pixi", "phosphor", "pill-under"]);
+  it("offers Vision V3 (first, the default), Pixi, Phosphor, Name Badge and Bib Token only", () => {
+    expect(SELECTABLE_PLAYER_TOKEN_STYLES).toEqual(["vision-v3", "pixi", "phosphor", "pill-under", "bib"]);
     expect(SELECTABLE_PLAYER_TOKEN_STYLES).not.toContain("classic");
     expect(SELECTABLE_PLAYER_TOKEN_STYLES).not.toContain("premium");
   });

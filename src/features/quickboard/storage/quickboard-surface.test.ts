@@ -15,7 +15,7 @@ import {
   sanitizeQuickBoardState,
   sanitizeSavedQuickBoard,
   withQuickBoardSurface,
-  withTrainingPresentationDefault,
+  withTokenSettingsDefault,
   type QuickBoardBoardState,
 } from "./quickboard-types";
 import { resolveBoardStorageNamespace } from "../../../pages/tacticalSlateSurface";
@@ -196,7 +196,8 @@ describe("surface storage isolation", () => {
 
 describe("Training player presentation persistence", () => {
   it("the strict sanitiser preserves each presentation", () => {
-    for (const playerPresentation of ["normal", "compact", "practice"] as const) {
+    // "practice" is legacy-only (never written now) but is still read as stored.
+    for (const playerPresentation of ["normal", "compact", "mini", "practice"] as const) {
       expect(sanitizeQuickBoardState({ ...board("t"), playerPresentation })?.playerPresentation).toBe(playerPresentation);
     }
   });
@@ -223,17 +224,81 @@ describe("Training player presentation persistence", () => {
     expect(loadQuickBoardDraft(TRAINING_NS).draft?.boardState.playerPresentation).toBe("normal");
   });
 
-  it("a legacy Training board with no presentation is compared as Practice", () => {
-    const legacy = withQuickBoardSurface(board("t"), "training");
-    expect(withTrainingPresentationDefault(legacy, "training").playerPresentation).toBe("practice");
-    const saved = { ...legacy, playerPresentation: "normal" as const };
-    expect(withTrainingPresentationDefault(saved, "training")).toBe(saved);
+  it("keeps a valid stored token style and drops unknown ones", () => {
+    for (const playerTokenStyle of ["vision-v3", "pixi", "phosphor", "pill-under", "bib"] as const) {
+      expect(sanitizeQuickBoardState({ ...board("t"), playerTokenStyle })?.playerTokenStyle).toBe(playerTokenStyle);
+    }
+    for (const playerTokenStyle of [undefined, "Bib", "torso", "unknown", 3, null]) {
+      expect("playerTokenStyle" in sanitizeQuickBoardState({ ...board("t"), playerTokenStyle })!).toBe(false);
+    }
   });
 
-  it("Pitch and Whiteboard states are never given a presentation", () => {
+  it("a Training board's style and size survive save, rename, duplicate and draft", () => {
+    const state = withQuickBoardSurface({ ...board("t"), playerPresentation: "mini", playerTokenStyle: "pixi" }, "training");
+    const saved = saveBoard({ name: "Rondo", boardState: state }, TRAINING_NS)!;
+    renameBoard(saved.id, "Rondo 2", TRAINING_NS);
+    const copy = duplicateBoard(saved.id, TRAINING_NS)!;
+    for (const id of [saved.id, copy.id]) {
+      const stored = loadBoard(id, TRAINING_NS)!.boardState;
+      expect([stored.playerPresentation, stored.playerTokenStyle]).toEqual(["mini", "pixi"]);
+    }
+    saveQuickBoardDraft(state, TRAINING_NS);
+    const draft = loadQuickBoardDraft(TRAINING_NS).draft!.boardState;
+    expect([draft.playerPresentation, draft.playerTokenStyle]).toEqual(["mini", "pixi"]);
+  });
+
+  it("legacy Practice boards and boards with no presentation are compared as Bib Token at Compact", () => {
+    for (const legacy of [
+      withQuickBoardSurface(board("t"), "training"),
+      withQuickBoardSurface({ ...board("t"), playerPresentation: "practice" }, "training"),
+    ]) {
+      const compared = withTokenSettingsDefault(legacy, "training");
+      expect([compared.playerPresentation, compared.playerTokenStyle]).toEqual(["compact", "bib"]);
+    }
+  });
+
+  it("legacy Normal / Compact boards without a style are compared as Vision V3, never as another board's style", () => {
+    const legacyCompact = withQuickBoardSurface({ ...board("t"), playerPresentation: "compact" }, "training");
+    const compared = withTokenSettingsDefault(legacyCompact, "training");
+    expect([compared.playerPresentation, compared.playerTokenStyle]).toEqual(["compact", "vision-v3"]);
+    const current = withQuickBoardSurface({ ...board("t"), playerPresentation: "normal", playerTokenStyle: "phosphor" }, "training");
+    expect(withTokenSettingsDefault(current, "training")).toEqual(current);
+  });
+
+  it("comparing never rewrites the stored legacy board", () => {
+    const legacy = withQuickBoardSurface({ ...board("t"), playerPresentation: "practice" }, "training");
+    const saved = saveBoard({ name: "Old drill", boardState: legacy }, TRAINING_NS)!;
+    const loaded = loadBoard(saved.id, TRAINING_NS)!;
+    withTokenSettingsDefault(loaded.boardState, "training");
+    const reloaded = loadBoard(saved.id, TRAINING_NS)!.boardState;
+    expect(reloaded.playerPresentation).toBe("practice");
+    expect("playerTokenStyle" in reloaded).toBe(false);
+  });
+
+  it("older Pitch / Tactical Board / Whiteboard boards are compared at today's default, Vision V3 at Normal", () => {
     const pitch = board("p");
-    expect(withTrainingPresentationDefault(pitch, "pitch")).toBe(pitch);
-    const whiteboard = withQuickBoardSurface(board("w"), "whiteboard");
-    expect(withTrainingPresentationDefault(whiteboard, "whiteboard")).toBe(whiteboard);
+    const comparedPitch = withTokenSettingsDefault(pitch, "pitch");
+    expect([comparedPitch.playerPresentation, comparedPitch.playerTokenStyle]).toEqual(["normal", "vision-v3"]);
+    for (const surface of ["tacticalBoard", "whiteboard"] as const) {
+      const compared = withTokenSettingsDefault(withQuickBoardSurface(board("x"), surface), surface);
+      expect([compared.playerPresentation, compared.playerTokenStyle]).toEqual(["normal", "vision-v3"]);
+    }
+    // comparison only: the input object is untouched
+    expect("playerPresentation" in pitch).toBe(false);
+  });
+
+  it("a Pitch board's style and size survive save, rename, duplicate and draft, in the Pitch namespace only", () => {
+    const state = { ...board("p"), playerPresentation: "compact" as const, playerTokenStyle: "phosphor" as const };
+    const saved = saveBoard({ name: "Kickout", boardState: state }, PITCH_NS)!;
+    renameBoard(saved.id, "Kickout 2", PITCH_NS);
+    const copy = duplicateBoard(saved.id, PITCH_NS)!;
+    for (const id of [saved.id, copy.id]) {
+      const stored = loadBoard(id, PITCH_NS)!.boardState;
+      expect([stored.playerPresentation, stored.playerTokenStyle]).toEqual(["compact", "phosphor"]);
+    }
+    saveQuickBoardDraft(state, PITCH_NS);
+    const draft = loadQuickBoardDraft(PITCH_NS).draft!.boardState;
+    expect([draft.playerPresentation, draft.playerTokenStyle]).toEqual(["compact", "phosphor"]);
+    expect(loadQuickBoardDraft(TRAINING_NS).draft).toBeNull();
   });
 });

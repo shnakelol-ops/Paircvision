@@ -21,7 +21,8 @@ export type PlayerTokenStyle =
   | "premium"
   | "pixi"
   | "phosphor"
-  | "pill-under";
+  | "pill-under"
+  | "bib";
 
 /**
  * Styles a coach can pick in the Tactical Slate's Player Tokens menu, in
@@ -36,6 +37,7 @@ export const SELECTABLE_PLAYER_TOKEN_STYLES: readonly PlayerTokenStyle[] = [
   "pixi",
   "phosphor",
   "pill-under",
+  "bib",
 ];
 
 /**
@@ -60,12 +62,6 @@ export type PlayerTokenRendererInput = {
   kitPattern: VisionV3KitPattern;
   kitPatternColor: number;
   radius: number;
-  /**
-   * Draw the identity label (number / initials / name). Defaults to true.
-   * Only VisionV3Renderer honours false — used solely by the Training
-   * Practice presentation, which always renders Vision V3.
-   */
-  showLabel?: boolean;
 };
 
 export type PlayerTokenRendererOutput = {
@@ -155,7 +151,6 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
   kitPattern,
   kitPatternColor,
   radius,
-  showLabel,
 }) =>
   createVisionV3PlayerToken({
     label,
@@ -165,10 +160,33 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
     style,
     kitPattern,
     kitPatternColor,
-    ...(showLabel === false ? { showLabel: false } : {}),
     // Slate-only supersampling: sharp numbers and smooth rims at desktop
     // zoom. Movement-board calls createVisionV3PlayerToken directly and
     // keeps the default (1).
+    artScale: VISION_V3_SLATE_ART_SCALE,
+  });
+
+// Bib Token — Vision V3's renderer in its flat "bib" variant: the same disc
+// diameter, with a numberless jersey in the team's kit (all six patterns).
+// The player's number/label fields are untouched; only the drawing omits them.
+export const BibTokenRenderer: PlayerTokenRenderer = ({
+  label,
+  teamColor,
+  scale,
+  style,
+  kitPattern,
+  kitPatternColor,
+  radius,
+}) =>
+  createVisionV3PlayerToken({
+    label,
+    teamColor,
+    radius,
+    scale,
+    style,
+    kitPattern,
+    kitPatternColor,
+    variant: "bib",
     artScale: VISION_V3_SLATE_ART_SCALE,
   });
 
@@ -245,7 +263,17 @@ export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerToken
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
   if (style === "pill-under") return UnderNamePillRenderer;
+  if (style === "bib") return BibTokenRenderer;
   return ClassicRingRenderer;
+}
+
+/**
+ * A token style stored with a board, or null when the value is missing or
+ * unknown (the caller picks the fallback). Unlike sanitizePlayerTokenStyle,
+ * it never maps legacy values or defaults.
+ */
+export function sanitizeStoredPlayerTokenStyle(value: unknown): PlayerTokenStyle | null {
+  return typeof value === "string" && sanitizePlayerTokenStyle(value) === value ? (value as PlayerTokenStyle) : null;
 }
 
 export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
@@ -255,7 +283,8 @@ export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
     value === "premium" ||
     value === "pixi" ||
     value === "phosphor" ||
-    value === "pill-under"
+    value === "pill-under" ||
+    value === "bib"
   ) {
     return value;
   }
