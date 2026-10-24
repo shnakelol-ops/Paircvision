@@ -1452,6 +1452,54 @@ export function isBallCaptureSampleTooClose(
   );
 }
 
+/**
+ * Free Ball path leak fix: a ball's fresh working path — just its current
+ * position, the seed every new free-ball movement is recorded onto (see
+ * resetBallMovementPath). Always a new array: the working path must never
+ * alias a saved phase snapshot's own path.
+ */
+export function createBallWorkingPath(position: NormalizedPoint): NormalizedPoint[] {
+  return [{ x: clampNormalizedValue(position.x), y: clampNormalizedValue(position.y) }];
+}
+
+/**
+ * The path captureCurrentSnapshot records for a ball: its working path with
+ * the ball's recorded point appended as the authoritative destination, or
+ * undefined for a carried ball or an empty working path. Pure counterpart of
+ * that capture step, exported so the working-path lifecycle is testable
+ * without a live Pixi surface.
+ */
+export function composeBallSnapshotPath(
+  workingPath: readonly NormalizedPoint[],
+  isFree: boolean,
+  recordedPoint: NormalizedPoint,
+): NormalizedPoint[] | undefined {
+  if (!isFree || workingPath.length <= 0) return undefined;
+  return [...workingPath, recordedPoint].map((pathPoint) => ({
+    x: clampNormalizedValue(pathPoint.x),
+    y: clampNormalizedValue(pathPoint.y),
+  }));
+}
+
+/**
+ * Free Ball path leak fix: whether a finished playback clears every ball's
+ * working path. True only for start → saved phases playback, which ends on
+ * the last phase with that phase's saved path restored into working state
+ * (applySnapshotToSurface) — left there, the coach's next drag would be
+ * appended onto it and leak the old route into the next Add Phase.
+ *
+ * False for single Start → Current playback (no phases): Play again
+ * re-captures from start, and the restored path is what keeps the
+ * movement drawn before that Play part of the route, so it must survive.
+ * False for tap-to-pass, which already attaches the ball to its receiver.
+ */
+export function shouldResetBallWorkingPathsAfterPlayback(playback: {
+  kind: PlaybackKind;
+  tracksPhaseCursor: boolean;
+}): boolean {
+  return playback.kind === "default" && playback.tracksPhaseCursor;
+}
+
 function getStagePointFromEvent(
   event: unknown,
   stage: Container,
@@ -2776,7 +2824,7 @@ export async function createTacticalPadLiteSurface(
   function resetBallMovementPath(item: TacticalSurfaceItem): void {
     if (!isBallItem(item)) return;
     const state = getBallRuntimeState(item);
-    state.path = [{ x: clampNormalizedValue(item.x), y: clampNormalizedValue(item.y) }];
+    state.path = createBallWorkingPath(item);
   }
 
   function resetAllBallMovementPaths(): void {
@@ -4415,13 +4463,7 @@ export async function createTacticalPadLiteSurface(
             x: clampNormalizedValue(recorded.x),
             y: clampNormalizedValue(recorded.y),
           };
-          const path =
-            state.isFree && state.path.length > 0
-              ? [...state.path, point].map((pathPoint) => ({
-                  x: clampNormalizedValue(pathPoint.x),
-                  y: clampNormalizedValue(pathPoint.y),
-                }))
-              : undefined;
+          const path = composeBallSnapshotPath(state.path, state.isFree, point);
           return {
             id: item.id,
             x: point.x,
@@ -4681,6 +4723,11 @@ export async function createTacticalPadLiteSurface(
         if (!item || !isBallItem(item)) continue;
         applyBallRuntimeStateToItem(item);
         setItemWorldPosition(item, mapper);
+      }
+      // Path leak fix: the last phase's saved ball path is now in working
+      // state; the next drag must start a fresh route from here instead.
+      if (shouldResetBallWorkingPathsAfterPlayback({ kind: playbackKind, tracksPhaseCursor: playbackTracksPhaseCursor })) {
+        resetAllBallMovementPaths();
       }
       cancelPlaybackAnimation();
       if (possessionReceiverId) {
@@ -5638,6 +5685,9 @@ export async function createTacticalPadLiteSurface(
       phases = phases.slice(0, -1);
       const previousSnapshot = phases[phases.length - 1] ?? startPositions;
       applySnapshotToSurface(previousSnapshot);
+      // Path leak fix: keep the restored position, drop the restored route
+      // (see shouldResetBallWorkingPathsAfterPlayback).
+      resetAllBallMovementPaths();
       options.onPhaseCountChange?.(phases.length);
       applyPhaseCursorEvent({ type: "undoPhase", phaseCount: phases.length });
     },
@@ -5653,6 +5703,9 @@ export async function createTacticalPadLiteSurface(
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       applySnapshotToSurface(phases[index]!);
+      // Path leak fix: keep the restored position, drop the restored route
+      // (see shouldResetBallWorkingPathsAfterPlayback).
+      resetAllBallMovementPaths();
       applyPhaseCursorEvent({ type: "goToPhase", index, phaseCount: phases.length });
     },
     newBoard: () => {
