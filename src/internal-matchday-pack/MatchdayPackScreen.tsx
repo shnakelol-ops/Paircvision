@@ -25,17 +25,24 @@ import {
 } from "./matchday-cover-assets";
 import { COVER_HEIGHT, COVER_WIDTH, coverCanvasToPngBlob, renderMatchdayCoverCanvas, type CoverAssets } from "./matchday-cover-renderer";
 import {
+  DEFAULT_MERIDIEM,
   coverFilename,
   defaultMatchdayPack,
   kitsForClub,
+  minuteOptions,
+  parseTime24,
   renameSide,
   saveBlocker,
+  toTime24,
   updateFixture,
+  type Time12,
 } from "./matchday-pack-form";
+import { formatThrowIn } from "./matchday-cover-text";
 import { loadMatchdayPack, saveMatchdayPack } from "./matchday-pack-storage";
 import { MATCHDAY_LIMITS, type MatchdayPackV1, type MatchdaySide } from "./matchday-pack-types";
 
 type SideKey = "home" | "away";
+type Mode = "preview" | "edit";
 
 export interface RenderedCover {
   canvas: HTMLCanvasElement;
@@ -79,11 +86,15 @@ export default function MatchdayPackScreen({
   const [notice, setNotice] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [upload, setUpload] = useState<{ side: SideKey; file: File } | null>(null);
+  const [mode, setMode] = useState<Mode>("preview");
 
   const previewRef = useRef<HTMLDivElement>(null);
   const blobRef = useRef<Blob | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const jerseyCache = useRef(new Map<string, Promise<CoverImage | null>>());
+  // The pack + kit list the current preview was drawn from. Switching modes
+  // with nothing changed never redraws the cover.
+  const renderedFor = useRef<{ pack: MatchdayPackV1; kits: TeamSheetKit[] } | null>(null);
 
   // Persist fixture details locally (debounced so typing stays smooth).
   useEffect(() => {
@@ -112,10 +123,14 @@ export default function MatchdayPackScreen({
     [loadJersey, kitImageBackend],
   );
 
-  // Render the real 1080×1350 cover whenever the pack or the kit list changes.
-  // The PNG is produced here, ahead of any tap, so Share runs inside the
-  // tap's user gesture on iPhone Safari.
+  // Render the real 1080×1350 cover while it's on screen (Preview mode) and
+  // only when the pack or kit list changed since the last render — editing
+  // in Edit mode costs no image processing. The PNG is produced here, ahead
+  // of any tap, so Share runs inside the tap's user gesture on iPhone Safari.
   useEffect(() => {
+    if (mode !== "preview") return;
+    const last = renderedFor.current;
+    if (last && last.pack === pack && last.kits === kits) return;
     let cancelled = false;
     setCover({ phase: "rendering" });
     const id = window.setTimeout(async () => {
@@ -142,6 +157,7 @@ export default function MatchdayPackScreen({
         if (canvasRef.current && canvasRef.current !== rendered.canvas) canvasRef.current.width = 0; // free the old bitmap
         canvasRef.current = rendered.canvas;
         blobRef.current = rendered.blob;
+        renderedFor.current = { pack, kits };
         setCover({ phase: "ready" });
       } catch {
         if (!cancelled) setCover({ phase: "error", message: "This device couldn't draw the cover." });
@@ -151,7 +167,12 @@ export default function MatchdayPackScreen({
       cancelled = true;
       window.clearTimeout(id);
     };
-  }, [pack, kits, jersey, renderCover]);
+  }, [mode, pack, kits, jersey, renderCover]);
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    window.scrollTo({ top: 0 });
+  };
 
   const filename = useMemo(() => coverFilename(pack), [pack]);
 
@@ -187,9 +208,31 @@ export default function MatchdayPackScreen({
         <h1 className="mp-title">Matchday Cover</h1>
         <span className="mp-spacer" />
       </div>
+      <div className="mp-modes" role="tablist" aria-label="Matchday Cover mode">
+        {(["preview", "edit"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            id={`mp-tab-${m}`}
+            aria-selected={mode === m}
+            aria-controls={`mp-panel-${m}`}
+            className={mode === m ? "mp-mode mp-mode-on" : "mp-mode"}
+            onClick={() => switchMode(m)}
+          >
+            {m === "preview" ? "Cover" : "Edit details"}
+          </button>
+        ))}
+      </div>
 
       <div className="mp-layout">
-        <section className="mp-preview-col" aria-label="Cover preview">
+        <section
+          className="mp-preview-col"
+          id="mp-panel-preview"
+          role="tabpanel"
+          aria-labelledby="mp-tab-preview"
+          hidden={mode !== "preview"}
+        >
           <div className="mp-preview" ref={previewRef} style={{ aspectRatio: `${COVER_WIDTH} / ${COVER_HEIGHT}` }} />
           <p className="mp-status" role="status" data-testid="cover-status" data-phase={cover.phase}>
             {cover.phase === "rendering" ? "Updating cover…" : cover.phase === "ready" ? `${COVER_WIDTH}×${COVER_HEIGHT} image` : cover.message}
@@ -207,9 +250,12 @@ export default function MatchdayPackScreen({
               {notice}
             </p>
           )}
+          <button type="button" className="mp-edit" onClick={() => switchMode("edit")}>
+            ✎ Edit details
+          </button>
         </section>
 
-        <section className="mp-form" aria-label="Fixture details">
+        <section className="mp-form" id="mp-panel-edit" role="tabpanel" aria-labelledby="mp-tab-edit" hidden={mode !== "edit"}>
           <fieldset className="mp-card">
             <legend className="mp-legend">Fixture</legend>
             <Field label="Competition">
@@ -230,24 +276,15 @@ export default function MatchdayPackScreen({
                 onChange={(e) => setPack((p) => updateFixture(p, { round: e.target.value }))}
               />
             </Field>
-            <div className="mp-row">
-              <Field label="Date">
-                <input
-                  className="mp-input"
-                  type="date"
-                  value={pack.fixture.date}
-                  onChange={(e) => setPack((p) => updateFixture(p, { date: e.target.value }))}
-                />
-              </Field>
-              <Field label="Throw-in">
-                <input
-                  className="mp-input"
-                  type="time"
-                  value={pack.fixture.throwIn}
-                  onChange={(e) => setPack((p) => updateFixture(p, { throwIn: e.target.value }))}
-                />
-              </Field>
-            </div>
+            <Field label="Date">
+              <input
+                className="mp-input"
+                type="date"
+                value={pack.fixture.date}
+                onChange={(e) => setPack((p) => updateFixture(p, { date: e.target.value }))}
+              />
+            </Field>
+            <ThrowInPicker value={pack.fixture.throwIn} onChange={(throwIn) => setPack((p) => updateFixture(p, { throwIn }))} />
             <Field label="Venue">
               <input
                 className="mp-input"
@@ -280,6 +317,11 @@ export default function MatchdayPackScreen({
             </p>
           )}
           <p className="mp-hint">Saved on this device only. Jerseys come from the Team Sheet Kit Builder.</p>
+          <div className="mp-dock">
+            <button type="button" className="mp-primary mp-dock-btn" onClick={() => switchMode("preview")}>
+              View cover
+            </button>
+          </div>
         </section>
       </div>
 
@@ -308,6 +350,77 @@ export default function MatchdayPackScreen({
           onClose={() => setUpload(null)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * 12-hour throw-in picker with an explicit AM/PM choice. Stores the same
+ * 24-hour "HH:mm" as before, so saved fixtures load unchanged; a saved
+ * morning time shows AM selected and is flagged so it can't slip through.
+ */
+function ThrowInPicker({ value, onChange }: { value: string; onChange: (hhmm: string) => void }) {
+  const t = parseTime24(value);
+  const set = (patch: Partial<Time12>) => {
+    const base: Time12 = t ?? { hour: 3, minute: 0, period: DEFAULT_MERIDIEM };
+    onChange(toTime24({ ...base, ...patch }));
+  };
+  const shown = formatThrowIn(value).toUpperCase();
+  return (
+    <div className="mp-field">
+      <span className="mp-label" id="mp-throwin-label">
+        Throw-in
+      </span>
+      <div className="mp-time" role="group" aria-labelledby="mp-throwin-label">
+        <select
+          className="mp-input mp-select"
+          aria-label="Throw-in hour"
+          value={t ? String(t.hour) : ""}
+          onChange={(e) => (e.target.value === "" ? onChange("") : set({ hour: Number(e.target.value) }))}
+        >
+          <option value="">--</option>
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+            <option key={h} value={h}>
+              {h}
+            </option>
+          ))}
+        </select>
+        <span className="mp-colon" aria-hidden="true">
+          :
+        </span>
+        <select
+          className="mp-input mp-select"
+          aria-label="Throw-in minutes"
+          value={t ? String(t.minute) : ""}
+          disabled={!t}
+          onChange={(e) => set({ minute: Number(e.target.value) })}
+        >
+          {!t && <option value="">--</option>}
+          {minuteOptions(t?.minute ?? null).map((m) => (
+            <option key={m} value={m}>
+              {String(m).padStart(2, "0")}
+            </option>
+          ))}
+        </select>
+        <div className="mp-ampm" role="radiogroup" aria-label="AM or PM">
+          {(["AM", "PM"] as const).map((period) => (
+            <button
+              key={period}
+              type="button"
+              role="radio"
+              aria-checked={t?.period === period}
+              disabled={!t}
+              className={t?.period === period ? "mp-ampm-btn mp-ampm-on" : "mp-ampm-btn"}
+              onClick={() => set({ period })}
+            >
+              {period}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className={t?.period === "AM" ? "mp-time-note mp-time-am" : "mp-time-note"} data-testid="throwin-note">
+        {t ? `On the cover: ${shown}${t.period === "AM" ? " — a morning throw-in" : ""}` : "No throw-in time on the cover"}
+      </p>
     </div>
   );
 }
@@ -446,20 +559,57 @@ const CSS = `
   padding: calc(9px + env(safe-area-inset-top, 0px)) 16px 8px;
   background: #0a2134; border-bottom: 1px solid #17324a;
 }
-.mp-title { flex: 1; margin: 0; text-align: center; font-size: 15px; font-weight: 700; }
-.mp-spacer { width: 96px; }
+.mp-title { flex: 1; min-width: 0; margin: 0; text-align: center; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-spacer { width: 86px; flex-shrink: 0; }
 .mp-ghost {
-  width: 96px; white-space: nowrap; background: transparent; border: 1px solid #1c3a52; border-radius: 6px;
-  color: #a9bccf; font-size: 13px; font-weight: 600; padding: 6px 10px; cursor: pointer; font-family: inherit;
+  width: 86px; flex-shrink: 0; white-space: nowrap; background: transparent; border: 1px solid #1c3a52; border-radius: 6px;
+  color: #a9bccf; font-size: 13px; font-weight: 600; padding: 6px 8px; cursor: pointer; font-family: inherit;
 }
+.mp-shell [hidden] { display: none !important; }
+.mp-modes {
+  position: sticky; top: calc(49px + env(safe-area-inset-top, 0px)); z-index: 4;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 8px 16px; background: #050c14; border-bottom: 1px solid #10263a;
+}
+.mp-mode {
+  min-height: 40px; border-radius: 999px; border: 1px solid #23435f; background: transparent;
+  color: #a9bccf; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.mp-mode-on { background: #12304a; border-color: #e8c06a; color: #fff; }
 .mp-layout {
   display: flex; flex-direction: column; gap: 16px;
-  max-width: 560px; margin: 0 auto; padding: 16px 16px 0;
+  max-width: 560px; margin: 0 auto; padding: 12px 16px 0;
 }
+/* Fit the whole cover plus Save / Share on screen, even on an iPhone SE. */
 .mp-preview {
-  width: 100%; border-radius: 10px; overflow: hidden; background: #0b1220;
+  width: min(100%, calc((100dvh - 290px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 0.8));
+  min-width: 220px; margin: 0 auto;
+  border-radius: 10px; overflow: hidden; background: #0b1220;
   box-shadow: 0 10px 30px rgba(0,0,0,0.45);
 }
+.mp-edit {
+  width: 100%; min-height: 48px; margin-top: 10px; border-radius: 10px; border: 1px dashed #2b5373;
+  background: transparent; color: #e7f0f8; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.mp-dock {
+  position: sticky; bottom: 0; z-index: 3; margin: 0 -16px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(5,12,20,0) 0%, #050c14 30%);
+}
+.mp-dock-btn { width: 100%; }
+.mp-time { display: flex; align-items: center; gap: 6px; }
+.mp-select { width: auto; flex: 1 1 0; min-width: 64px; padding-right: 6px; -webkit-appearance: menulist; appearance: auto; }
+.mp-colon { font-size: 20px; font-weight: 700; color: #a9bccf; }
+.mp-ampm { display: flex; flex: 0 0 auto; border: 1px solid #23435f; border-radius: 8px; overflow: hidden; }
+.mp-ampm-btn {
+  min-width: 52px; min-height: 44px; border: 0; background: #0b2238; color: #a9bccf;
+  font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.mp-ampm-btn + .mp-ampm-btn { border-left: 1px solid #23435f; }
+.mp-ampm-on { background: #e8c06a; color: #0b1220; }
+.mp-ampm-btn:disabled { opacity: 0.5; cursor: default; }
+.mp-time-note { margin: 2px 0 0; font-size: 13px; color: #a9bccf; }
+.mp-time-am { color: #fbbf24; font-weight: 600; }
 .mp-status { margin: 8px 0 0; font-size: 12px; color: #7a95ad; text-align: center; min-height: 16px; }
 .mp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .mp-primary, .mp-secondary {
@@ -497,9 +647,4 @@ const CSS = `
 .mp-swatch-empty { background: repeating-linear-gradient(45deg, #1b3550, #1b3550 4px, #0b2238 4px, #0b2238 8px); }
 .mp-warn { margin: 0; font-size: 13px; color: #fbbf24; }
 .mp-hint { margin: 0; font-size: 12px; color: #5e7a8a; text-align: center; }
-@media (min-width: 900px) {
-  .mp-layout { max-width: 1040px; flex-direction: row; align-items: flex-start; }
-  .mp-preview-col { flex: 0 0 480px; position: sticky; top: 64px; }
-  .mp-form { flex: 1; }
-}
 `;
