@@ -1075,6 +1075,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const awayColour          = session.awaySquad.primaryColour   ?? "#dc2626";
   const homeSecondaryColour = session.homeSquad.secondaryColour ?? "#ffffff";
   const awaySecondaryColour = session.awaySquad.secondaryColour ?? "#ffffff";
+  // Presentation only — jersey SHAPE, passed straight through to the
+  // shared ProTaggerPlayerPicker below (see ProTaggerJerseyStyle). Never
+  // read anywhere else in this screen.
+  const homeJerseyStyle     = session.homeSquad.jerseyStyle     ?? "chest";
+  const awayJerseyStyle     = session.awaySquad.jerseyStyle     ?? "chest";
 
   // Subs sheet derived values (computed once per render, outside JSX).
   const subSquadState    = subTeam === "home" ? homeSquadState : awaySquadState;
@@ -1382,6 +1387,9 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   }
                   secondaryColour={
                     pickerTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
+                  }
+                  jerseyStyle={
+                    pending.teamSide === "FOR" ? homeJerseyStyle : awayJerseyStyle
                   }
                   disciplineStatus={disciplineStatus}
                   onSelect={handlePlayerSelect}
