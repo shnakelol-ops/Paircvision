@@ -1,5 +1,6 @@
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
+import { PwaUpdateBanner } from "./pwa/PwaUpdateBanner";
 
 import { OverlayPortalProvider } from "./overlay/OverlayPortalContext";
 import PitchFlowCoachShell from "./pages/PitchFlowCoachShell";
@@ -197,12 +198,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <OverlayPortalProvider>
       <RootComponent />
+      <PwaUpdateBanner />
     </OverlayPortalProvider>
   </StrictMode>,
 );
-
-if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js");
-  });
-}
