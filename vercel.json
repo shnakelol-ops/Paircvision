@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node node_modules/vite/bin/vite.js build",
+  "buildCommand": "npm run build",
   "redirects": [
     {
       "source": "/tacticalpad-lite",
