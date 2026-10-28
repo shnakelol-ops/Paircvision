@@ -1,0 +1,24 @@
+{
+ "t5_t6_killAfterHtFt": [
+  {
+   "transition": "HT",
+   "killAfterMs": 0,
+   "clockAtPress": "02:33",
+   "storedState": "HALF_TIME",
+   "storedClockSeconds": 153,
+   "storedEvents": 1,
+   "reopensAs": "HALF TIME",
+   "reopenPausedAt": null
+  },
+  {
+   "transition": "FT",
+   "killAfterMs": 0,
+   "clockAtPress": "03:02",
+   "storedState": "FULL_TIME",
+   "storedClockSeconds": 183,
+   "storedEvents": 2,
+   "reopensAs": "(finished: listed in Saved Matches)",
+   "reopenPausedAt": null
+  }
+ ]
+}
