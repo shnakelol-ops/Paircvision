@@ -393,6 +393,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // Why the last failed autosave failed — selects the warning wording.
   const [autosaveFailureReason, setAutosaveFailureReason] = useState<ProTaggerSaveFailure>("unavailable");
   const lastSaveFailureRef = useRef<ProTaggerSaveFailure | null>(null);
+  // True while the live match holds changes the latest persistence attempt
+  // failed to store. Set only from real write results (persistLiveState, the
+  // manual Save Match), never from whether a warning happens to be visible.
+  const unsavedChangesRef = useRef(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   // Mirrors autosaveFailed for persistLiveState below, so
   // deriveAutosaveWarningState can be checked without depending on React
   // re-render timing.
@@ -894,6 +899,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       homeSquad:    homeSquadStateRef.current,
       awaySquad:    awaySquadStateRef.current,
     });
+    // A skipped write reports ok (the snapshot matched the last successful
+    // write, or there is no match to store yet), so this is exactly "the
+    // latest state is not in storage".
+    unsavedChangesRef.current = !result.ok;
     if (result.wrote) {
       if (!result.ok && lastSaveFailureRef.current) setAutosaveFailureReason(lastSaveFailureRef.current);
       const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, result.ok);
@@ -938,6 +947,19 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [loggedEvents.length, matchState, persistLiveState]);
+
+  // Leaving the live screen (Options → Home, FT "Finish"). With every change
+  // stored it leaves at once, as before. If the latest write failed, one more
+  // save is attempted (space may have been freed elsewhere); if that also
+  // fails, the coach is asked before anything held only in memory is lost.
+  const requestLeave = useCallback(() => {
+    if (unsavedChangesRef.current) persistLiveState();
+    if (unsavedChangesRef.current) {
+      setLeaveConfirmOpen(true);
+      return;
+    }
+    onEnd();
+  }, [persistLiveState, onEnd]);
 
   // Used only by FT "Save & Finish" — saves AND exits.
   const handleSaveAndEnd = useCallback(() => {
@@ -987,6 +1009,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     }
     // The Event Stats record is stored, so any lingering autosave-failure
     // warning is cleared rather than waiting for the next write.
+    unsavedChangesRef.current = false;
     autosaveFailedRef.current = false;
     setAutosaveFailed(false);
     const copied = saveProTaggerMatchResult(record);
@@ -1333,7 +1356,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           {canSave ? (
             <button onClick={handleSaveAndEnd} style={S.resumeBtn}>Save &amp; Finish</button>
           ) : (
-            <button onClick={onEnd} style={{ ...S.resumeBtn, background: "#21262d", borderColor: "#30363d" }}>
+            <button onClick={requestLeave} style={{ ...S.resumeBtn, background: "#21262d", borderColor: "#30363d" }}>
               Finish
             </button>
           )}
@@ -1787,7 +1810,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 <div style={AS.feedbackBanner}>{actionsFeedback}</div>
               )}
 
-              <button style={AS.actionBtn} onClick={() => { setActionsOpen(false); onEnd(); }}>
+              <button style={AS.actionBtn} onClick={() => { setActionsOpen(false); requestLeave(); }}>
                 Home
               </button>
 
@@ -1918,6 +1941,27 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               </button>
               <button style={RC.confirmBtn} onClick={handleReset}>
                 Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Leave-with-unsaved-changes confirm overlay ────────────────── */}
+      {leaveConfirmOpen && (
+        <div style={RC.overlay} onClick={() => setLeaveConfirmOpen(false)}>
+          <div style={RC.sheet} onClick={(e) => e.stopPropagation()}>
+            <span style={RC.title}>Leave match?</span>
+            <span style={RC.body}>
+              Recent changes to this match have not been stored on this device ({saveFailureText(autosaveFailureReason)}).
+              If you leave now they will be lost. Staying keeps them on screen, but they can only be saved once storage is available again.
+            </span>
+            <div style={RC.btnRow}>
+              <button style={RC.cancelBtn} autoFocus onClick={() => setLeaveConfirmOpen(false)}>
+                Stay in Match
+              </button>
+              <button style={RC.confirmBtn} onClick={() => { setLeaveConfirmOpen(false); onEnd(); }}>
+                Leave Anyway
               </button>
             </div>
           </div>

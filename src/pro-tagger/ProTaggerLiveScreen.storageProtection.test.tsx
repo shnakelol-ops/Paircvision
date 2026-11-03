@@ -138,3 +138,113 @@ describe("Save Match and Save & Finish", () => {
     expect(window.localStorage.getItem(SAVED_MATCHES_STORAGE_KEY)).toBe(CORRUPT);
   });
 });
+
+describe("leaving the live match with changes that could not be stored", () => {
+  const LEAVE = "Leave match?";
+  const goHome = () => { click(button("⋯ Options")); click(button("Home")); };
+
+  it("fully saved match: Home leaves at once, no confirmation", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    tagTurnoverWon(); finishConfirmation();
+    goHome();
+    expect(screen.queryByText(LEAVE)).toBeNull();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("after a failed save, Home asks first; Stay in Match keeps every event and changes nothing", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    tagTurnoverWon(); finishConfirmation();
+    const failing = quotaFailures();
+    tagTurnoverWon(); finishConfirmation();
+    const storedBefore = window.localStorage.getItem(PRO_TAGGER_MATCHES_STORAGE_KEY);
+    goHome();
+    expect(screen.getByText(LEAVE)).toBeTruthy();
+    expect(screen.getByText(/have not been stored on this device \(Save failed — storage full/)).toBeTruthy();
+    expect(screen.getByText(/they can only be saved once storage is available again/)).toBeTruthy();
+    click(button("Stay in Match"));
+    expect(screen.queryByText(LEAVE)).toBeNull();
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(PRO_TAGGER_MATCHES_STORAGE_KEY)).toBe(storedBefore);
+    failing.mockRestore();
+    tagTurnoverWon(); finishConfirmation();
+    expect(stored()?.events).toHaveLength(3);                          // nothing held in memory was lost
+  });
+
+  it("Leave Anyway leaves only on that explicit tap", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    tagTurnoverWon(); finishConfirmation();
+    quotaFailures();
+    tagTurnoverWon(); finishConfirmation();
+    goHome();
+    expect(onEnd).not.toHaveBeenCalled();
+    click(button("Leave Anyway"));
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("once a later save succeeds, Home no longer asks", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    const failing = quotaFailures();
+    tagTurnoverWon(); finishConfirmation();
+    failing.mockRestore();
+    tagTurnoverWon(); finishConfirmation();                           // catches up: both events stored
+    goHome();
+    expect(screen.queryByText(LEAVE)).toBeNull();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(stored()?.events).toHaveLength(2);
+  });
+
+  it("Home retries the save first: if storage is available again it saves and leaves without asking", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    const failing = quotaFailures();
+    tagTurnoverWon(); finishConfirmation();
+    failing.mockRestore();                                            // e.g. space freed in another tab
+    goHome();
+    expect(screen.queryByText(LEAVE)).toBeNull();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(stored()?.events).toHaveLength(1);
+  });
+
+  it("a failed Undo is protected the same way", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    tagTurnoverWon(); finishConfirmation();
+    tagTurnoverWon(); finishConfirmation();
+    quotaFailures();
+    click(button("↩"));
+    goHome();
+    expect(screen.getByText(LEAVE)).toBeTruthy();
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(stored()?.events).toHaveLength(2);                          // storage still holds the pre-Undo state
+  });
+
+  it("a failed Half Time is protected from the half-time screen's Options → Home", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    tagTurnoverWon(); finishConfirmation();
+    quotaFailures();
+    click(button("HT")); click(button("End Half"));
+    expect(stored()?.restoreContext.matchState).toBe("FIRST_HALF");
+    goHome();
+    expect(screen.getByText(LEAVE)).toBeTruthy();
+    expect(onEnd).not.toHaveBeenCalled();
+  });
+
+  it("a failed Full Time is protected from the full-time screen's Options → Home", () => {
+    const onEnd = vi.fn();
+    start(onEnd);
+    tagTurnoverWon(); finishConfirmation();
+    click(button("HT")); click(button("End Half"));
+    click(button("START SECOND HALF")); tick(5_000);
+    quotaFailures();
+    click(button("FT")); click(button("Finish Match"));
+    expect(stored()?.restoreContext.matchState).toBe("SECOND_HALF");
+    goHome();
+    expect(screen.getByText(LEAVE)).toBeTruthy();
+    expect(onEnd).not.toHaveBeenCalled();
+  });
+});
