@@ -9,6 +9,13 @@ import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
 import { buildDisciplineStatusMap } from "./pro-tagger-discipline";
 import { saveProTaggerMatch, saveProTaggerMatchFull, deleteProTaggerMatch } from "./pro-tagger-storage";
+import {
+  createLivePersister,
+  eventSaveStatusFromResult,
+  registerBackgroundFlush,
+  type EventSaveStatus,
+  type LivePersistResult,
+} from "./pro-tagger-live-persistence";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ShareSheet } from "../features/shared/ShareSheet";
@@ -62,14 +69,12 @@ type MatchState =
 const SAVE_FAILED_TEXT = "Save failed — storage unavailable.";
 
 // Decides whether the autosave-failure warning's shown/hidden state needs to
-// change after one save attempt (debounced autosave or the beforeunload
+// change after one save attempt (autosave, or the background/beforeunload
 // flush). Exported and pure so the "no repeated warning spam while storage
-// stays unavailable" guarantee is directly testable — ProTaggerLiveScreen has
-// no React rendering harness in this repo — rather than resting on an
-// assumption about React's setState-bailout behaviour. Both call sites only
-// invoke setAutosaveFailed when `changed` is true, so a run of consecutive
-// failures (or consecutive successes) triggers exactly one state update, not
-// one per debounce tick.
+// stays unavailable" guarantee is directly testable without rendering the
+// screen. persistLiveState only invokes setAutosaveFailed when `changed` is
+// true, so a run of consecutive failures (or consecutive successes) triggers
+// exactly one state update, not one per write.
 export function deriveAutosaveWarningState(
   currentlyShown: boolean,
   saveSucceeded: boolean,
@@ -363,17 +368,19 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // This prevents new events from being timestamped with stale, frozen clock data.
   const [clockRunning, setClockRunning] = useState(false);
   const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
+  // Whether the event just placed has reached storage — the pitch screen's
+  // "✓ Event saved" is shown only for "saved". confirmEventIdRef names the
+  // event awaiting its write; the autosave effect resolves it.
+  const [eventSaveStatus, setEventSaveStatus] = useState<EventSaveStatus | null>(null);
+  const confirmEventIdRef = useRef<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
-  // Set when a background autosave (debounced or beforeunload) fails to write
+  // Set when an autosave (or the background/beforeunload flush) fails to write
   // to storage, and cleared once a save succeeds again — persistent rather than
   // timed, since the underlying storage problem persists until it doesn't.
-  // React bails out of re-rendering on a same-value setState, so re-asserting
-  // `true` on every failed debounce tick costs nothing extra — no spam.
   const [autosaveFailed, setAutosaveFailed] = useState(false);
-  // Mirrors autosaveFailed for the debounce/beforeunload effects below, so
+  // Mirrors autosaveFailed for persistLiveState below, so
   // deriveAutosaveWarningState can be checked without depending on React
-  // re-render timing (the effects don't depend on `autosaveFailed` itself,
-  // to avoid restarting the debounce timer on every warning-state change).
+  // re-render timing.
   const autosaveFailedRef = useRef(false);
   const [wrongWayActive, setWrongWayActive] = useState(false);
 
@@ -507,6 +514,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     wrongWayActiveRef.current = false;
     setWrongWayActive(false);
     setFeedbackDot(null);
+    confirmEventIdRef.current = null;
+    setEventSaveStatus(null);
     setPending(null);
     setPhase("IDLE");
     matchStateRef.current = nextState;
@@ -642,6 +651,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         squadId:           p.player?.squadId,
       });
 
+      confirmEventIdRef.current = event.id;
+      setEventSaveStatus("pending");
       setLoggedEvents((prev) => [...prev, event]);
 
       setFeedbackDot({ nx, ny });
@@ -649,6 +660,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
       feedbackTimerRef.current = setTimeout(() => {
         setFeedbackDot(null);
+        setEventSaveStatus(null);
         setPending(null);
         setPhase("IDLE");
       }, 750);
@@ -662,6 +674,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     wrongWayActiveRef.current = false;
     setWrongWayActive(false);
     setFeedbackDot(null);
+    setEventSaveStatus(null);
     setPending(null);
     setPhase("IDLE");
   }, []);
@@ -831,26 +844,68 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   }, [session, homeSquadState, awaySquadState]);
 
   // ── Autosave ────────────────────────────────────────────────────────────────
-  // Debounced background save so a refresh, crash, or accidental tab close mid-half
-  // never loses the whole half. Writes to the same upsert-by-id store as manual
-  // Save Match, so a recovered draft shows up in Saved Matches and the home-screen
-  // "Resume in-progress match" banner without any separate recovery mechanism.
+  // Every committed change is written immediately (see
+  // pro-tagger-live-persistence.ts): a completed event, Undo, HT, Start Second
+  // Half, FT, a live Review edit/delete, a substitution, a manual pause/resume.
+  // Writes go to the same upsert-by-id store as manual Save Match, so a
+  // recovered match shows up in Saved Matches and the home-screen "Resume
+  // in-progress match" banner without any separate recovery mechanism. The
+  // writer reads refs, so the effect below, the background flush and the
+  // beforeunload flush all store the same, latest state.
+  const buildSaveRecordsRef = useRef(buildSaveRecords);
+  const homeSquadStateRef   = useRef(homeSquadState);
+  const awaySquadStateRef   = useRef(awaySquadState);
   useEffect(() => {
-    if (matchState === "PRE_MATCH" && loggedEvents.length === 0) return;
-    const timer = setTimeout(() => {
-      const { fullRecord } = buildSaveRecords(loggedRef.current);
-      const ok = saveProTaggerMatchFull(fullRecord);
-      const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, ok);
+    buildSaveRecordsRef.current = buildSaveRecords;
+    homeSquadStateRef.current   = homeSquadState;
+    awaySquadStateRef.current   = awaySquadState;
+  }, [buildSaveRecords, homeSquadState, awaySquadState]);
+
+  const persisterRef = useRef<ReturnType<typeof createLivePersister> | null>(null);
+  if (persisterRef.current === null) {
+    persisterRef.current = createLivePersister((snapshot) =>
+      saveProTaggerMatchFull(buildSaveRecordsRef.current(snapshot.events as readonly LoggedMatchEvent[]).fullRecord),
+    );
+  }
+
+  const persistLiveState = useCallback((): LivePersistResult => {
+    const result = persisterRef.current!.persist({
+      events:       loggedRef.current,
+      matchState:   matchStateRef.current,
+      half:         halfRef.current,
+      clockSeconds: clockSecondsRef.current,
+      homeSquad:    homeSquadStateRef.current,
+      awaySquad:    awaySquadStateRef.current,
+    });
+    if (result.wrote) {
+      const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, result.ok);
       if (changed) {
         autosaveFailedRef.current = nextShown;
         setAutosaveFailed(nextShown);
       }
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [loggedEvents, matchState, half, buildSaveRecords]);
+    }
+    return result;
+  }, []);
 
-  // Best-effort synchronous flush right before the tab closes/refreshes/navigates
-  // away, so the debounce window above can't silently drop the last few events.
+  useEffect(() => {
+    const result = persistLiveState();
+    // Resolve the pitch screen's confirmation for the event just placed: it
+    // reads "✓ Event saved" only once that event is actually in storage.
+    const confirmId = confirmEventIdRef.current;
+    if (confirmId !== null && loggedEvents.some((e) => e.id === confirmId)) {
+      confirmEventIdRef.current = null;
+      setEventSaveStatus(eventSaveStatusFromResult(result));
+    }
+  }, [loggedEvents, matchState, half, homeSquadState, awaySquadState, isManuallyPaused, persistLiveState]);
+
+  // Background flush: the app is switched away from, the screen is locked, or
+  // the page is being hidden/unloaded. Stores the latest match clock as well.
+  useEffect(
+    () => registerBackgroundFlush(document, window, () => { persistLiveState(); }),
+    [persistLiveState],
+  );
+
+  // Desktop tab close/refresh: flush, and ask the browser to confirm leaving.
   // beforeunload fires as the page is going away, so there's no reliable way to
   // render new UI in response to it — this can only set state for the case
   // where the browser's "leave site?" prompt is declined and the screen stays up.
@@ -858,19 +913,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     const hasLiveMatchState = loggedEvents.length > 0 || matchState !== "PRE_MATCH";
     if (!hasLiveMatchState) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      const { fullRecord } = buildSaveRecords(loggedRef.current);
-      const ok = saveProTaggerMatchFull(fullRecord);
-      const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, ok);
-      if (changed) {
-        autosaveFailedRef.current = nextShown;
-        setAutosaveFailed(nextShown);
-      }
+      persistLiveState();
       event.preventDefault();
       event.returnValue = "Save match before leaving or refreshing.";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [loggedEvents.length, matchState, buildSaveRecords]);
+  }, [loggedEvents.length, matchState, persistLiveState]);
 
   // Used only by FT "Save & Finish" — saves AND exits.
   const handleSaveAndEnd = useCallback(() => {
@@ -1413,7 +1462,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               </div>
               <div style={S.pitchFooter}>
                 {feedbackDot ? (
-                  <span style={S.savedText}>✓ Event saved</span>
+                  eventSaveStatus === "saved" ? (
+                    <span style={S.savedText}>✓ Event saved</span>
+                  ) : eventSaveStatus === "failed" ? (
+                    <span style={S.saveFeedbackText}>{SAVE_FAILED_TEXT}</span>
+                  ) : null
                 ) : wrongWayActive ? (
                   <span style={S.wrongWayText}>Wrong way? Tap again to override</span>
                 ) : (
