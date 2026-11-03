@@ -1,0 +1,9 @@
+{
+ "f4_storageFull_homeAsksFirst": {
+  "dialogShown": true,
+  "stillInMatchAfterStay": true,
+  "eventsInApp": 4,
+  "storedAfterSpaceFreed": 4,
+  "homeLeavesNormallyOnceSaved": true
+ }
+}

@@ -107,3 +107,31 @@ Both situations previously caused silent data loss.
 **Pre-existing risk found (not introduced by this PR; reproduced on the branch):** while saves are failing, leaving the live match through Options → **Home** has no confirmation, and the events not yet stored are lost.
 - In the test, 2 of 3 events were lost.
 - The safe recovery path is to back up and delete old matches **in a second browser tab**, then carry on in the live tab. That path was verified above.
+
+## Leave-with-unsaved-changes guard (commit `55510b2`)
+
+**Change:** Options → Home (on the live, half-time, full-time and match-reopened screens) and the FT "Finish" button now go through `requestLeave`.
+- With every change stored, it leaves at once, as before.
+- Otherwise it retries the save once. If that save still fails, it shows "Leave match?" with **Stay in Match** (the default; tapping outside also stays) and **Leave Anyway**.
+- The unsaved state is the result of the latest write attempt (live autosave or manual Save Match), so it covers failed events, Undo, HT, Start Second Half, FT, live Review edits and substitutions.
+- The dialog changes no data.
+
+**Tests:** 8 new screen tests; 6 of them fail on `9cd2cd9`. Full suite: 3059 / 3059. No new type errors. Build passes.
+
+**Android emulation (Pixel 7), storage full:** Home shows the dialog (screenshot `persistence/results/f4-leave-confirm.png`).
+- Stay keeps the coach in the match.
+- After space is freed, the next event stores all 4 events.
+- Home then leaves without asking.
+
+**636-event regression:** 0 changed checks (A 583/9, B 977/12, C 556/28). Legacy import 28/28. Cross-page 27/27.
+
+**Other exits checked** (reported, not changed):
+
+| Exit | Guarded? |
+|---|---|
+| Save & Finish | yes — blocks if the Event Stats save fails |
+| Reset Match | yes — existing confirmation; it is an intentional discard |
+| Event Map, Quick Review, Review overlays | do not leave the match |
+| Browser back, reload, closing the tab, navigating to another app page, or the OS killing the app while saves are failing | **not guarded** — unsaved events are lost |
+
+For the browser and OS exits: desktop browsers show the existing `beforeunload` "Leave site?" prompt, but mobile browsers do not reliably show it, and the background flush cannot succeed while storage is full.

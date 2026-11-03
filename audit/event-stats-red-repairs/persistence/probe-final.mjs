@@ -187,6 +187,32 @@ const scenarios = {
     await ctx.close();
     return { eventsInApp: 3, eventsStored: stored, unsavedLostOnLeaving: 3 - stored, promptedBeforeLeaving };
   },
+
+  async f4_storageFull_homeAsksFirst() {
+    const ctx = await freshContext();
+    const page = await startMatch(ctx, "Live FC", "Opp");
+    await page.clock.runFor(30_000);
+    await tag(page); await settle(page);
+    const n = await fill(page);
+    await tag(page); await settle(page);
+    await tag(page); await settle(page);
+    await page.getByRole("button", { name: "⋯ Options", exact: true }).click();
+    await page.getByRole("button", { name: "Home", exact: true }).click();
+    await page.waitForTimeout(150);
+    const dialog = await page.evaluate(() => /Leave match\?/.test(document.body.innerText));
+    await page.screenshot({ path: `${OUT}/f4-leave-confirm.png` });
+    await page.getByRole("button", { name: "Stay in Match", exact: true }).click();
+    const stillInMatch = await page.evaluate(() => !/New Match/.test(document.body.innerText) && /Options/.test(document.body.innerText));
+    await page.evaluate((n) => { for (let i = 0; i < n; i++) localStorage.removeItem("filler" + i); }, n);
+    await tag(page); await settle(page);
+    const stored = (await proMatches(page)).find((m) => m.homeTeamName === "Live FC").events.length;
+    await page.getByRole("button", { name: "⋯ Options", exact: true }).click();
+    await page.getByRole("button", { name: "Home", exact: true }).click();
+    await page.waitForTimeout(150);
+    const leftWithoutDialog = await page.evaluate(() => /New Match/.test(document.body.innerText));
+    await ctx.close();
+    return { dialogShown: dialog, stillInMatchAfterStay: stillInMatch, eventsInApp: 4, storedAfterSpaceFreed: stored, homeLeavesNormallyOnceSaved: leftWithoutDialog };
+  },
 };
 
 const pick = process.argv[2] ?? "all";
