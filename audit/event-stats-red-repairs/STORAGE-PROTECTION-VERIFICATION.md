@@ -93,3 +93,17 @@ The differences are within run-to-run variation; the 1× / 10-match case was fas
 - a full store must delete or export matches.
 
 Both situations previously caused silent data loss.
+
+## Final verification before merge request (PR #380, head `9cd2cd9`, Android emulation: Pixel 7 profile)
+
+| Check | Result |
+|---|---|
+| Save & Finish when the Match Stats copy fails | The red warning "Match saved. Match Stats copy not updated — its storage is corrupted." shows on MATCH COMPLETE for 3 s, then the screen returns home. The match is stored as FULL_TIME with 3 events and score 0-03 v 0-00. The archive is byte-identical. After a full reload, Saved Matches → Review opens it showing 3 events. Screenshot: `persistence/results/f1-save-finish-warning.png`. |
+| Storage full, then Settings → Backup | **Create Backup succeeds while storage is full.** The downloaded file holds all 13 Event Stats matches, including the live one. The Saved Matches notice "Storage nearly full" is shown. |
+| Storage full, then delete an old match | Deleting one old match frees space. The next live event shows "✓ Event saved", the warning clears, and all 4 live events are stored. The other 11 old matches are intact. |
+| Warning vs success | Failure text is red (`rgb(248,81,73)`), has no tick, and starts "Save failed" or "Save blocked". It replaces the event count on the strip. Success is the green "✓ Event saved" (`rgb(46,160,67)`). |
+| Head commit, tests, build, Vercel | Head is still `9cd2cd9`. Tests: 3051 / 3051. No new type errors. Build passes. Vercel: success. |
+
+**Pre-existing risk found (not introduced by this PR; reproduced on the branch):** while saves are failing, leaving the live match through Options → **Home** has no confirmation, and the events not yet stored are lost.
+- In the test, 2 of 3 events were lost.
+- The safe recovery path is to back up and delete old matches **in a second browser tab**, then carry on in the live tab. That path was verified above.
