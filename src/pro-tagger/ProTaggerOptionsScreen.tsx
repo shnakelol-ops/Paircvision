@@ -4,7 +4,8 @@ import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import {
   readProTaggerMatches,
   resolveImportIdCollision,
-  saveProTaggerMatchFull,
+  saveFailureText,
+  saveProTaggerMatchFullResult,
   isValidProMatch,
 } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
@@ -39,7 +40,8 @@ export function ProTaggerOptionsScreen({ onBack, onImported }: Props) {
         // different deployment/origin) silently clobbering it.
         const { match: toSave } = resolveImportIdCollision(parsed, readProTaggerMatches());
 
-        saveProTaggerMatchFull(toSave);
+        const saved = saveProTaggerMatchFullResult(toSave);
+        if (!saved.ok) throw new Error(`Import not saved. ${saveFailureText(saved.reason)}`);
         // Land straight on the imported match's Review screen instead of a
         // status message — the caller owns navigation via onImported.
         onImported(toSave);

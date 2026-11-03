@@ -8,7 +8,13 @@ import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
 import { buildDisciplineStatusMap } from "./pro-tagger-discipline";
-import { saveProTaggerMatch, saveProTaggerMatchFull, deleteProTaggerMatch } from "./pro-tagger-storage";
+import {
+  deleteProTaggerMatchResult,
+  saveFailureText,
+  saveProTaggerMatchFullResult,
+  saveProTaggerMatchResult,
+  type ProTaggerSaveFailure,
+} from "./pro-tagger-storage";
 import {
   createLivePersister,
   eventSaveStatusFromResult,
@@ -64,9 +70,15 @@ type MatchState =
   | "SECOND_HALF"
   | "FULL_TIME";
 
-// Shared with the manual Save failure paths (handleSaveMatch, handleSaveAndEnd)
-// so autosave surfaces the exact same wording through the exact same UI slot.
-const SAVE_FAILED_TEXT = "Save failed — storage unavailable.";
+// Save-failure wording comes from saveFailureText (pro-tagger-storage.ts), so
+// autosave and the manual Save paths say the same thing in the same slot.
+
+// The Event Stats record was saved but its copy in the shared Match Stats
+// archive was not — the match is safe; the coach is told the copy is missing.
+function archiveCopyFailureText(reason: ProTaggerSaveFailure): string {
+  const why = reason === "unreadable" ? "its storage is corrupted" : reason === "full" ? "storage full" : "storage unavailable";
+  return `Match saved. Match Stats copy not updated — ${why}.`;
+}
 
 // Decides whether the autosave-failure warning's shown/hidden state needs to
 // change after one save attempt (autosave, or the background/beforeunload
@@ -378,6 +390,9 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // to storage, and cleared once a save succeeds again — persistent rather than
   // timed, since the underlying storage problem persists until it doesn't.
   const [autosaveFailed, setAutosaveFailed] = useState(false);
+  // Why the last failed autosave failed — selects the warning wording.
+  const [autosaveFailureReason, setAutosaveFailureReason] = useState<ProTaggerSaveFailure>("unavailable");
+  const lastSaveFailureRef = useRef<ProTaggerSaveFailure | null>(null);
   // Mirrors autosaveFailed for persistLiveState below, so
   // deriveAutosaveWarningState can be checked without depending on React
   // re-render timing.
@@ -863,9 +878,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
   const persisterRef = useRef<ReturnType<typeof createLivePersister> | null>(null);
   if (persisterRef.current === null) {
-    persisterRef.current = createLivePersister((snapshot) =>
-      saveProTaggerMatchFull(buildSaveRecordsRef.current(snapshot.events as readonly LoggedMatchEvent[]).fullRecord),
-    );
+    persisterRef.current = createLivePersister((snapshot) => {
+      const result = saveProTaggerMatchFullResult(buildSaveRecordsRef.current(snapshot.events as readonly LoggedMatchEvent[]).fullRecord);
+      lastSaveFailureRef.current = result.ok ? null : result.reason;
+      return result.ok;
+    });
   }
 
   const persistLiveState = useCallback((): LivePersistResult => {
@@ -878,6 +895,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       awaySquad:    awaySquadStateRef.current,
     });
     if (result.wrote) {
+      if (!result.ok && lastSaveFailureRef.current) setAutosaveFailureReason(lastSaveFailureRef.current);
       const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, result.ok);
       if (changed) {
         autosaveFailedRef.current = nextShown;
@@ -930,12 +948,20 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       return;
     }
 
+    // The Event Stats record first: it is the one the match lives in. Only
+    // when it is stored does the match end; a missing Match Stats archive
+    // copy is reported before leaving.
     const { record, fullRecord } = buildSaveRecords(events);
-    saveProTaggerMatch(record);
-    const ok = saveProTaggerMatchFull(fullRecord);
-    if (!ok) {
-      setSaveFeedback(SAVE_FAILED_TEXT);
+    const saved = saveProTaggerMatchFullResult(fullRecord);
+    if (!saved.ok) {
+      setSaveFeedback(saveFailureText(saved.reason));
       setTimeout(() => setSaveFeedback(null), 3000);
+      return;
+    }
+    const copied = saveProTaggerMatchResult(record);
+    if (!copied.ok) {
+      setSaveFeedback(archiveCopyFailureText(copied.reason));
+      setTimeout(onEnd, 3000);
       return;
     }
     onEnd();
@@ -953,20 +979,25 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     }
 
     const { record, fullRecord } = buildSaveRecords(events);
-    saveProTaggerMatch(record);
-    const ok = saveProTaggerMatchFull(fullRecord);
-    if (!ok) {
-      setActionsFeedback(SAVE_FAILED_TEXT);
+    const saved = saveProTaggerMatchFullResult(fullRecord);
+    if (!saved.ok) {
+      setActionsFeedback(saveFailureText(saved.reason));
       actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+      return;
+    }
+    // The Event Stats record is stored, so any lingering autosave-failure
+    // warning is cleared rather than waiting for the next write.
+    autosaveFailedRef.current = false;
+    setAutosaveFailed(false);
+    const copied = saveProTaggerMatchResult(record);
+    if (!copied.ok) {
+      setActionsFeedback(archiveCopyFailureText(copied.reason));
+      actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 4000);
       return;
     }
     setActionsFeedback("✓ Match saved");
     actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
     setActionsOpen(false);
-    // A successful manual save confirms storage is available again — clear any
-    // lingering autosave-failure warning rather than waiting for the next tick.
-    autosaveFailedRef.current = false;
-    setAutosaveFailed(false);
   }, [buildSaveRecords]);
 
   // Actions → Share Summary PNG.
@@ -1070,7 +1101,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // before clearing in-memory state.
   const handleReset = useCallback(() => {
     const hadLiveMatchState = matchStateRef.current !== "PRE_MATCH" || loggedRef.current.length > 0;
-    const deleted = hadLiveMatchState ? deleteProTaggerMatch(session.id) : true;
+    const removal = hadLiveMatchState ? deleteProTaggerMatchResult(session.id) : null;
+    // "not-found": nothing was stored for this match, so nothing is left behind.
+    const deleted = removal === null || removal.ok || removal.reason === "not-found";
+    if (!deleted && removal && removal.reason !== "not-found" && removal.reason !== null) setAutosaveFailureReason(removal.reason);
     if (clockIntervalRef.current) { clearInterval(clockIntervalRef.current); clockIntervalRef.current = null; }
     if (feedbackTimerRef.current) { clearTimeout(feedbackTimerRef.current); feedbackTimerRef.current = null; }
     if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
@@ -1114,7 +1148,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
   // An explicit manual-save message (ephemeral) always takes priority; otherwise
   // fall back to the persistent autosave-failure warning while it's active.
-  const displayedSaveFeedback = saveFeedback ?? (autosaveFailed ? SAVE_FAILED_TEXT : null);
+  const displayedSaveFeedback = saveFeedback ?? (autosaveFailed ? saveFailureText(autosaveFailureReason) : null);
 
   const forScore = computeScoreSide(loggedEvents, "FOR");
   const oppScore = computeScoreSide(loggedEvents, "OPP");
@@ -1465,7 +1499,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   eventSaveStatus === "saved" ? (
                     <span style={S.savedText}>✓ Event saved</span>
                   ) : eventSaveStatus === "failed" ? (
-                    <span style={S.saveFeedbackText}>{SAVE_FAILED_TEXT}</span>
+                    <span style={S.saveFeedbackText}>{saveFailureText(autosaveFailureReason)}</span>
                   ) : null
                 ) : wrongWayActive ? (
                   <span style={S.wrongWayText}>Wrong way? Tap again to override</span>

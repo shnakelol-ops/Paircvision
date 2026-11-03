@@ -252,9 +252,11 @@ interface Props {
    * its own in-memory event log (which its own save/autosave paths already persist),
    * while the saved-matches review screen has no live state and must write it to
    * storage itself. Without this, edits/deletes only ever lived in local component
-   * state and vanished the moment Review was closed.
+   * state and vanished the moment Review was closed. Returning false means the
+   * caller could not store the change (it has told the coach why), so Review
+   * keeps showing the match as it is stored.
    */
-  onMatchUpdate: (updatedMatch: ProTaggerSavedMatch) => void;
+  onMatchUpdate: (updatedMatch: ProTaggerSavedMatch) => boolean | void;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -381,8 +383,8 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       eventCount:        updatedEvents.length,
       scorelineSnapshot: computeScorelineSnapshot(updatedEvents, match.homeTeamName, match.awayTeamName),
     };
+    if (onMatchUpdate(updated) === false) return;
     setLocalMatch(updated);
-    onMatchUpdate(updated);
   }
 
   const deleteSelectedMapEvent = () => {
