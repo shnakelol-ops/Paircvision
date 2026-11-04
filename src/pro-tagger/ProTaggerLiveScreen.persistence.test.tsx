@@ -170,10 +170,10 @@ describe("Event Stats live persistence (P0)", () => {
     });
     tagTurnoverWon();
     expect(screen.queryByText("✓ Event saved")).toBeNull();
-    expect(screen.getAllByText("Save failed — storage unavailable.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Save failed — storage full. Back up and delete old matches.").length).toBeGreaterThan(0);
     expect(stored()?.events).toHaveLength(1);
     finishConfirmation();
-    expect(screen.getByText("Save failed — storage unavailable.")).toBeTruthy();   // persistent strip warning
+    expect(screen.getByText("Save failed — storage full. Back up and delete old matches.")).toBeTruthy();   // persistent strip warning
 
     setItem.mockRestore();
     tagTurnoverWon();

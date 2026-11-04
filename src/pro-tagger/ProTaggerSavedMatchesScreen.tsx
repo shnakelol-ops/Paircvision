@@ -1,7 +1,13 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
-import { readProTaggerMatches, deleteProTaggerMatch } from "./pro-tagger-storage";
+import {
+  deleteProTaggerMatchResult,
+  isStorageNearlyFull,
+  readProTaggerMatches,
+  readProTaggerStoreStatus,
+  saveFailureText,
+} from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import {
   isCoordinateRepairApplied,
@@ -45,13 +51,27 @@ interface Props {
   onBack:   () => void;
 }
 
+// Shown under the header when saved matches need the coach's attention.
+function storageNotice(): string | null {
+  if (readProTaggerStoreStatus() === "unreadable") {
+    return "Saved matches can't be read. Nothing has been overwritten — use Settings → Backup to export them.";
+  }
+  if (isStorageNearlyFull()) return "Storage nearly full — back up and delete old matches.";
+  return null;
+}
+
 export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props) {
   const [matches, setMatches]           = useState<ProTaggerSavedMatch[]>(() => readProTaggerMatches());
+  const [notice, setNotice]             = useState<string | null>(() => storageNotice());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleDelete = useCallback((id: string) => {
-    deleteProTaggerMatch(id);
+    const removed = deleteProTaggerMatchResult(id);
+    if (removed.reason === "unreadable" || removed.reason === "full" || removed.reason === "unavailable") {
+      window.alert(`Match not deleted. ${saveFailureText(removed.reason)}`);
+    }
     setMatches(readProTaggerMatches());
+    setNotice(storageNotice());
     setConfirmDeleteId(null);
   }, []);
 
@@ -62,6 +82,8 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
       setMatches(readProTaggerMatches());
     } else if (result.reason === "already-repaired") {
       window.alert("This match has already been repaired — it cannot be repaired twice.");
+    } else if ("saveFailure" in result) {
+      window.alert(`Repair not saved — the match is unchanged. ${saveFailureText(result.saveFailure ?? "unavailable")}`);
     }
   }, []);
 
@@ -75,10 +97,11 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
         <span style={S.title}>Saved Matches</span>
         <span style={S.count}>{matches.length}</span>
       </div>
+      {notice && <div style={S.notice}>{notice}</div>}
 
       {/* List */}
       <div style={S.list}>
-        {matches.length === 0 && (
+        {matches.length === 0 && !notice && (
           <div style={S.empty}>
             <span style={S.emptyIcon}>📋</span>
             <span style={S.emptyText}>No saved matches yet.</span>
@@ -221,6 +244,17 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 700,
     padding: "2px 8px",
     flexShrink: 0,
+  },
+  notice: {
+    margin: "10px 14px 0",
+    padding: "8px 12px",
+    borderRadius: 8,
+    border: "1px solid #5a2a2a",
+    background: "rgba(248,81,73,0.08)",
+    color: "#f85149",
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: "1.45",
   },
   list: {
     flex: 1,

@@ -15,7 +15,8 @@
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
 import {
   readProTaggerMatches,
-  saveProTaggerMatchFull,
+  saveProTaggerMatchFullResult,
+  type ProTaggerSaveFailure,
   type ProTaggerSavedMatch,
 } from "./pro-tagger-storage";
 
@@ -118,7 +119,8 @@ function backupMatch(match: ProTaggerSavedMatch): void {
 
 export type RepairMatchByIdResult =
   | { ok: true; match: ProTaggerSavedMatch }
-  | { ok: false; reason: "not-found" | "already-repaired" };
+  | { ok: false; reason: "not-found" | "already-repaired" }
+  | { ok: false; reason: "save-failed"; saveFailure: ProTaggerSaveFailure | null };
 
 /**
  * The full, storage-touching repair flow used by the UI:
@@ -137,6 +139,7 @@ export function repairProTaggerMatchById(id: string): RepairMatchByIdResult {
   const result = repairMirroredEventLocations(match);
   if (!result.ok) return result;
 
-  saveProTaggerMatchFull(result.match);
+  const saved = saveProTaggerMatchFullResult(result.match);
+  if (!saved.ok) return { ok: false, reason: "save-failed", saveFailure: saved.reason };
   return { ok: true, match: result.match };
 }

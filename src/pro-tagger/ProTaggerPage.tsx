@@ -11,7 +11,7 @@ import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import { ProTaggerOptionsScreen } from "./ProTaggerOptionsScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import { readProTaggerMatches, saveProTaggerMatchFull, selectMostRecentInProgressMatch } from "./pro-tagger-storage";
+import { readProTaggerMatches, saveFailureText, saveProTaggerMatchFullResult, selectMostRecentInProgressMatch } from "./pro-tagger-storage";
 
 type AppPhase = "home" | "setup" | "squads" | "direction" | "live" | "saved-matches" | "review" | "options";
 
@@ -174,8 +174,13 @@ export default function ProTaggerPage() {
         match={reviewMatch}
         onBack={() => setPhase("saved-matches")}
         onMatchUpdate={(updated) => {
-          saveProTaggerMatchFull(updated);
+          const saved = saveProTaggerMatchFullResult(updated);
+          if (!saved.ok) {
+            window.alert(`Change not saved. ${saveFailureText(saved.reason)}`);
+            return false;
+          }
           setReviewMatch(updated);
+          return true;
         }}
       />
     );
