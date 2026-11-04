@@ -135,3 +135,18 @@ Both situations previously caused silent data loss.
 | Browser back, reload, closing the tab, navigating to another app page, or the OS killing the app while saves are failing | **not guarded** — unsaved events are lost |
 
 For the browser and OS exits: desktop browsers show the existing `beforeunload` "Leave site?" prompt, but mobile browsers do not reliably show it, and the background flush cannot succeed while storage is full.
+
+## Merged
+
+PR #380 merged as `c06dd79` (normal merge, pinned to head `fbd0160`; main's tree equals `fbd0160`).
+
+**Final head `fbd0160`** contains one extra commit: the dialog wording fix, with no behaviour change. It was verified as follows:
+- **Tests:** 3059 / 3059 pass. No new type errors. Build passes.
+- **Safety checks** (`probe-sp`, `probe-final` f1/f2/f4): all pass.
+- **636-event regression:** 0 changed checks. Legacy import 28/28. Cross-page 27/27. Saved data identical.
+- **Save latency** (4× throttle, 19 saved matches): median write 184 ms, one write per event; unchanged.
+- **Vercel preview:** Ready on `fbd0160`.
+
+**Production deployment of `c06dd79`:** UNVERIFIED from this environment.
+
+**Known limitations, recorded for future assessment and not addressed:** unsaved events are lost on browser back, reload, closing the tab, or Android OS termination while saves are failing.
