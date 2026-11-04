@@ -161,8 +161,11 @@ describe("leaving the live match with changes that could not be stored", () => {
     const storedBefore = window.localStorage.getItem(PRO_TAGGER_MATCHES_STORAGE_KEY);
     goHome();
     expect(screen.getByText(LEAVE)).toBeTruthy();
-    expect(screen.getByText(/have not been stored on this device \(Save failed — storage full/)).toBeTruthy();
-    expect(screen.getByText(/they can only be saved once storage is available again/)).toBeTruthy();
+    const body = screen.getByText(/Recent changes to this match have not been saved\./).textContent ?? "";
+    expect(body).toMatch(/If you leave now, they may be permanently lost\./);
+    expect(body).toMatch(/Stay in Match keeps them in memory, but they can only be saved once storage is available again\./);
+    expect(body).toMatch(/Save failed — storage full\. Back up and delete old matches\.$/);
+    expect(body).not.toMatch(/\.\)/);
     click(button("Stay in Match"));
     expect(screen.queryByText(LEAVE)).toBeNull();
     expect(onEnd).not.toHaveBeenCalled();

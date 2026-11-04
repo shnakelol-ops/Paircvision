@@ -1953,8 +1953,9 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           <div style={RC.sheet} onClick={(e) => e.stopPropagation()}>
             <span style={RC.title}>Leave match?</span>
             <span style={RC.body}>
-              Recent changes to this match have not been stored on this device ({saveFailureText(autosaveFailureReason)}).
-              If you leave now they will be lost. Staying keeps them on screen, but they can only be saved once storage is available again.
+              Recent changes to this match have not been saved. If you leave now, they may be permanently lost.
+              Stay in Match keeps them in memory, but they can only be saved once storage is available again.
+              {" "}{saveFailureText(autosaveFailureReason)}
             </span>
             <div style={RC.btnRow}>
               <button style={RC.cancelBtn} autoFocus onClick={() => setLeaveConfirmOpen(false)}>
