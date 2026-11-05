@@ -277,6 +277,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     if (!v || !fileReady) return;
     v.currentTime = clip.start;
     previewEnd.current = clip.end;
+    // On phones the player isn't sticky — bring it back into view to watch.
+    v.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
     void v.play().catch(() => undefined);
   };
 
@@ -995,7 +997,7 @@ const CSS = `
 .mc-danger { background: var(--mc-bad); color: #fff; border: 0; }
 .mc-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .mc-player { display: grid; gap: 8px; background: #03100B; border-radius: 14px; padding: 8px; border: 1px solid var(--mc-border); }
-@media (min-height: 820px) { .mc-player { position: sticky; top: 0; z-index: 2; } }
+@media (min-height: 1000px) { .mc-player { position: sticky; top: 0; z-index: 2; } }
 .mc-video { width: 100%; max-height: 30dvh; background: #000; border-radius: 10px; display: block; }
 .mc-time { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 700; padding: 0 4px; }
 .mc-controls { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
@@ -1009,7 +1011,7 @@ const CSS = `
 .mc-mark-value { flex: 1; min-height: 36px; background: transparent; border: 1px solid var(--mc-border); color: var(--mc-text); border-radius: 8px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .mc-mini { min-height: 36px; min-width: 40px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--mc-border); background: #10291B; color: var(--mc-text); font-size: 13px; font-weight: 700; }
 .mc-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-.mc-chip { flex: none; min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--mc-border); background: transparent; color: var(--mc-muted); font-size: 12.5px; font-weight: 700; }
+.mc-chip { flex: none; min-height: 34px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--mc-border); background: transparent; color: var(--mc-muted); font-size: 12px; font-weight: 700; }
 .mc-chip-on { background: var(--mc-primary); color: #03100B; border-color: var(--mc-primary); }
 .mc-label { display: grid; gap: 4px; font-size: 12px; color: var(--mc-muted); }
 .mc-input, .mc-textarea { width: 100%; min-height: 40px; border-radius: 8px; border: 1px solid var(--mc-border); background: #03100B; color: var(--mc-text); padding: 8px 10px; font-size: 16px; font-family: inherit; }
