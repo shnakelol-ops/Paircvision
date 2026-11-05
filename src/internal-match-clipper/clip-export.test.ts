@@ -9,10 +9,15 @@ interface FakeTrackSpec {
   kind: Kind;
   codec: string;
   canDecode?: boolean;
+  id?: number;
+  /** Decoded sample amplitude for audio tracks (0 = digital silence). */
+  amplitude?: number;
 }
 
 const state = vi.hoisted(() => ({
-  sourceTracks: [] as { kind: "video" | "audio"; codec: string; canDecode?: boolean }[],
+  sourceTracks: [] as { kind: "video" | "audio"; codec: string; canDecode?: boolean; id?: number; amplitude?: number }[],
+  /** Amplitude of the exported clip's decoded audio. */
+  outputAmplitude: 0.1,
   outputTracks: ["video", "audio"] as ("video" | "audio")[],
   outputDuration: 6,
   outputBytes: 1000,
@@ -33,7 +38,14 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("mediabunny", () => {
-  const makeTrack = (t: FakeTrackSpec) => ({
+  const makeTrack = (t: FakeTrackSpec, isOutput = false, i = 0) => ({
+    id: t.id ?? i + 1,
+    isOutput,
+    amplitude: t.amplitude ?? 0.1,
+    numberOfChannels: 1,
+    sampleRate: 48000,
+    languageCode: "und",
+    name: null,
     kind: t.kind,
     codec: t.codec,
     displayWidth: 854,
@@ -79,8 +91,15 @@ vi.mock("mediabunny", () => {
       return t ? makeTrack(t) : null;
     }
     async getPrimaryAudioTrack() {
-      const t = this.tracks().find((x) => x.kind === "audio");
-      return t ? makeTrack(t) : null;
+      const all = this.tracks();
+      const i = all.findIndex((x) => x.kind === "audio");
+      return i >= 0 ? makeTrack(all[i]!, this.isOutput, i) : null;
+    }
+    async getAudioTracks() {
+      return this.tracks()
+        .map((t, i) => [t, i] as const)
+        .filter(([t]) => t.kind === "audio")
+        .map(([t, i]) => makeTrack(t, this.isOutput, i));
     }
     async computeDuration() {
       return this.isOutput ? state.outputDuration : 4620;
@@ -156,7 +175,26 @@ vi.mock("mediabunny", () => {
     }
   }
   class AudioSampleSink {
-    async *samples() {}
+    track: { isOutput: boolean; amplitude: number };
+    constructor(track: { isOutput: boolean; amplitude: number }) {
+      this.track = track;
+    }
+    async *samples(start = 0, end = 6) {
+      const amp = this.track.isOutput ? state.outputAmplitude : this.track.amplitude;
+      for (let t = start; t < end && t < start + 25; t += 0.5) {
+        yield {
+          timestamp: t,
+          duration: 0.5,
+          numberOfChannels: 1,
+          setTimestamp(v: number) {
+            this.timestamp = v;
+          },
+          allocationSize: () => 400,
+          copyTo: (buf: Float32Array) => buf.fill(amp, 0, 100),
+          close() {},
+        };
+      }
+    }
   }
   return {
     ALL_FORMATS: [],
@@ -217,6 +255,7 @@ const AAC_FRAME = 1024 / 48000;
 beforeEach(() => {
   Object.assign(state, {
     sourceTracks: [{ kind: "video", codec: "avc" }, { kind: "audio", codec: "aac" }],
+    outputAmplitude: 0.1,
     outputTracks: ["video", "audio"],
     outputDuration: 6,
     outputBytes: 1000,
@@ -393,6 +432,60 @@ describe("exportClip", () => {
   it("refuses when WebCodecs is missing", async () => {
     vi.stubGlobal("VideoEncoder", undefined);
     await expectCode(exportClip(source, { start: 0, end: 6 }), "no_webcodecs");
+  });
+});
+
+describe("commentary audio (R3)", () => {
+  const twoTracks = (first: number, second: number) => [
+    { kind: "video" as const, codec: "avc" },
+    { kind: "audio" as const, codec: "aac", id: 2, amplitude: first },
+    { kind: "audio" as const, codec: "aac", id: 3, amplitude: second },
+  ];
+
+  it("chooses the track with commentary when the default audio track is silent", async () => {
+    state.sourceTracks = twoTracks(0, 0.1);
+    const p = await probeSource(source);
+    expect(p.audioTracks.map((t) => [t.index, t.isDefault, Math.round(t.levelDb!)])).toEqual([[1, true, -120], [2, false, -20]]);
+    expect(p.audioTrackId).toBe(3);
+    expect(p.blocker).toBeNull();
+  });
+
+  it("keeps the default track when it has sound", async () => {
+    state.sourceTracks = twoTracks(0.05, 0.1);
+    expect((await probeSource(source)).audioTrackId).toBe(2);
+  });
+
+  it("exports with the requested audio track and reports the clip's level", async () => {
+    state.sourceTracks = twoTracks(0, 0.1);
+    const out = await exportClip(source, { start: 10, end: 16 }, { audioTrackId: 3 });
+    expect(out.audioLevelDb).toBeCloseTo(-20, 0);
+  });
+
+  it("fails a clip that came out silent although the match has sound there", async () => {
+    state.outputAmplitude = 0;
+    const err = (await exportClip(source, { start: 10, end: 16 }).catch((e: unknown) => e)) as ClipExportError;
+    expect(err).toMatchObject({ code: "audio_failed", stage: "verify" });
+    expect(err.message).toMatch(/came out silent although the match has sound here/);
+    expect(state.finalized).toBe(1); // written, then rejected — never handed to the coach
+  });
+
+  it("names the other track when the chosen one is silent in this clip", async () => {
+    state.sourceTracks = twoTracks(0, 0.1);
+    state.outputAmplitude = 0;
+    const err = (await exportClip(source, { start: 10, end: 16 }, { audioTrackId: 2 }).catch((e: unknown) => e)) as ClipExportError;
+    expect(err.code).toBe("silent_audio_track");
+    expect(err.message).toMatch(/Audio track 1 is silent in this clip, but audio track 2 has sound/);
+  });
+
+  it("allows a genuinely quiet moment (every track silent there) and reports it", async () => {
+    state.sourceTracks = twoTracks(0, 0);
+    state.outputAmplitude = 0;
+    const out = await exportClip(source, { start: 10, end: 16 }, { audioTrackId: 2 });
+    expect(out.audioLevelDb).toBe(-120);
+  });
+
+  it("refuses an audio track id the file doesn't have", async () => {
+    await expectCode(exportClip(source, { start: 0, end: 6 }, { audioTrackId: 99 }), "unsupported_audio");
   });
 });
 

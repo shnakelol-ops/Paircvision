@@ -174,6 +174,12 @@ export function buildReport(parts: {
     );
     lines.push(`  blocker: ${probe.blocker ? `${probe.blocker.code} — ${probe.blocker.message}${probe.blocker.detail ? ` [${probe.blocker.detail}]` : ""}` : "none"}`);
     if (probe.readFailure) lines.push(`  read failure: ${probe.readFailure.name}: ${probe.readFailure.message} @${probe.readFailure.start}`);
+    for (const t of probe.audioTracks ?? []) {
+      lines.push(
+        `  audio track ${t.index} (id ${t.id}): ${t.codec ?? "?"} ${t.channels}ch ${t.sampleRate}Hz lang=${t.language} default=${t.isDefault} ` +
+          `level=${t.levelDb === null ? "n/a" : `${t.levelDb.toFixed(1)} dB`}${t.id === probe.audioTrackId ? " ← used for clips" : ""}`,
+      );
+    }
   } else lines.push("  (not run)");
   lines.push("", "structure scan:", ...scanLines(probe?.scan ?? null));
   lines.push("", "playback:");

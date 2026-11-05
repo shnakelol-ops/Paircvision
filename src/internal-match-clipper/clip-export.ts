@@ -12,6 +12,7 @@
 
 import { createFileSource, newReadStats, SourceReadError, type ReadFailure, type ReadStats } from "./file-source";
 import { declaredAudioTracks, scanMp4, type Mp4Scan } from "./mp4-scan";
+import { isAudible, measureTrackLevel, probeWindows } from "./audio-level";
 
 export type ClipExportErrorCode =
   | "canceled"
@@ -29,6 +30,8 @@ export type ClipExportErrorCode =
   | "decode_failed"
   | "encode_failed"
   | "audio_failed"
+  /** The chosen audio track is silent in this clip while another track has sound. */
+  | "silent_audio_track"
   | "write_failed"
   | "verification_failed"
   | "failed";
@@ -68,13 +71,48 @@ export interface SourceProbe {
   /** Independent box-level scan of the file (null if it couldn't start). */
   scan: Mp4Scan | null;
   readFailure: ReadFailure | null;
+  /** Every audio track the engine can see, with its measured level. */
+  audioTracks: AudioTrackInfo[];
+  /** The track exports will use (see chooseAudioTrack), or null. */
+  audioTrackId: number | null;
+}
+
+export interface AudioTrackInfo {
+  /** Container track id — stable for the file; passed back as ExportOptions.audioTrackId. */
+  id: number;
+  /** 1-based position among the file's audio tracks, for display. */
+  index: number;
+  codec: string | null;
+  channels: number;
+  sampleRate: number;
+  language: string;
+  name: string | null;
+  isDefault: boolean;
+  /** RMS dBFS over three 4 s windows across the match; null if it couldn't be decoded. */
+  levelDb: number | null;
 }
 
 export interface ExportedClip {
   blob: Blob;
   duration: number;
   hasAudio: boolean;
+  /** Measured RMS level of the exported clip's audio (dBFS); null if not measurable here. */
+  audioLevelDb: number | null;
   elapsedMs: number;
+}
+
+/**
+ * Picks the track exports use: the default track if it has sound; otherwise
+ * the loudest track that has sound; otherwise the default/first. A file whose
+ * first or default audio track is silent (e.g. a clean feed next to the
+ * commentary) therefore still exports with commentary.
+ */
+export function chooseAudioTrack(tracks: AudioTrackInfo[]): AudioTrackInfo | null {
+  if (!tracks.length) return null;
+  const fallback = tracks.find((t) => t.isDefault) ?? tracks[0]!;
+  if (isAudible(fallback.levelDb)) return fallback;
+  const audible = tracks.filter((t) => isAudible(t.levelDb)).sort((a, b) => b.levelDb! - a.levelDb!);
+  return audible[0] ?? fallback;
 }
 
 type Mediabunny = typeof import("mediabunny");
@@ -148,7 +186,10 @@ export function classifyError(err: unknown, stage: ExportStage, stats: ReadStats
   }
 }
 
-const EMPTY_PROBE = { duration: 0, width: 0, height: 0, videoCodec: null, audioCodec: null, hasAudio: false };
+const EMPTY_PROBE = {
+  duration: 0, width: 0, height: 0, videoCodec: null, audioCodec: null, hasAudio: false,
+  audioTracks: [] as AudioTrackInfo[], audioTrackId: null,
+};
 
 /**
  * Reads the container's tracks and decides up front whether export can work
@@ -175,16 +216,40 @@ export async function probeSource(file: Blob): Promise<SourceProbe> {
     return { ...EMPTY_PROBE, scan, readFailure: stats.failure, blocker: { code: e.code, message: e.message, detail: e.detail } };
   };
   try {
-    let video, audio, duration;
+    let video, allAudio, primaryAudio, duration;
     try {
-      [video, audio, duration] = await Promise.all([
+      [video, allAudio, primaryAudio, duration] = await Promise.all([
         input.getPrimaryVideoTrack(),
+        input.getAudioTracks(),
         input.getPrimaryAudioTrack(),
         input.computeDuration(),
       ]);
     } catch (err) {
       return fail(err, "tracks");
     }
+    // Measure every audio track so a silent default track can't hide the commentary.
+    const audioTracks: AudioTrackInfo[] = [];
+    for (const [i, t] of allAudio.entries()) {
+      let levelDb: number | null = null;
+      try {
+        levelDb = (await measureTrackLevel(mb, t, probeWindows(duration))).db;
+      } catch {
+        levelDb = null;
+      }
+      audioTracks.push({
+        id: t.id,
+        index: i + 1,
+        codec: t.codec,
+        channels: t.numberOfChannels,
+        sampleRate: t.sampleRate,
+        language: t.languageCode,
+        name: t.name,
+        isDefault: primaryAudio ? t.id === primaryAudio.id : i === 0,
+        levelDb,
+      });
+    }
+    const chosen = chooseAudioTrack(audioTracks);
+    const audio = chosen ? (allAudio.find((t) => t.id === chosen.id) ?? null) : null;
     const declaredAudio = declaredAudioTracks(scan);
     const base = {
       duration,
@@ -195,6 +260,8 @@ export async function probeSource(file: Blob): Promise<SourceProbe> {
       hasAudio: audio !== null || declaredAudio.length > 0,
       scan,
       readFailure: null,
+      audioTracks,
+      audioTrackId: chosen?.id ?? null,
     };
     if (!video) {
       return { ...base, blocker: { code: "no_video", message: "This file has no video track." } };
@@ -255,6 +322,8 @@ export interface ExportOptions {
   onProgress?: (fraction: number) => void;
   /** Must be true to export from a source with no audio track. The UI sets it only after telling the coach. */
   allowSilentSource?: boolean;
+  /** Which audio track to use (AudioTrackInfo.id). Defaults to the file's primary audio track. */
+  audioTrackId?: number | null;
 }
 
 /**
@@ -273,7 +342,7 @@ export async function exportClip(
   range: { start: number; end: number },
   options: ExportOptions = {},
 ): Promise<ExportedClip> {
-  const { signal, onProgress, allowSilentSource = false } = options;
+  const { signal, onProgress, allowSilentSource = false, audioTrackId = null } = options;
   const { start, end } = range;
   if (!(end > start) || start < 0 || !Number.isFinite(end)) {
     throw new ClipExportError("invalid_range", "The clip's end must be after its start.");
@@ -302,8 +371,19 @@ export async function exportClip(
 
   try {
     stage = "tracks";
-    const [video, audio] = await Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
+    const [video, allAudio, primaryAudio] = await Promise.all([
+      input.getPrimaryVideoTrack(),
+      input.getAudioTracks(),
+      input.getPrimaryAudioTrack(),
+    ]);
     stage = "checks";
+    let audio = primaryAudio;
+    if (audioTrackId !== null) {
+      audio = allAudio.find((t) => t.id === audioTrackId) ?? null;
+      if (!audio) {
+        throw new ClipExportError("unsupported_audio", "The chosen audio track isn't in this video any more. Reselect the video.", { stage });
+      }
+    }
     if (!video) throw new ClipExportError("no_video", "The match video has no video track.");
     if (!audio && !allowSilentSource) {
       throw new ClipExportError("unsupported_audio", "The match video has no audio track.");
@@ -436,8 +516,35 @@ export async function exportClip(
     const blob = new Blob([buffer], { type: "video/mp4" });
     stage = "verify";
     const check = await verifyExport(mb, blob, span, audio !== null);
+    let audioLevelDb: number | null = null;
+    if (audio) {
+      audioLevelDb = check.audioLevelDb;
+      if (audioLevelDb !== null && !isAudible(audioLevelDb)) {
+        // The clip's audio is silent. Fine for a genuinely quiet moment — not when the match has sound here.
+        const sourceDb = (await measureTrackLevel(mb, audio, [[start, end]])).db;
+        if (isAudible(sourceDb)) {
+          throw new ClipExportError(
+            "audio_failed",
+            `The clip came out silent although the match has sound here (${sourceDb!.toFixed(0)} dB in the match, ${audioLevelDb.toFixed(0)} dB in the clip).`,
+            { stage },
+          );
+        }
+        const index = allAudio.findIndex((t) => t.id === audio!.id) + 1;
+        for (const [i, other] of allAudio.entries()) {
+          if (other.id === audio.id) continue;
+          const otherDb = (await measureTrackLevel(mb, other, [[start, end]])).db;
+          if (isAudible(otherDb)) {
+            throw new ClipExportError(
+              "silent_audio_track",
+              `Audio track ${index} is silent in this clip, but audio track ${i + 1} has sound (${otherDb!.toFixed(0)} dB). Choose track ${i + 1} under "Clip audio" and export again.`,
+              { stage },
+            );
+          }
+        }
+      }
+    }
     onProgress?.(1);
-    return { blob, duration: check.duration, hasAudio: audio !== null, elapsedMs: performance.now() - t0 };
+    return { blob, duration: check.duration, hasAudio: audio !== null, audioLevelDb, elapsedMs: performance.now() - t0 };
   } catch (err) {
     if (userCanceled || signal?.aborted) throw new ClipExportError("canceled", "Export cancelled.");
     throw classifyError(err, stage, stats);
@@ -469,7 +576,16 @@ async function verifyExport(mb: Mediabunny, blob: Blob, expected: number, expect
         `The exported clip is ${duration.toFixed(2)}s long, expected ${expected.toFixed(2)}s.`,
       );
     }
-    return { duration };
+    // How loud is the clip's audio? null when this device can't decode it to check.
+    let audioLevelDb: number | null = null;
+    if (expectAudio && audio) {
+      try {
+        audioLevelDb = (await measureTrackLevel(mb, audio, [[0, duration]])).db;
+      } catch {
+        audioLevelDb = null;
+      }
+    }
+    return { duration, audioLevelDb };
   } catch (err) {
     if (err instanceof ClipExportError) throw err;
     throw new ClipExportError("verification_failed", "The exported clip couldn't be read back.");

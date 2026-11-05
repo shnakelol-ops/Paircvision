@@ -8,6 +8,7 @@ import { MATCH_CLIPPER_STORAGE_KEY, loadClipperStore } from "./clip-storage";
 const OK_PROBE: SourceProbe = {
   duration: 4620, width: 854, height: 480, videoCodec: "avc", audioCodec: "aac", hasAudio: true, blocker: null,
   scan: null, readFailure: null,
+  audioTracks: [], audioTrackId: null,
 };
 
 let mediaTime = 0;
@@ -45,6 +46,7 @@ function engine(over: Partial<ClipperEngine> = {}): ClipperEngine {
       blob: new Blob([new Uint8Array(10)], { type: "video/mp4" }),
       duration: range.end - range.start,
       hasAudio: true,
+      audioLevelDb: -20,
       elapsedMs: 5,
     })),
     ...over,
@@ -213,7 +215,7 @@ describe("Match Clipper — export", () => {
     const eng = engine({
       exportClip: vi.fn(async (_f, range) => {
         if (range.start === 119) throw new ClipExportError("failed", "Export failed: decoder crashed");
-        return { blob: new Blob([new Uint8Array(10)], { type: "video/mp4" }), duration: 6, hasAudio: true, elapsedMs: 1 };
+        return { blob: new Blob([new Uint8Array(10)], { type: "video/mp4" }), duration: 6, hasAudio: true, audioLevelDb: -20, elapsedMs: 1 };
       }),
     });
     render(<MatchClipperScreen engine={eng} />);
@@ -409,7 +411,7 @@ describe("Match Clipper — R2 direct sharing", () => {
   });
 
   async function exportOne(eng = engine({
-    exportClip: vi.fn(async () => ({ blob: new Blob([exportedBytes], { type: "video/mp4" }), duration: 6, hasAudio: true, elapsedMs: 5 })),
+    exportClip: vi.fn(async () => ({ blob: new Blob([exportedBytes], { type: "video/mp4" }), duration: 6, hasAudio: true, audioLevelDb: -20, elapsedMs: 5 })),
   })) {
     render(<MatchClipperScreen engine={eng} />);
     await openMatch();
@@ -512,6 +514,48 @@ describe("Match Clipper — R2 direct sharing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("button", { name: "Share Clip" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Export" })).toBeNull();
+  });
+});
+
+describe("Match Clipper — R3 commentary audio", () => {
+  const track = (id: number, index: number, levelDb: number, isDefault: boolean) => ({
+    id, index, codec: "aac", channels: 2, sampleRate: 48000, language: "und", name: null, isDefault, levelDb,
+  });
+
+  it("with several audio tracks: shows the levels, preselects the one with sound, and exports with the chosen track", async () => {
+    const eng = engine({
+      probe: vi.fn(async () => ({ ...OK_PROBE, audioTracks: [track(2, 1, -120, true), track(3, 2, -19, false)], audioTrackId: 3 })),
+    });
+    render(<MatchClipperScreen engine={eng} />);
+    await openMatch();
+    const group = await screen.findByRole("radiogroup", { name: "Clip audio" });
+    const silent = within(group).getByRole("radio", { name: /Track 1 · stereo · silent/ });
+    const commentary = within(group).getByRole("radio", { name: /Track 2 · stereo · sound -19 dB/ });
+    expect(commentary.getAttribute("aria-checked")).toBe("true");
+    expect(silent.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "01:00 A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Export A" }));
+    });
+    expect(eng.exportClip).toHaveBeenLastCalledWith(expect.any(File), expect.anything(), expect.objectContaining({ audioTrackId: 3 }));
+    expect(await screen.findByText(/A — .*sound -20 dB/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(silent);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Export A" }));
+    });
+    expect(eng.exportClip).toHaveBeenLastCalledWith(expect.any(File), expect.anything(), expect.objectContaining({ audioTrackId: 2 }));
+    expect(screen.getByTestId("diagnostics-report").textContent).toMatch(/audio track 2 \(id 3\): aac 2ch 48000Hz .*level=-19\.0 dB/);
+  });
+
+  it("a single audio track shows no chooser; a match silent at every check point gets a warning", async () => {
+    const eng = engine({ probe: vi.fn(async () => ({ ...OK_PROBE, audioTracks: [track(2, 1, -120, true)], audioTrackId: 2 })) });
+    render(<MatchClipperScreen engine={eng} />);
+    await openMatch();
+    await waitFor(() => expect(screen.getAllByRole("alert").some((a) => /silent at all three points checked/.test(a.textContent ?? ""))).toBe(true));
+    expect(screen.queryByRole("radiogroup", { name: "Clip audio" })).toBeNull();
   });
 });
 

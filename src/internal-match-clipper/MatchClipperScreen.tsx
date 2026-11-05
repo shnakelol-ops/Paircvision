@@ -5,6 +5,7 @@ import {
   ClipExportError,
   exportClip as defaultExportClip,
   probeSource as defaultProbeSource,
+  type AudioTrackInfo,
   type ExportedClip,
   type SourceProbe,
 } from "./clip-export";
@@ -37,6 +38,7 @@ import {
   type TimestampParseError,
 } from "./timestamp-parse";
 import { buildZip } from "./zip-store";
+import { isAudible } from "./audio-level";
 import {
   buildReport,
   collectEnvironment,
@@ -125,6 +127,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   /** Outcome of the last Share Clip / Save MP4 tap for the finished export. */
   const [handoff, setHandoff] = useState<{ tone: "ok" | "warn" | "bad"; text: string } | null>(null);
   const [sharing, setSharing] = useState(false);
+  /** Audio track exports use; preset to the probe's pick (the track that actually has sound). */
+  const [audioTrackId, setAudioTrackId] = useState<number | null>(null);
   /** Playback position to return to after reselecting the same video. */
   const resumeAt = useRef<number | null>(null);
 
@@ -253,6 +257,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
       .probe(picked)
       .then((p) => {
         setProbe(p);
+        setAudioTrackId(p.audioTrackId);
         // Diagnostics only — never blocks or changes the workflow.
         void runReadChecks(picked).then(setReadChecks).catch(() => undefined);
         void collectEnvironment(p.width, p.height).then(setEnvironment).catch(() => undefined);
@@ -260,6 +265,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
       .catch((err: unknown) =>
         setProbe({
           duration: 0, width: 0, height: 0, videoCodec: null, audioCodec: null, hasAudio: false, scan: null, readFailure: null,
+          audioTracks: [], audioTrackId: null,
           blocker: {
             code: "failed",
             message: "This video couldn't be checked for export. Playback may still work.",
@@ -512,6 +518,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
           const out = await engine.exportClip(file, { start: clip.start, end: clip.end }, {
             signal: controller.signal,
             allowSilentSource: probe?.hasAudio === false,
+            audioTrackId,
             // Re-render at most every 4%, not on every encoded frame.
             onProgress: (p) => {
               if (p - shown < 0.04 && p < 1) return;
@@ -754,6 +761,32 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
           </p>
         )}
         {mismatch && <p className="mc-banner mc-banner-warn" role="alert">{mismatch}</p>}
+        {file && probe && probe.audioTracks.length > 1 && (
+          <div className="mc-card" role="radiogroup" aria-label="Clip audio">
+            <p className="mc-strong">Clip audio</p>
+            <p className="mc-muted">This video has {probe.audioTracks.length} audio tracks. Clips use the one selected here.</p>
+            <div className="mc-chips mc-wrap">
+              {probe.audioTracks.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={audioTrackId === t.id}
+                  className={`mc-chip${audioTrackId === t.id ? " mc-chip-on" : ""}`}
+                  onClick={() => setAudioTrackId(t.id)}
+                  disabled={busy}
+                >
+                  {audioTrackLabel(t)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {file && probe && !probe.blocker && probe.audioTracks.length > 0 && probe.audioTracks.every((t) => t.levelDb !== null && !isAudible(t.levelDb)) && (
+          <p className="mc-banner mc-banner-warn" role="alert">
+            The audio in this video was silent at all three points checked (20%, 50% and 80% of the match). Clips will be checked for sound when exported.
+          </p>
+        )}
         {notice && <p className="mc-banner" role="status">{notice}</p>}
 
         {sheetOpen && file && (
@@ -891,7 +924,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                       <li key={r.id} className={`mc-result mc-result-${r.status}`}>
                         {c?.name ?? "Clip"} —{" "}
                         {r.status === "done"
-                          ? `${formatBytes(r.clip.blob.size)}, ${r.clip.duration.toFixed(1)}s`
+                          ? `${formatBytes(r.clip.blob.size)}, ${r.clip.duration.toFixed(1)}s, ${soundLabel(r.clip)}`
                           : r.status === "failed"
                             ? `failed: ${r.message}`
                             : r.reason ?? "not exported"}
@@ -996,6 +1029,19 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
       </div>
     </div>
   );
+}
+
+function audioTrackLabel(t: AudioTrackInfo): string {
+  const layout = t.channels === 1 ? "mono" : t.channels === 2 ? "stereo" : `${t.channels} ch`;
+  const level = t.levelDb === null ? "level unknown" : isAudible(t.levelDb) ? `sound ${t.levelDb.toFixed(0)} dB` : "silent";
+  const lang = t.language && t.language !== "und" ? ` · ${t.language}` : "";
+  return `Track ${t.index} · ${layout}${lang} · ${level}`;
+}
+
+function soundLabel(clip: ExportedClip): string {
+  if (!clip.hasAudio) return "no sound track";
+  if (clip.audioLevelDb === null) return "sound not checked";
+  return isAudible(clip.audioLevelDb) ? `sound ${clip.audioLevelDb.toFixed(0)} dB` : "quiet moment";
 }
 
 function MarkField({
@@ -1195,6 +1241,7 @@ const CSS = `
 .mc-result-skipped { color: var(--mc-muted); }
 .mc-handoff { flex: 1 1 140px; min-height: 52px; font-size: 16px; }
 .mc-full { flex-basis: 100%; }
+.mc-wrap { flex-wrap: wrap; overflow: visible; }
 .mc-handoff-status { margin: 0; font-size: 13.5px; }
 .mc-handoff-ok { color: var(--mc-primary); }
 .mc-handoff-warn { color: var(--mc-warn); }
