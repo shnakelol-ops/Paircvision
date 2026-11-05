@@ -194,7 +194,7 @@ describe("Match Clipper — collection", () => {
 });
 
 describe("Match Clipper — export", () => {
-  it("exports one clip and offers Share / Save", async () => {
+  it("exports one clip and offers Share Clip / Save MP4", async () => {
     const eng = engine();
     render(<MatchClipperScreen engine={eng} />);
     await openMatch();
@@ -205,8 +205,8 @@ describe("Match Clipper — export", () => {
       fireEvent.click(screen.getByRole("button", { name: "Export Goal" }));
     });
     expect(eng.exportClip).toHaveBeenCalledWith(expect.any(File), { start: 1529, end: 1535 }, expect.objectContaining({ allowSilentSource: false }));
-    expect(await screen.findByRole("button", { name: "Share" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save to device" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Share Clip" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save MP4" })).toBeTruthy();
   });
 
   it("batch export continues past a failed clip and reports it, then offers the ZIP of finished clips", async () => {
@@ -379,6 +379,139 @@ describe("Match Clipper — Android field test R1 regressions", () => {
     });
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("final.mp4 — 451000000 bytes"));
     expect(screen.getByText(/Diagnostics copied/)).toBeTruthy();
+  });
+});
+
+describe("Match Clipper — R2 direct sharing", () => {
+  const exportedBytes = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
+  let share: ReturnType<typeof vi.fn>;
+  let canShare: ReturnType<typeof vi.fn>;
+  let anchorClicks: string[];
+
+  function setShareApi(api: { share?: unknown; canShare?: unknown } | null) {
+    for (const key of ["share", "canShare"] as const) {
+      Object.defineProperty(navigator, key, { configurable: true, writable: true, value: api ? api[key] : undefined });
+    }
+  }
+
+  beforeEach(() => {
+    share = vi.fn(async () => undefined);
+    canShare = vi.fn((data?: ShareData) => !!data?.files?.length);
+    setShareApi({ share, canShare });
+    anchorClicks = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      anchorClicks.push(this.download);
+    });
+  });
+  afterEach(() => {
+    setShareApi(null);
+    vi.restoreAllMocks();
+  });
+
+  async function exportOne(eng = engine({
+    exportClip: vi.fn(async () => ({ blob: new Blob([exportedBytes], { type: "video/mp4" }), duration: 6, hasAudio: true, elapsedMs: 5 })),
+  })) {
+    render(<MatchClipperScreen engine={eng} />);
+    await openMatch();
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "25:30 score Conor point" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Export Conor point" }));
+    });
+    await screen.findByRole("button", { name: "Share Clip" });
+    return eng;
+  }
+
+  it("Share Clip hands the actual exported MP4 to the share sheet — file only, no URL or text", async () => {
+    await exportOne();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Share Clip" }));
+    });
+    expect(share).toHaveBeenCalledTimes(1);
+    const data = share.mock.calls[0]![0] as ShareData;
+    expect(Object.keys(data)).toEqual(["files"]);
+    const file = data.files![0]!;
+    expect(file.name).toBe("01 Conor point.mp4");
+    expect(file.type).toBe("video/mp4");
+    const bytes = await new Promise<ArrayBuffer>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.readAsArrayBuffer(file);
+    });
+    expect(new Uint8Array(bytes)).toEqual(exportedBytes);
+    expect(screen.getByText("Clip handed to the app you chose.")).toBeTruthy();
+    expect(anchorClicks).toEqual([]); // sharing never downloads
+  });
+
+  it("sharing again reuses the same MP4 — no re-export", async () => {
+    const eng = await exportOne();
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Share Clip" }));
+      });
+    }
+    expect(eng.exportClip).toHaveBeenCalledTimes(1);
+    expect(share).toHaveBeenCalledTimes(3);
+    const files = share.mock.calls.map((c) => (c[0] as ShareData).files![0]);
+    expect(files[1]).toBe(files[0]);
+    expect(files[2]).toBe(files[0]);
+  });
+
+  it("closing the share sheet is a cancel: no download, clip still ready", async () => {
+    share.mockRejectedValueOnce(new DOMException("Share canceled", "AbortError"));
+    await exportOne();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Share Clip" }));
+    });
+    expect(screen.getByText(/Share cancelled\. The clip is still ready/)).toBeTruthy();
+    expect(anchorClicks).toEqual([]);
+    expect(screen.getByRole("button", { name: "Share Clip" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("a refused share says why and offers Save MP4, without downloading by itself", async () => {
+    share.mockRejectedValueOnce(new DOMException("Must be handling a user gesture to show a permission request.", "NotAllowedError"));
+    await exportOne();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Share Clip" }));
+    });
+    expect(screen.getByText(/Android didn't allow the share \(NotAllowedError\)/)).toBeTruthy();
+    expect(anchorClicks).toEqual([]);
+  });
+
+  it("ignores a second tap while the share sheet is still open", async () => {
+    let resolve: () => void = () => undefined;
+    share.mockImplementationOnce(() => new Promise<void>((r) => (resolve = r)));
+    await exportOne();
+    fireEvent.click(screen.getByRole("button", { name: "Share Clip" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share Clip" }));
+    expect(share).toHaveBeenCalledTimes(1);
+    await act(async () => resolve());
+  });
+
+  it("without file sharing, Share Clip is off with a clear fallback, and Save MP4 still works", async () => {
+    setShareApi({ share: undefined, canShare: undefined });
+    await exportOne();
+    expect(screen.getByRole("button", { name: "Share Clip" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/can't share files directly\. Tap Save MP4/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save MP4" }));
+    expect(anchorClicks).toHaveLength(1);
+    expect(anchorClicks[0]).toMatch(/^01 Conor point-\d+\.mp4$/);
+    expect(screen.getByText(/MP4 saved/)).toBeTruthy();
+  });
+
+  it("a browser that shares links but not files gets the same fallback", async () => {
+    canShare.mockImplementation((data?: ShareData) => !data?.files);
+    await exportOne();
+    expect(screen.getByRole("button", { name: "Share Clip" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/can't share this video file directly/)).toBeTruthy();
+  });
+
+  it("closing the panel releases the exported clip", async () => {
+    await exportOne();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("button", { name: "Share Clip" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Export" })).toBeNull();
   });
 });
 

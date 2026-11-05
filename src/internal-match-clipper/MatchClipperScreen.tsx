@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { downloadClipBlob, shareClipBlob } from "../features/shared/mediaClipExport";
+import { downloadClipBlob } from "../features/shared/mediaClipExport";
+import { CLIP_MP4_MIME, makeClipFile, shareClipFile, shareOutcomeMessage, shareSupport, type ShareOutcome } from "./clip-share";
 import {
   ClipExportError,
   exportClip as defaultExportClip,
@@ -46,7 +47,6 @@ import {
 } from "./diagnostics";
 import { clipFilename, safeFilename } from "./clip-files";
 
-const MP4_MIME = "video/mp4;codecs=avc1.42E01E,mp4a.40.2";
 /** Batches estimated above this get an explicit "export anyway" step (ZIPs are built in memory). */
 const LARGE_BATCH_BYTES = 300 * 1024 * 1024;
 
@@ -58,7 +58,8 @@ export interface ClipperEngine {
 const DEFAULT_ENGINE: ClipperEngine = { probe: defaultProbeSource, exportClip: defaultExportClip };
 
 type ClipResult =
-  | { id: string; status: "done"; clip: ExportedClip; filename: string }
+  /** `file` wraps the exported blob once (no copy) and is reused for every Share/Save tap. */
+  | { id: string; status: "done"; clip: ExportedClip; filename: string; file: File }
   | { id: string; status: "failed"; message: string; error: ClipExportError | null }
   | { id: string; status: "skipped"; reason?: string };
 
@@ -121,6 +122,9 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   const [readChecks, setReadChecks] = useState<ReadCheck[] | null>(null);
   const [environment, setEnvironment] = useState<EnvironmentInfo | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  /** Outcome of the last Share Clip / Save MP4 tap for the finished export. */
+  const [handoff, setHandoff] = useState<{ tone: "ok" | "warn" | "bad"; text: string } | null>(null);
+  const [sharing, setSharing] = useState(false);
   /** Playback position to return to after reselecting the same video. */
   const resumeAt = useRef<number | null>(null);
 
@@ -228,7 +232,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
       setSelected(new Set());
       setEditingId(null);
     }
-    setJob(null);
+    setJob(null); // changing or reselecting the video releases any exported clips
+    setHandoff(null);
     setMismatch(null);
     setAudioContradiction(false);
     setLastError(null);
@@ -485,6 +490,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     setLargeBatchConfirm(false);
     const wake = await requestWakeLock();
     const results: ClipResult[] = [];
+    // Starting a new export releases the previous one's clips (the old job is replaced).
+    setHandoff(null);
     setJob({ kind, ids: ordered.map((c) => c.id), index: 0, progress: 0, results: [], state: "running" });
     /** Set once the phone refuses to read the video: later clips would fail the same way. */
     let fileLost = false;
@@ -513,7 +520,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
             },
           });
           const position = project.clips.findIndex((c) => c.id === clip.id);
-          results.push({ id: clip.id, status: "done", clip: out, filename: clipFilename(position, clip) });
+          const filename = clipFilename(position, clip);
+          results.push({ id: clip.id, status: "done", clip: out, filename, file: makeClipFile(out.blob, filename) });
         } catch (err) {
           if (err instanceof ClipExportError && err.code === "canceled") {
             results.push({ id: clip.id, status: "skipped" });
@@ -575,6 +583,32 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   };
 
   const filenamePrefix = (r: Extract<ClipResult, { status: "done" }>) => r.filename.replace(/\.mp4$/, "");
+
+  /** Called straight from the tap — nothing is awaited before navigator.share, so it counts as a user gesture. */
+  const onShareClip = (r: Extract<ClipResult, { status: "done" }>) => {
+    if (sharing) return;
+    setSharing(true);
+    setHandoff(null);
+    void shareClipFile(r.file)
+      .then((outcome: ShareOutcome) =>
+        setHandoff({
+          tone: outcome.status === "shared" ? "ok" : outcome.status === "cancelled" ? "warn" : "bad",
+          text: shareOutcomeMessage(outcome),
+        }),
+      )
+      .finally(() => setSharing(false));
+  };
+
+  const onSaveMp4 = (r: Extract<ClipResult, { status: "done" }>) => {
+    downloadClipBlob(r.clip.blob, CLIP_MP4_MIME, filenamePrefix(r));
+    setHandoff({ tone: "ok", text: "MP4 saved — look in your Downloads folder." });
+  };
+
+  const closeJob = () => {
+    // Drops the exported clips: nothing else holds them, so the memory is released.
+    setJob(null);
+    setHandoff(null);
+  };
 
   const diagnosticsReport = () =>
     buildReport({ file, probe, readChecks, environment, playback: file ? readPlayback(videoRef.current) : null, lastError });
@@ -872,22 +906,31 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                   })}
                 </ul>
                 <div className="mc-row">
-                  {job.kind === "single" && doneResults[0] && (
-                    <>
-                      <button
-                        type="button"
-                        className="mc-primary"
-                        onClick={() =>
-                          void shareClipBlob({ blob: doneResults[0]!.clip.blob, requestedMimeType: MP4_MIME, filenamePrefix: filenamePrefix(doneResults[0]!), title: doneResults[0]!.filename })
-                        }
-                      >
-                        Share
-                      </button>
-                      <button type="button" className="mc-secondary" onClick={() => downloadClipBlob(doneResults[0]!.clip.blob, MP4_MIME, filenamePrefix(doneResults[0]!))}>
-                        Save to device
-                      </button>
-                    </>
-                  )}
+                  {job.kind === "single" && doneResults[0] && (() => {
+                    const r = doneResults[0];
+                    const support = shareSupport(r.file);
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          className="mc-primary mc-handoff"
+                          onClick={() => onShareClip(r)}
+                          disabled={!support.ok || sharing}
+                          aria-describedby={support.ok ? undefined : "mc-share-unavailable"}
+                        >
+                          Share Clip
+                        </button>
+                        <button type="button" className="mc-secondary mc-handoff" onClick={() => onSaveMp4(r)}>
+                          Save MP4
+                        </button>
+                        {!support.ok && (
+                          <p id="mc-share-unavailable" className="mc-muted mc-full">
+                            {shareOutcomeMessage({ status: "unsupported", reason: support.reason })}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                   {job.kind === "batch" && doneResults.length > 0 && (
                     <button type="button" className="mc-primary" onClick={() => void saveZip()}>
                       Save ZIP ({doneResults.length} clip{doneResults.length === 1 ? "" : "s"})
@@ -903,8 +946,14 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                       Copy diagnostics
                     </button>
                   )}
-                  <button type="button" className="mc-ghost" onClick={() => setJob(null)}>Close</button>
+                  <button type="button" className="mc-ghost" onClick={closeJob}>Close</button>
                 </div>
+                {handoff && (
+                  <p className={`mc-handoff-status mc-handoff-${handoff.tone}`} role="status">{handoff.text}</p>
+                )}
+                {job.kind === "single" && doneResults[0] && (
+                  <p className="mc-muted">This clip stays ready here until you close this panel or export another.</p>
+                )}
                 {copyStatus && <p className="mc-muted" role="status">{copyStatus}</p>}
               </>
             )}
@@ -1144,6 +1193,12 @@ const CSS = `
 .mc-result-list { margin: 0; padding-left: 18px; font-size: 13px; display: grid; gap: 2px; max-height: 30dvh; overflow: auto; }
 .mc-result-failed { color: #fca5a5; }
 .mc-result-skipped { color: var(--mc-muted); }
+.mc-handoff { flex: 1 1 140px; min-height: 52px; font-size: 16px; }
+.mc-full { flex-basis: 100%; }
+.mc-handoff-status { margin: 0; font-size: 13.5px; }
+.mc-handoff-ok { color: var(--mc-primary); }
+.mc-handoff-warn { color: var(--mc-warn); }
+.mc-handoff-bad { color: #fca5a5; }
 .mc-result-detail { display: block; color: var(--mc-muted); font-size: 11.5px; word-break: break-word; }
 .mc-diag summary { cursor: pointer; font-weight: 700; }
 .mc-pre { margin: 0; max-height: 40dvh; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 11px; line-height: 1.35; background: #03100B; border: 1px solid var(--mc-border); border-radius: 8px; padding: 8px; user-select: text; }
