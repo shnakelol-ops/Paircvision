@@ -7,6 +7,7 @@ import { MATCH_CLIPPER_STORAGE_KEY, loadClipperStore } from "./clip-storage";
 
 const OK_PROBE: SourceProbe = {
   duration: 4620, width: 854, height: 480, videoCodec: "avc", audioCodec: "aac", hasAudio: true, blocker: null,
+  scan: null, readFailure: null,
 };
 
 let mediaTime = 0;
@@ -262,7 +263,9 @@ describe("Match Clipper — export", () => {
     });
     render(<MatchClipperScreen engine={eng} />);
     await openMatch();
-    await waitFor(() => expect(screen.getByText(/Clips would be silent, so export is turned off/)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getAllByRole("alert").some((a) => /Clips would be silent, so export is turned off/.test(a.textContent ?? ""))).toBe(true),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
     fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "01:00 A" } });
     fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
@@ -281,6 +284,101 @@ describe("Match Clipper — export", () => {
       fireEvent.click(screen.getByRole("button", { name: "Export A" }));
     });
     expect(eng.exportClip).toHaveBeenCalledWith(expect.any(File), expect.anything(), expect.objectContaining({ allowSilentSource: true }));
+  });
+});
+
+describe("Match Clipper — Android field test R1 regressions", () => {
+  async function withClips(eng: ClipperEngine, list = "01:00 A\n02:00 B\n03:00 C") {
+    render(<MatchClipperScreen engine={eng} />);
+    const video = await openMatch();
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: list } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    return video;
+  }
+
+  it("+10s moves forward, works while playing, and clamps to the end of the video", async () => {
+    render(<MatchClipperScreen engine={engine()} />);
+    const video = await openMatch();
+    at(100, video);
+    fireEvent.click(screen.getByRole("button", { name: "Forward 10 seconds" }));
+    expect(mediaTime).toBe(110);
+    Object.defineProperty(HTMLMediaElement.prototype, "paused", { configurable: true, get: () => false });
+    fireEvent.click(screen.getByRole("button", { name: "Forward 10 seconds" }));
+    expect(mediaTime).toBe(120);
+    at(4615, video);
+    fireEvent.click(screen.getByRole("button", { name: "Forward 10 seconds" }));
+    expect(mediaTime).toBe(4620);
+    fireEvent.click(screen.getByRole("button", { name: "Rewind 10 seconds" }));
+    expect(mediaTime).toBe(4610);
+  });
+
+  it("when the phone stops reading the video mid-batch: names the cause, stops the batch, offers Reselect, and leaves saved clips untouched", async () => {
+    const readError = new ClipExportError(
+      "file_unreadable",
+      "The phone stopped letting PáircVision read the match video (NotReadableError at 0 KB). Your clips are safe — reselect the video and export again.",
+      { stage: "tracks", detail: "NotReadableError: The requested file could not be read [bytes 0-16, retried]" },
+    );
+    const eng = engine({ exportClip: vi.fn(async () => Promise.reject(readError)) });
+    await withClips(eng);
+    const before = window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY);
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Export 3 selected as ZIP" }));
+    });
+    const region = await screen.findByRole("region", { name: "Export" });
+    await waitFor(() => expect(within(region).getByText("0 of 3 clips ready")).toBeTruthy());
+    expect(eng.exportClip).toHaveBeenCalledTimes(1); // B and C aren't attempted against an unreadable file
+    expect(within(region).getByText(/A — failed: The phone stopped letting PáircVision read the match video \(NotReadableError/)).toBeTruthy();
+    expect(within(region).getByText(/file_unreadable at tracks · NotReadableError/)).toBeTruthy();
+    expect(within(region).getAllByText(/not exported — reselect the video first/)).toHaveLength(2);
+    expect(within(region).getByRole("button", { name: "Reselect video" })).toBeTruthy();
+    expect(within(region).getByRole("button", { name: "Copy diagnostics" })).toBeTruthy();
+    expect(window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY)).toBe(before);
+    expect(screen.getByTestId("diagnostics-report").textContent).toMatch(/file_unreadable at tracks[\s\S]*raw: NotReadableError/);
+  });
+
+  it("reselecting the same video keeps the clips, selection and playback position", async () => {
+    const video = await withClips(engine());
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    at(1529, video);
+    await openMatch();
+    expect(screen.getByText(/Video reselected — your clips and position are kept/)).toBeTruthy();
+    expect(mediaTime).toBe(1529);
+    expect(screen.getByText("Clips (3)")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export 3 selected as ZIP" })).toBeTruthy();
+  });
+
+  it("turns export off if playback decodes audio that the export check said wasn't there", async () => {
+    const eng = engine({ probe: vi.fn(async () => ({ ...OK_PROBE, hasAudio: false, audioCodec: null })) });
+    const video = await withClips(eng, "01:00 A");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export A" }).hasAttribute("disabled")).toBe(false));
+    Object.defineProperty(video, "webkitAudioDecodedByteCount", { configurable: true, get: () => 4096 });
+    at(5, video);
+    expect(screen.getByRole("button", { name: "Export A" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("diagnostics-report").textContent).toMatch(/audioDecodedBytes=4096/);
+  });
+
+  it("copies a diagnostics report with the file check and structure scan", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const eng = engine({
+      probe: vi.fn(async () => ({
+        ...OK_PROBE,
+        scan: {
+          brands: ["isom"], topLevel: [{ type: "moov", offset: 0, size: 10 }], moov: { offset: 0, size: 10 }, fragmented: false, error: null,
+          tracks: [{ id: 1, handler: "vide", sampleEntry: "avc1", objectType: null, channels: null, sampleRate: null, sampleCount: 10, timescale: 1, durationSeconds: 10, enabled: true }],
+        },
+      })),
+    });
+    render(<MatchClipperScreen engine={eng} />);
+    await openMatch();
+    await waitFor(() => expect(screen.getByTestId("diagnostics-report").textContent).toMatch(/track 1: vide avc1/));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy diagnostics" }));
+    });
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("final.mp4 — 451000000 bytes"));
+    expect(screen.getByText(/Diagnostics copied/)).toBeTruthy();
   });
 });
 

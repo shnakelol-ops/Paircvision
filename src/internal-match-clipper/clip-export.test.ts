@@ -27,6 +27,9 @@ const state = vi.hoisted(() => ({
   disposed: 0,
   canceledOutputs: 0,
   finalized: 0,
+  readFailsAt: null as number | null,
+  decodeError: null as Error | null,
+  parseError: null as Error | null,
 }));
 
 vi.mock("mediabunny", () => {
@@ -47,15 +50,31 @@ vi.mock("mediabunny", () => {
       this.blob = blob;
     }
   }
+  class StreamSource {
+    opts: { read: (s: number, e: number) => Promise<Uint8Array>; getSize: () => number };
+    constructor(opts: { read: (s: number, e: number) => Promise<Uint8Array>; getSize: () => number }) {
+      this.opts = opts;
+    }
+  }
   class Input {
     isOutput: boolean;
-    constructor(opts: { source: BlobSource }) {
-      this.isOutput = opts.source.blob.type === "video/mp4";
+    source: BlobSource | StreamSource;
+    constructor(opts: { source: BlobSource | StreamSource }) {
+      // The source match is read through our StreamSource; only the exported clip uses BlobSource.
+      this.source = opts.source;
+      this.isOutput = opts.source instanceof BlobSource;
+    }
+    private async touch() {
+      if (state.readFailsAt !== null && this.source instanceof StreamSource) {
+        await this.source.opts.read(state.readFailsAt, state.readFailsAt + 16);
+      }
+      if (state.parseError) throw state.parseError;
     }
     private tracks(): FakeTrackSpec[] {
       return this.isOutput ? state.outputTracks.map((k) => ({ kind: k, codec: k === "video" ? "avc" : "aac" })) : state.sourceTracks;
     }
     async getPrimaryVideoTrack() {
+      if (!this.isOutput) await this.touch();
       const t = this.tracks().find((x) => x.kind === "video");
       return t ? makeTrack(t) : null;
     }
@@ -108,6 +127,7 @@ vi.mock("mediabunny", () => {
     async *samples(start: number, end: number) {
       const frames = state.videoFrames.filter((f) => f.ts + f.dur > start && f.ts < end);
       for (let i = 0; i < frames.length; i++) {
+        if (state.decodeError) throw state.decodeError;
         await state.onVideoFrame?.(i);
         const f = frames[i]!;
         yield {
@@ -143,6 +163,7 @@ vi.mock("mediabunny", () => {
     MP4: {},
     QUALITY_HIGH: {},
     BlobSource,
+    StreamSource,
     Input,
     Output,
     BufferTarget,
@@ -158,9 +179,28 @@ vi.mock("mediabunny", () => {
   };
 });
 
+import { readFileSync } from "node:fs";
 import { ClipExportError, exportClip, probeSource } from "./clip-export";
 
-const source = new Blob([new Uint8Array(10)], { type: "" });
+const fixture = (name: string) => new Blob([readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url))]);
+// Real MP4 bytes, so the independent structure scan sees real tracks; Mediabunny itself is scripted above.
+const source = fixture("aac-faststart.mp4");
+const silentSource = fixture("no-audio.mp4");
+
+/** A File-like Blob whose reads fail from `failFrom` on, like an Android file that stops being readable. */
+function failingBlob(inner: Blob, failFrom: number, name = "NotReadableError"): Blob {
+  const wrap = (b: Blob, offset: number): Blob =>
+    ({
+      size: b.size,
+      type: b.type,
+      slice: (s = 0, e = b.size) => wrap(b.slice(s, e), offset + s),
+      arrayBuffer: async () => {
+        if (offset >= failFrom) throw new DOMException("The requested file could not be read", name);
+        return b.arrayBuffer();
+      },
+    }) as unknown as Blob;
+  return wrap(inner, 0);
+}
 
 async function expectCode(p: Promise<unknown>, code: string) {
   const err = await p.then(
@@ -192,6 +232,9 @@ beforeEach(() => {
     disposed: 0,
     canceledOutputs: 0,
     finalized: 0,
+    readFailsAt: null,
+    decodeError: null,
+    parseError: null,
   });
   vi.stubGlobal("VideoEncoder", function VideoEncoder() {});
   vi.stubGlobal("VideoDecoder", function VideoDecoder() {});
@@ -292,16 +335,58 @@ describe("exportClip", () => {
     expect(state.disposed).toBe(0);
   });
 
-  it("wraps encoder errors as failed exports and discards the output", async () => {
-    state.videoAddError = new Error("encoder crashed");
-    await expectCode(exportClip(source, { start: 0, end: 6 }), "failed");
+  it("reports encoder errors as encode failures with the raw error, and discards the output", async () => {
+    state.videoAddError = new DOMException("Encoding error.", "EncodingError");
+    const err = await exportClip(source, { start: 0, end: 6 }).catch((e: ClipExportError) => e);
+    expect(err).toMatchObject({ code: "encode_failed", stage: "encode", detail: "EncodingError: Encoding error." });
     expect(state.canceledOutputs).toBe(1);
     expect(state.finalized).toBe(0);
   });
 
+  it("reports decoder errors as decode failures", async () => {
+    state.decodeError = new DOMException("Decoding error.", "OperationError");
+    const err = await exportClip(source, { start: 0, end: 6 }).catch((e: ClipExportError) => e);
+    expect(err).toMatchObject({ code: "decode_failed", stage: "decode", detail: "OperationError: Decoding error." });
+  });
+
+  it("reports a file that stops being readable as file_unreadable — not as a format problem", async () => {
+    state.readFailsAt = 5000; // e.g. Android revokes access after the file check passed
+    const err = (await exportClip(failingBlob(source, 5000), { start: 0, end: 6 }).catch((e: ClipExportError) => e)) as ClipExportError;
+    expect(err).toMatchObject({ code: "file_unreadable", stage: "tracks" });
+    expect(err.message).toMatch(/NotReadableError/);
+    expect(err.message).toMatch(/reselect the video/);
+    expect(err.readFailure).toMatchObject({ name: "NotReadableError", start: 5000 });
+  });
+
+  it("reports an unparseable container as format_unreadable with the engine's message", async () => {
+    state.parseError = new Error("Invalid box size");
+    const err = await exportClip(source, { start: 0, end: 6 }).catch((e: ClipExportError) => e);
+    expect(err).toMatchObject({ code: "format_unreadable", stage: "tracks", detail: "Error: Invalid box size" });
+  });
+
+  it("retries a single transient read failure", async () => {
+    let failures = 1;
+    const flaky = {
+      size: source.size,
+      type: "",
+      slice: (s?: number, e?: number) => {
+        const part = source.slice(s, e);
+        return {
+          size: part.size,
+          arrayBuffer: async () => {
+            if (failures-- > 0) throw new DOMException("busy", "NotReadableError");
+            return part.arrayBuffer();
+          },
+        };
+      },
+    } as unknown as Blob;
+    state.readFailsAt = 0;
+    await expect(exportClip(flaky, { start: 0, end: 6 })).resolves.toMatchObject({ hasAudio: true });
+  });
+
   it("rejects an empty output and an invalid range", async () => {
     state.outputBytes = 0;
-    await expectCode(exportClip(source, { start: 0, end: 6 }), "failed");
+    await expectCode(exportClip(source, { start: 0, end: 6 }), "write_failed");
     await expectCode(exportClip(source, { start: 6, end: 6 }), "invalid_range");
   });
 
@@ -327,9 +412,32 @@ describe("probeSource", () => {
     expect((await probeSource(source)).blocker?.code).toBe("unsupported_video");
   });
 
-  it("flags a source with no audio track", async () => {
+  it("reports no audio only when the file's own structure also lists no audio track", async () => {
     state.sourceTracks = [{ kind: "video", codec: "avc" }];
-    expect(await probeSource(source)).toMatchObject({ hasAudio: false, blocker: null });
+    const p = await probeSource(silentSource);
+    expect(p).toMatchObject({ hasAudio: false, blocker: null });
+    expect(p.scan?.tracks.map((t) => t.handler)).toEqual(["vide"]);
+  });
+
+  it("never reports 'no audio' when the file declares an audio track the engine didn't expose", async () => {
+    state.sourceTracks = [{ kind: "video", codec: "avc" }]; // engine sees no audio…
+    const p = await probeSource(source); // …but the file has a soun/mp4a track
+    expect(p.hasAudio).toBe(true);
+    expect(p.blocker?.code).toBe("unsupported_audio");
+    expect(p.blocker?.message).toMatch(/audio track \(mp4a\)/);
+  });
+
+  it("refuses when audio can't be confirmed either way", async () => {
+    state.sourceTracks = [{ kind: "video", codec: "avc" }];
+    const p = await probeSource(new Blob([new Uint8Array(64)]));
+    expect(p.blocker?.code).toBe("audio_unverified");
+  });
+
+  it("reports a file the phone won't read as a file-access problem, with the browser's own error", async () => {
+    const p = await probeSource(failingBlob(source, 0));
+    expect(p.blocker?.code).toBe("file_unreadable");
+    expect(p.blocker?.detail).toMatch(/^NotReadableError/);
+    expect(p.readFailure).toMatchObject({ name: "NotReadableError", start: 0, retried: true });
   });
 
   it("blocks when WebCodecs is missing", async () => {

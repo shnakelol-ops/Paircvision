@@ -36,6 +36,14 @@ import {
   type TimestampParseError,
 } from "./timestamp-parse";
 import { buildZip } from "./zip-store";
+import {
+  buildReport,
+  collectEnvironment,
+  readPlayback,
+  runReadChecks,
+  type EnvironmentInfo,
+  type ReadCheck,
+} from "./diagnostics";
 import { clipFilename, safeFilename } from "./clip-files";
 
 const MP4_MIME = "video/mp4;codecs=avc1.42E01E,mp4a.40.2";
@@ -51,8 +59,8 @@ const DEFAULT_ENGINE: ClipperEngine = { probe: defaultProbeSource, exportClip: d
 
 type ClipResult =
   | { id: string; status: "done"; clip: ExportedClip; filename: string }
-  | { id: string; status: "failed"; message: string }
-  | { id: string; status: "skipped" };
+  | { id: string; status: "failed"; message: string; error: ClipExportError | null }
+  | { id: string; status: "skipped"; reason?: string };
 
 interface ExportJob {
   kind: "single" | "batch";
@@ -107,6 +115,14 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   const [probing, setProbing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [mismatch, setMismatch] = useState<string | null>(null);
+  /** Playback decoded audio although the file check found none — never export silently then. */
+  const [audioContradiction, setAudioContradiction] = useState(false);
+  const [lastError, setLastError] = useState<ClipExportError | null>(null);
+  const [readChecks, setReadChecks] = useState<ReadCheck[] | null>(null);
+  const [environment, setEnvironment] = useState<EnvironmentInfo | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  /** Playback position to return to after reselecting the same video. */
+  const resumeAt = useRef<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,7 +156,10 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     ? "Select the match video to export."
     : probing
       ? "Checking the video…"
-      : probe?.blocker?.message ?? null;
+      : probe?.blocker?.message ??
+        (audioContradiction
+          ? "Playback found sound in this video, but the export check found no audio track. Export is turned off rather than making silent clips — copy the diagnostics below and send them to the team."
+          : null);
   const busy = job?.state === "running";
 
   // ── Persistence ────────────────────────────────────────────────────────
@@ -189,6 +208,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     if (!picked || busy) return;
     const key = sourceKey(picked.name, picked.size);
     const existing = storeRef.current.projects.find((p) => p.key === key) ?? null;
+    const sameVideo = file !== null && sourceKey(file.name, file.size) === key;
+    resumeAt.current = sameVideo ? (videoRef.current?.currentTime ?? currentTime) : null;
     const next: ClipProject = existing ?? {
       key,
       fileName: picked.name,
@@ -200,15 +221,22 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     setFile(picked);
     setVideoUrl(URL.createObjectURL(picked));
     setDuration(null);
-    setCurrentTime(0);
-    setMarkStart(null);
-    setMarkEnd(null);
-    setSelected(new Set());
-    setEditingId(null);
+    setCurrentTime(sameVideo ? currentTime : 0);
+    if (!sameVideo) {
+      setMarkStart(null);
+      setMarkEnd(null);
+      setSelected(new Set());
+      setEditingId(null);
+    }
     setJob(null);
     setMismatch(null);
+    setAudioContradiction(false);
+    setLastError(null);
+    setReadChecks(null);
     setProject(next);
-    if (existing) {
+    if (sameVideo) {
+      setNotice("Video reselected — your clips and position are kept.");
+    } else if (existing) {
       setNotice(existing.clips.length ? `Restored ${existing.clips.length} saved clip${existing.clips.length === 1 ? "" : "s"} for this match.` : null);
       persistStore({ ...storeRef.current, lastProjectKey: key });
     } else {
@@ -218,11 +246,20 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     setProbing(true);
     engine
       .probe(picked)
-      .then((p) => setProbe(p))
-      .catch(() =>
+      .then((p) => {
+        setProbe(p);
+        // Diagnostics only — never blocks or changes the workflow.
+        void runReadChecks(picked).then(setReadChecks).catch(() => undefined);
+        void collectEnvironment(p.width, p.height).then(setEnvironment).catch(() => undefined);
+      })
+      .catch((err: unknown) =>
         setProbe({
-          duration: 0, width: 0, height: 0, videoCodec: null, audioCodec: null, hasAudio: false,
-          blocker: { code: "failed", message: "This video couldn't be checked for export. Playback may still work." },
+          duration: 0, width: 0, height: 0, videoCodec: null, audioCodec: null, hasAudio: false, scan: null, readFailure: null,
+          blocker: {
+            code: "failed",
+            message: "This video couldn't be checked for export. Playback may still work.",
+            detail: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+          },
         }),
       )
       .finally(() => setProbing(false));
@@ -232,6 +269,11 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     const v = videoRef.current;
     if (!v || !Number.isFinite(v.duration) || !project) return;
     setDuration(v.duration);
+    if (resumeAt.current !== null) {
+      v.currentTime = Math.min(resumeAt.current, v.duration);
+      setCurrentTime(v.currentTime);
+      resumeAt.current = null;
+    }
     if (project.duration !== null && Math.abs(project.duration - v.duration) > 1) {
       setMismatch(
         `This file is ${formatClock(v.duration)} long but the saved clips were made on a ${formatClock(project.duration)} video. Check that it's the same match.`,
@@ -250,6 +292,9 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     const v = videoRef.current;
     if (!v) return;
     setCurrentTime(v.currentTime);
+    if (probe && !probe.hasAudio && !audioContradiction && (readPlayback(v).audioDecodedBytes ?? 0) > 0) {
+      setAudioContradiction(true);
+    }
     if (previewEnd.current !== null && v.currentTime >= previewEnd.current) {
       v.pause();
       previewEnd.current = null;
@@ -260,7 +305,9 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     const v = videoRef.current;
     if (!v) return;
     previewEnd.current = null;
-    v.currentTime = Math.max(0, Math.min(duration ?? v.duration ?? 0, v.currentTime + delta));
+    // Clamp to [0, duration]; works the same whether playing or paused.
+    const max = duration ?? (Number.isFinite(v.duration) ? v.duration : v.currentTime);
+    v.currentTime = Math.max(0, Math.min(max, v.currentTime + delta));
     setCurrentTime(v.currentTime);
   };
 
@@ -439,11 +486,17 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     const wake = await requestWakeLock();
     const results: ClipResult[] = [];
     setJob({ kind, ids: ordered.map((c) => c.id), index: 0, progress: 0, results: [], state: "running" });
+    /** Set once the phone refuses to read the video: later clips would fail the same way. */
+    let fileLost = false;
     try {
       for (let i = 0; i < ordered.length; i++) {
         const clip = ordered[i]!;
         if (controller.signal.aborted) {
           results.push({ id: clip.id, status: "skipped" });
+          continue;
+        }
+        if (fileLost) {
+          results.push({ id: clip.id, status: "skipped", reason: "not exported — reselect the video first" });
           continue;
         }
         setJob((j) => (j ? { ...j, index: i, progress: 0, results: [...results] } : j));
@@ -465,7 +518,10 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
           if (err instanceof ClipExportError && err.code === "canceled") {
             results.push({ id: clip.id, status: "skipped" });
           } else {
-            results.push({ id: clip.id, status: "failed", message: err instanceof Error ? err.message : "Export failed." });
+            const error = err instanceof ClipExportError ? err : null;
+            if (error) setLastError(error);
+            if (error?.code === "file_unreadable") fileLost = true;
+            results.push({ id: clip.id, status: "failed", message: err instanceof Error ? err.message : "Export failed.", error });
           }
         }
       }
@@ -519,6 +575,19 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   };
 
   const filenamePrefix = (r: Extract<ClipResult, { status: "done" }>) => r.filename.replace(/\.mp4$/, "");
+
+  const diagnosticsReport = () =>
+    buildReport({ file, probe, readChecks, environment, playback: file ? readPlayback(videoRef.current) : null, lastError });
+
+  const copyDiagnostics = async () => {
+    const text = diagnosticsReport();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus("Diagnostics copied — paste them into a message to the team.");
+    } catch {
+      setCopyStatus("Couldn't copy automatically — open Diagnostics, press and hold the text, then Select all and Copy.");
+    }
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────
   const savedOther = store.projects.filter((p) => p.key !== project?.key && p.clips.length > 0);
@@ -598,9 +667,12 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
               <span>{formatPrecise(currentTime)}</span>
               <span className="mc-muted">{duration ? formatClock(duration) : "--:--"}</span>
             </div>
+            <div className="mc-transport">
+              <button type="button" className="mc-ctl mc-ctl-seek" onClick={() => seekBy(-10)} aria-label="Rewind 10 seconds">−10s</button>
+              <button type="button" className="mc-ctl mc-ctl-seek" onClick={togglePlay}>{playing ? "Pause" : "Play"}</button>
+              <button type="button" className="mc-ctl mc-ctl-seek" onClick={() => seekBy(10)} aria-label="Forward 10 seconds">+10s</button>
+            </div>
             <div className="mc-controls">
-              <button type="button" className="mc-ctl" onClick={() => seekBy(-10)} aria-label="Rewind 10 seconds">−10s</button>
-              <button type="button" className="mc-ctl" onClick={togglePlay}>{playing ? "Pause" : "Play"}</button>
               <button type="button" className="mc-ctl mc-ctl-mark" onClick={onMarkStart}>Mark Start</button>
               <button type="button" className="mc-ctl mc-ctl-mark" onClick={onMarkEnd}>Mark End</button>
               <button type="button" className="mc-ctl mc-ctl-save" onClick={onSaveClip}>Save Clip</button>
@@ -640,7 +712,12 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
 
         {file && probe?.blocker && <p className="mc-banner mc-banner-bad" role="alert">{probe.blocker.message}</p>}
         {file && probe && !probe.blocker && !probe.hasAudio && (
-          <p className="mc-banner mc-banner-warn" role="alert">This match video has no audio track, so exported clips will have no sound.</p>
+          <p className="mc-banner mc-banner-warn" role="alert">
+            This match video has no audio track, so exported clips will have no sound.
+            {probe.scan && probe.scan.tracks.length > 0 && (
+              <> The file only lists: {probe.scan.tracks.map((t) => `${t.handler ?? "?"} (${t.sampleEntry ?? "?"})`).join(", ")}.</>
+            )}
+          </p>
         )}
         {mismatch && <p className="mc-banner mc-banner-warn" role="alert">{mismatch}</p>}
         {notice && <p className="mc-banner" role="status">{notice}</p>}
@@ -783,7 +860,13 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                           ? `${formatBytes(r.clip.blob.size)}, ${r.clip.duration.toFixed(1)}s`
                           : r.status === "failed"
                             ? `failed: ${r.message}`
-                            : "not exported"}
+                            : r.reason ?? "not exported"}
+                        {r.status === "failed" && r.error?.stage && (
+                          <span className="mc-result-detail">
+                            {r.error.code} at {r.error.stage}
+                            {r.error.detail ? ` · ${r.error.detail}` : ""}
+                          </span>
+                        )}
                       </li>
                     );
                   })}
@@ -810,11 +893,34 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                       Save ZIP ({doneResults.length} clip{doneResults.length === 1 ? "" : "s"})
                     </button>
                   )}
+                  {job.results.some((r) => r.status === "failed" && r.error?.code === "file_unreadable") && (
+                    <button type="button" className="mc-primary" onClick={() => fileInputRef.current?.click()}>
+                      Reselect video
+                    </button>
+                  )}
+                  {job.results.some((r) => r.status === "failed") && (
+                    <button type="button" className="mc-secondary" onClick={() => void copyDiagnostics()}>
+                      Copy diagnostics
+                    </button>
+                  )}
                   <button type="button" className="mc-ghost" onClick={() => setJob(null)}>Close</button>
                 </div>
+                {copyStatus && <p className="mc-muted" role="status">{copyStatus}</p>}
               </>
             )}
           </div>
+        )}
+
+        {file && (
+          <details className="mc-card mc-diag">
+            <summary>Diagnostics</summary>
+            <p className="mc-muted">Read-only checks on this phone. Contains file names, sizes and errors — no video.</p>
+            <pre className="mc-pre" data-testid="diagnostics-report">{diagnosticsReport()}</pre>
+            <div className="mc-row">
+              <button type="button" className="mc-secondary" onClick={() => void copyDiagnostics()}>Copy diagnostics</button>
+              {copyStatus && <span className="mc-muted" role="status">{copyStatus}</span>}
+            </div>
+          </details>
         )}
 
         {!file && savedOther.length > 0 && (
@@ -1000,7 +1106,9 @@ const CSS = `
 @media (min-height: 1000px) { .mc-player { position: sticky; top: 0; z-index: 2; } }
 .mc-video { width: 100%; max-height: 30dvh; background: #000; border-radius: 10px; display: block; }
 .mc-time { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 700; padding: 0 4px; }
-.mc-controls { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.mc-transport { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; }
+.mc-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.mc-ctl-seek { min-height: 52px; font-size: 17px; font-weight: 800; }
 .mc-ctl { min-height: 48px; border-radius: 10px; border: 1px solid var(--mc-border); background: #10291B; color: var(--mc-text); font-size: 13px; font-weight: 750; padding: 0 2px; line-height: 1.1; }
 .mc-ctl:active { background: #1B4A30; }
 .mc-ctl-mark { border-color: #22d3ee; }
@@ -1036,6 +1144,9 @@ const CSS = `
 .mc-result-list { margin: 0; padding-left: 18px; font-size: 13px; display: grid; gap: 2px; max-height: 30dvh; overflow: auto; }
 .mc-result-failed { color: #fca5a5; }
 .mc-result-skipped { color: var(--mc-muted); }
+.mc-result-detail { display: block; color: var(--mc-muted); font-size: 11.5px; word-break: break-word; }
+.mc-diag summary { cursor: pointer; font-weight: 700; }
+.mc-pre { margin: 0; max-height: 40dvh; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 11px; line-height: 1.35; background: #03100B; border: 1px solid var(--mc-border); border-radius: 8px; padding: 8px; user-select: text; }
 .mc-saved { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
 .mc-saved li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 `;
