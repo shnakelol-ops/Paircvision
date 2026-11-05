@@ -580,6 +580,34 @@ describe("Match Clipper — R3 commentary audio", () => {
   });
 });
 
+describe("Match Clipper — final review regressions", () => {
+  it("a slow file check for a previously picked video never overrides the current video's check", async () => {
+    let resolveA: (p: SourceProbe) => void = () => undefined;
+    const probe = vi.fn((f: Blob) =>
+      (f as File).name === "first.mp4"
+        ? new Promise<SourceProbe>((r) => (resolveA = r))
+        : Promise.resolve({ ...OK_PROBE, audioTracks: [], audioTrackId: 7 }),
+    );
+    const eng = engine({ probe });
+    render(<MatchClipperScreen engine={eng} />);
+    fireEvent.change(screen.getByLabelText("Match video file"), { target: { files: [matchFile("first.mp4", 100)] } });
+    const video = await openMatch(matchFile("second.mp4", 200));
+    await act(async () =>
+      resolveA({ ...OK_PROBE, audioTrackId: 3, blocker: { code: "unsupported_video", message: "BLOCKER FROM FIRST VIDEO" } }),
+    );
+    expect(screen.queryByText("BLOCKER FROM FIRST VIDEO")).toBeNull();
+    at(1, video);
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "00:10 A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Export A" }));
+    });
+    // Exported with the second video's own audio-track choice, not the first video's.
+    expect(eng.exportClip).toHaveBeenCalledWith(expect.any(File), expect.anything(), expect.objectContaining({ audioTrackId: 7 }));
+  });
+});
+
 describe("Match Clipper — storage safety", () => {
   it("leaves an unreadable saved list untouched and says so", async () => {
     window.localStorage.setItem(MATCH_CLIPPER_STORAGE_KEY, "{broken");

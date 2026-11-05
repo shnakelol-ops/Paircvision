@@ -57,7 +57,7 @@ export function shareSupport(file: File, nav: ShareNavigator = navigator): Share
  */
 export async function shareClipFile(file: File, nav: ShareNavigator = navigator): Promise<ShareOutcome> {
   const support = shareSupport(file, nav);
-  if (!support.ok) return { status: "unsupported", reason: support.reason };
+  if ("reason" in support) return { status: "unsupported", reason: support.reason };
   try {
     await nav.share!({ files: [file] });
     return { status: "shared" };

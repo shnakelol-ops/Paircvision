@@ -131,6 +131,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   const [audioTrackId, setAudioTrackId] = useState<number | null>(null);
   /** Playback position to return to after reselecting the same video. */
   const resumeAt = useRef<number | null>(null);
+  /** Increments on every video pick; async checks for an older pick are ignored. */
+  const pickGeneration = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -252,17 +254,24 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
       setNotice(null);
     }
     setProbe(null);
+    setAudioTrackId(null);
     setProbing(true);
+    // Only the latest pick may apply its check: a slower check of a previously
+    // picked video must never set this video's audio track or blockers.
+    const pick = ++pickGeneration.current;
+    const current = () => pick === pickGeneration.current;
     engine
       .probe(picked)
       .then((p) => {
+        if (!current()) return;
         setProbe(p);
         setAudioTrackId(p.audioTrackId);
         // Diagnostics only — never blocks or changes the workflow.
-        void runReadChecks(picked).then(setReadChecks).catch(() => undefined);
-        void collectEnvironment(p.width, p.height).then(setEnvironment).catch(() => undefined);
+        void runReadChecks(picked).then((r) => current() && setReadChecks(r)).catch(() => undefined);
+        void collectEnvironment(p.width, p.height).then((e) => current() && setEnvironment(e)).catch(() => undefined);
       })
-      .catch((err: unknown) =>
+      .catch((err: unknown) => {
+        if (!current()) return;
         setProbe({
           duration: 0, width: 0, height: 0, videoCodec: null, audioCodec: null, hasAudio: false, scan: null, readFailure: null,
           audioTracks: [], audioTrackId: null,
@@ -271,9 +280,11 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
             message: "This video couldn't be checked for export. Playback may still work.",
             detail: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
           },
-        }),
-      )
-      .finally(() => setProbing(false));
+        });
+      })
+      .finally(() => {
+        if (current()) setProbing(false);
+      });
   };
 
   const onLoadedMetadata = () => {
@@ -651,7 +662,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
             Saved clip lists on this device couldn't be read. They have been left untouched, and new clips won't be saved until this is fixed.
           </p>
         )}
-        {!saveResult.ok && !storeUnreadable && (
+        {"reason" in saveResult && !storeUnreadable && (
           <p className="mc-banner mc-banner-bad" role="alert">
             {saveResult.reason === "full"
               ? "This device's storage is full — the latest clip changes weren't saved."
@@ -959,7 +970,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                         <button type="button" className="mc-secondary mc-handoff" onClick={() => onSaveMp4(r)}>
                           Save MP4
                         </button>
-                        {!support.ok && (
+                        {"reason" in support && (
                           <p id="mc-share-unavailable" className="mc-muted mc-full">
                             {shareOutcomeMessage({ status: "unsupported", reason: support.reason })}
                           </p>
