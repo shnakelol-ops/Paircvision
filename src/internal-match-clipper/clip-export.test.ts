@@ -469,12 +469,12 @@ describe("commentary audio (R3)", () => {
     expect(state.finalized).toBe(1); // written, then rejected — never handed to the coach
   });
 
-  it("names the other track when the chosen one is silent in this clip", async () => {
+  it("a natural pause on the chosen track exports fine, with a note when another track has sound", async () => {
     state.sourceTracks = twoTracks(0, 0.1);
     state.outputAmplitude = 0;
-    const err = (await exportClip(source, { start: 10, end: 16 }, { audioTrackId: 2 }).catch((e: unknown) => e)) as ClipExportError;
-    expect(err.code).toBe("silent_audio_track");
-    expect(err.message).toMatch(/Audio track 1 is silent in this clip, but audio track 2 has sound/);
+    const out = await exportClip(source, { start: 10, end: 16 }, { audioTrackId: 2 });
+    expect(out.audioLevelDb).toBe(-120);
+    expect(out.audioNote).toMatch(/Audio track 1 is quiet in this clip; audio track 2 has sound here/);
   });
 
   it("allows a genuinely quiet moment (every track silent there) and reports it", async () => {
@@ -482,6 +482,7 @@ describe("commentary audio (R3)", () => {
     state.outputAmplitude = 0;
     const out = await exportClip(source, { start: 10, end: 16 }, { audioTrackId: 2 });
     expect(out.audioLevelDb).toBe(-120);
+    expect(out.audioNote).toBeNull();
   });
 
   it("refuses an audio track id the file doesn't have", async () => {

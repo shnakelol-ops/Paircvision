@@ -928,6 +928,9 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                           : r.status === "failed"
                             ? `failed: ${r.message}`
                             : r.reason ?? "not exported"}
+                        {r.status === "done" && r.clip.audioNote && (
+                          <span className="mc-result-detail">{r.clip.audioNote}</span>
+                        )}
                         {r.status === "failed" && r.error?.stage && (
                           <span className="mc-result-detail">
                             {r.error.code} at {r.error.stage}

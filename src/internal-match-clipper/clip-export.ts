@@ -30,8 +30,6 @@ export type ClipExportErrorCode =
   | "decode_failed"
   | "encode_failed"
   | "audio_failed"
-  /** The chosen audio track is silent in this clip while another track has sound. */
-  | "silent_audio_track"
   | "write_failed"
   | "verification_failed"
   | "failed";
@@ -98,6 +96,11 @@ export interface ExportedClip {
   hasAudio: boolean;
   /** Measured RMS level of the exported clip's audio (dBFS); null if not measurable here. */
   audioLevelDb: number | null;
+  /**
+   * Informational, never a failure: the clip is quiet on the chosen track (a
+   * natural pause) while another track has sound here.
+   */
+  audioNote: string | null;
   elapsedMs: number;
 }
 
@@ -517,6 +520,7 @@ export async function exportClip(
     stage = "verify";
     const check = await verifyExport(mb, blob, span, audio !== null);
     let audioLevelDb: number | null = null;
+    let audioNote: string | null = null;
     if (audio) {
       audioLevelDb = check.audioLevelDb;
       if (audioLevelDb !== null && !isAudible(audioLevelDb)) {
@@ -529,22 +533,21 @@ export async function exportClip(
             { stage },
           );
         }
+        // The chosen track is quiet here too: a natural pause, so the clip is valid.
+        // If another track has sound at this moment, say so — but never fail.
         const index = allAudio.findIndex((t) => t.id === audio!.id) + 1;
         for (const [i, other] of allAudio.entries()) {
           if (other.id === audio.id) continue;
           const otherDb = (await measureTrackLevel(mb, other, [[start, end]])).db;
           if (isAudible(otherDb)) {
-            throw new ClipExportError(
-              "silent_audio_track",
-              `Audio track ${index} is silent in this clip, but audio track ${i + 1} has sound (${otherDb!.toFixed(0)} dB). Choose track ${i + 1} under "Clip audio" and export again.`,
-              { stage },
-            );
+            audioNote = `Audio track ${index} is quiet in this clip; audio track ${i + 1} has sound here (${otherDb!.toFixed(0)} dB). Choose it under "Clip audio" if you want that sound.`;
+            break;
           }
         }
       }
     }
     onProgress?.(1);
-    return { blob, duration: check.duration, hasAudio: audio !== null, audioLevelDb, elapsedMs: performance.now() - t0 };
+    return { blob, duration: check.duration, hasAudio: audio !== null, audioLevelDb, audioNote, elapsedMs: performance.now() - t0 };
   } catch (err) {
     if (userCanceled || signal?.aborted) throw new ClipExportError("canceled", "Export cancelled.");
     throw classifyError(err, stage, stats);

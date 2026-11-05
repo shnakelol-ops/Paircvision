@@ -47,6 +47,7 @@ function engine(over: Partial<ClipperEngine> = {}): ClipperEngine {
       duration: range.end - range.start,
       hasAudio: true,
       audioLevelDb: -20,
+      audioNote: null,
       elapsedMs: 5,
     })),
     ...over,
@@ -215,7 +216,7 @@ describe("Match Clipper — export", () => {
     const eng = engine({
       exportClip: vi.fn(async (_f, range) => {
         if (range.start === 119) throw new ClipExportError("failed", "Export failed: decoder crashed");
-        return { blob: new Blob([new Uint8Array(10)], { type: "video/mp4" }), duration: 6, hasAudio: true, audioLevelDb: -20, elapsedMs: 1 };
+        return { blob: new Blob([new Uint8Array(10)], { type: "video/mp4" }), duration: 6, hasAudio: true, audioLevelDb: -20, audioNote: null, elapsedMs: 1 };
       }),
     });
     render(<MatchClipperScreen engine={eng} />);
@@ -411,7 +412,7 @@ describe("Match Clipper — R2 direct sharing", () => {
   });
 
   async function exportOne(eng = engine({
-    exportClip: vi.fn(async () => ({ blob: new Blob([exportedBytes], { type: "video/mp4" }), duration: 6, hasAudio: true, audioLevelDb: -20, elapsedMs: 5 })),
+    exportClip: vi.fn(async () => ({ blob: new Blob([exportedBytes], { type: "video/mp4" }), duration: 6, hasAudio: true, audioLevelDb: -20, audioNote: null, elapsedMs: 5 })),
   })) {
     render(<MatchClipperScreen engine={eng} />);
     await openMatch();
@@ -548,6 +549,26 @@ describe("Match Clipper — R3 commentary audio", () => {
     });
     expect(eng.exportClip).toHaveBeenLastCalledWith(expect.any(File), expect.anything(), expect.objectContaining({ audioTrackId: 2 }));
     expect(screen.getByTestId("diagnostics-report").textContent).toMatch(/audio track 2 \(id 3\): aac 2ch 48000Hz .*level=-19\.0 dB/);
+  });
+
+  it("a natural pause exports successfully and shows the note instead of failing", async () => {
+    const note = "Audio track 1 is quiet in this clip; audio track 2 has sound here (-40 dB). Choose it under \"Clip audio\" if you want that sound.";
+    const eng = engine({
+      exportClip: vi.fn(async () => ({ blob: new Blob([new Uint8Array(10)], { type: "video/mp4" }), duration: 3, hasAudio: true, audioLevelDb: -120, audioNote: note, elapsedMs: 1 })),
+    });
+    render(<MatchClipperScreen engine={eng} />);
+    await openMatch();
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "00:09 Pause" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Export Pause" }));
+    });
+    const region = await screen.findByRole("region", { name: "Export" });
+    expect(within(region).getByText("1 of 1 clip ready")).toBeTruthy();
+    expect(within(region).getByText(/quiet moment/)).toBeTruthy();
+    expect(within(region).getByText(/audio track 2 has sound here/)).toBeTruthy();
+    expect(within(region).getByRole("button", { name: "Share Clip" })).toBeTruthy();
   });
 
   it("a single audio track shows no chooser; a match silent at every check point gets a warning", async () => {
