@@ -50,7 +50,12 @@
 ## Automated tests
 
 - **Full suite:** 3076 / 3076 tests pass (main: 3059; +17). No new type errors. Build passes.
-- **Flake:** one gate run reported 2 failing tests that could not be identified. 7 further full runs, including a clean gate, all passed 3076 / 3076.
+- **Intermittent failure, unidentified:**
+  - One gate run on `f48e6d5` reported "1 failed file, 2 failed tests | 3074 passed".
+  - The gate script kept only the summary lines, so neither the file nor the tests can be named, and the cause (timing, isolation, environment or a defect) **cannot be determined from the evidence**.
+  - The same commit then passed 14 consecutive full runs (7 on 4 Nov; 7 in final verification, the later 6 with full JSON output kept: `scratchpad/flaky-run-*.json`).
+  - It was a single run among concurrent local work (scripted browser runs and dev servers earlier in the session). That is a possible factor, not a demonstrated cause.
+  - The repository has no CI that runs the suite, so there is no second source of evidence.
 
 ## 636-event regression (unchanged authoritative ledgers)
 
@@ -70,6 +75,49 @@
 The reference keeps #8 attached to the restart once it is marked lost. Capture never does that: a restart won by the opposition is tagged with an opposition player. The new rule therefore requires clearing #8.
 
 **This is the intended effect of the approved rule. The independent expectations are not edited.**
+
+### What B-176 represents
+
+| | Original capture | Corrected by Review Edit |
+|---|---|---|
+| Stored event | KICKOUT_WON, team side FOR, restart owner FOR, tag CLEAN, player FOR #8 | KICKOUT_CONCEDED, team side FOR, restart owner FOR, tag CLEAN, no player, squad = away |
+| Meaning | Our kickout, won by us, caught by our #8 | Our kickout, won by the opposition, no player recorded |
+| Who owns the restart | Ballyboden (FOR) | Ballyboden (FOR), unchanged |
+| Who won it | Ballyboden | Na Fianna |
+
+- **Should #8 keep won/lost credit?** No.
+  - #8 was recorded as the Ballyboden player who caught the ball. Once the restart is recorded as won by Na Fianna, nothing in the record says #8 was involved.
+  - The ledger's 8–1 assumes #8 "lost" this restart. That is a fact the original capture never recorded.
+  - On main, the edit silently kept #8, which is how the app produced 8–1 before. That is the F-08 risk 4 this PR closes.
+
+### Equivalence with live capture
+
+An equivalent live capture is: Restart tile **Clean**, our kickout (OUR K/O, the default), **Na Fianna's row** tapped, and the same pitch spot.
+- The picker would then offer only Na Fianna players, so #8 could not be attached.
+- Scratch test `persistence/b176-equivalence.test.ts.txt` builds that event with the real `adaptProTaggerAction` and swaps it into the final match B in place of the edited one.
+- **Result: identical** on every surface compared:
+  - stored fields (except `squadId`);
+  - `buildMatchReport` for FULL, 1H and 2H (restarts, chains, possessions, turnovers, placed balls, score ledger);
+  - `buildInfluenceAnalysis`;
+  - `collectPlayerStats` (FOR #8 = KO 8 won, 0 lost in both).
+- **Only field difference:** the edited event stores `squadId` = Na Fianna's squad; capture with no player stores none.
+  - No statistics code reads `squadId`. It is used only to pick the roster when a number is typed in a later Review edit.
+  - With it, a number later typed for this restart resolves against Na Fianna, the winning side, exactly as the live picker would.
+  - Without it, the legacy fallback would use Ballyboden's roster.
+
+### Proposed corrected fixture (not applied)
+
+The ledger expectation is invalid for this edit, not the app. Proposed separately, for owner approval:
+- In fixture B, the B-176 review op becomes "kickout won → lost, **player cleared**", and the reference's `applyReviewOp` drops the player when it flips a restart winner.
+- The expected FOR #8 KO W-L becomes **8–0** in both the Player Breakdown and Player Contributions rows.
+- No other expectation changes (verified: those 2 are the only differing checks).
+
+## Final verification (head `f48e6d5`)
+
+- **Tests and build:** 3076 / 3076. Type check: the same 14 pre-existing error files as main. Build passes.
+- **Regression:** A and C 0 changed; B as above; legacy 28/28; cross-page 27/27.
+- **Vercel:** Ready (status "success", deployment completed) on `f48e6d5`.
+- **Review comments:** none.
 
 ## Remaining risks
 

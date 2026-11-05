@@ -1,0 +1,44 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { adaptProTaggerAction } from "../pro-tagger/pro-tagger-adapter";
+import { buildMatchReport } from "../stats/reporting/matchReport";
+import { selectChainAnalysis } from "../stats/chains/chain-selectors";
+import { buildInfluenceAnalysis } from "../stats/players/influence";
+import { collectPlayerStats } from "../stats/reviewPdfExport";
+
+const raw = JSON.parse(readFileSync("/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-re-b/B/state/final.json", "utf8"));
+const m = Array.isArray(raw) ? raw.reduce((a: any, x: any) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a) : raw;
+const ID = "4aa03a03-2cc1-4ab1-bbbc-9a1532328931";
+
+describe("B-176: Review-edited event vs the same event entered by live capture", () => {
+  const edited = m.events.find((e: any) => e.id === ID);
+  const cap = adaptProTaggerAction({ familyId: "RESTART" as any, tileLabel: "Clean", teamSide: "OPP", restartOwner: "FOR",
+    nx: edited.nx, ny: edited.ny, half: edited.half, matchClockSeconds: edited.matchClockSeconds });
+  const captured = { ...edited, ...cap, id: ID, createdAt: edited.createdAt, matchTimeSeconds: edited.matchTimeSeconds, halfSegment: edited.halfSegment } as any;
+  delete captured.squadId;
+  const evA = m.events, evB = m.events.map((e: any) => e.id === ID ? captured : e);
+  const strip = (r: any) => JSON.parse(JSON.stringify(r, (k, v) => (k === "squadId" ? undefined : v)));
+
+  it("event fields", () => {
+    const { squadId, ...rest } = edited;
+    console.log("EDITED  ", JSON.stringify(edited));
+    console.log("CAPTURED", JSON.stringify(captured));
+    expect(rest).toEqual(captured);
+    expect(squadId).toBe(m.awaySquad.id);
+  });
+  for (const scope of ["FULL", "1H", "2H"] as const) it("match report " + scope, () => {
+    const a = buildMatchReport({ events: evA, homeTeam: m.homeTeamName, awayTeam: m.awayTeamName, scope } as any);
+    const b = buildMatchReport({ events: evB, homeTeam: m.homeTeamName, awayTeam: m.awayTeamName, scope } as any);
+    expect(strip(a)).toEqual(strip(b));
+  });
+  it("influence + player stats", () => {
+    const ia = buildInfluenceAnalysis(evA, selectChainAnalysis(evA), m.homeTeamName, m.awayTeamName, m.homeSquadLiveState, m.awaySquadLiveState);
+    const ib = buildInfluenceAnalysis(evB, selectChainAnalysis(evB), m.homeTeamName, m.awayTeamName, m.homeSquadLiveState, m.awaySquadLiveState);
+    expect(ia).toEqual(ib);
+    const pa = collectPlayerStats(evA, m.homeSquadLiveState, m.awaySquadLiveState);
+    const pb = collectPlayerStats(evB, m.homeSquadLiveState, m.awaySquadLiveState);
+    expect(pa).toEqual(pb);
+    const eight = pa.find((p: any) => p.teamSide === "FOR" && p.number === 8);
+    console.log("FOR #8", JSON.stringify(eight));
+  });
+});
