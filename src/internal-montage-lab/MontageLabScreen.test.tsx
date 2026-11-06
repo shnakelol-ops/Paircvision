@@ -52,9 +52,12 @@ function deps(over: Partial<LabDeps> = {}): Partial<LabDeps> {
     clearLabFiles: vi.fn(async () => []),
     removeLabFile: vi.fn(async () => undefined),
     runReadChecks: vi.fn(async () => []),
+    probeAccess: vi.fn(async () => OK_PROBES),
     ...over,
   };
 }
+
+const OK_PROBES = (["start", "middle", "end"] as const).map((where, i) => ({ where, offset: i, ok: true, ms: 1, error: null }));
 
 function matchFile() {
   const f = new File([new Uint8Array(4)], "final.mp4", { type: "video/mp4" });
@@ -227,5 +230,97 @@ describe("Montage Lab screen", () => {
     await waitFor(() => expect(screen.getByTestId("lab-report").textContent).toMatch(/cleanup: removed 1 lab file\(s\), 120\.0 MB/));
     expect(window.localStorage.getItem(V1_KEY)).toBe(V1_STORE);
     expect(window.localStorage.getItem(LAB_STORAGE_KEY)).toContain("interrupted");
+  });
+});
+
+describe("Montage Lab — source-read diagnostics", () => {
+  const FAILURE = { name: "NotReadableError", message: "The requested file could not be read", start: 100663296, end: 100728832, retried: true };
+  const forensics = (over: Record<string, unknown> = {}) => ({
+    failure: { ...FAILURE, t: 61000 }, msSincePick: 60300, msSinceFirstRead: 60000, msSinceLastGoodRead: 120, lastGoodRead: null,
+    readsBefore: 800, bytesBefore: 100e6, slowReadsBefore: 0, maxReadMs: 90, recentReads: [], snapshotChanged: false, jsHeapMB: 80,
+    rounds: (["immediately", "after 2 s", "after 10 s"] as const).map((label, i) => ({
+      label, atMsAfterFailure: [0, 2000, 10000][i]!, visibility: "visible", sizeNow: 451000000, lastModifiedNow: 1,
+      probes: (["start", "middle", "end", "failed range"] as const).map((where) => ({ where, offset: 0, ok: false, ms: 3, error: "NotReadableError: x" })),
+    })),
+    verdict: "permanent: whole file unreadable" as const,
+    ...over,
+  });
+  const failingMontage = () =>
+    vi.fn(async (_f: File, opts: { tracker?: { fail: (f: typeof FAILURE, ms: number) => void } }) => {
+      opts.tracker?.fail(FAILURE, 4);
+      return okResult({ ok: false, file: null, error: "NotReadableError: … (bytes 100663296–100728832)", errorName: "SourceReadError", verify: null, clipAudio: [] });
+    });
+
+  it("after a read failure: re-reads the file, records the evidence, and requires choosing the video again", async () => {
+    const runForensics = vi.fn(async () => forensics());
+    const d = deps({ runMontage: failingMontage() as unknown as LabDeps["runMontage"], runForensics: runForensics as unknown as LabDeps["runForensics"] });
+    await pickAndRun(d);
+    expect(await screen.findByTestId("stale-file")).toBeTruthy();
+    expect(screen.getByTestId("stale-file").textContent).toMatch(/can no longer read “final.mp4” \(NotReadableError at bytes 100663296–100728832 \(permanent: whole file unreadable\)\)/);
+    expect(runForensics).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("read-diag").textContent).toMatch(/Montage: NotReadableError at bytes 100663296–100728832 · 60\.3 s after picking the file.*immediately: start FAIL.*after 10 s: .*verdict: permanent: whole file unreadable · page events: no visibility/);
+    expect(screen.getByTestId("lab-report").textContent).toMatch(/read-failure: Montage: NotReadableError/);
+    expect((screen.getByRole("button", { name: "Build montage" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Read soak (no encoding)" }) as HTMLButtonElement).disabled).toBe(true);
+    // Choosing the video again clears it.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Match video for montage test"), { target: { files: [matchFile()] } });
+    });
+    await waitFor(() => expect(screen.queryByTestId("stale-file")).toBeNull());
+    expect((screen.getByRole("button", { name: "Build montage" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("a file that can't be read any more is caught before the next run starts", async () => {
+    const runMontage = vi.fn(async () => okResult());
+    const probeAccess = vi.fn(async () => OK_PROBES.map((p) => ({ ...p, ok: p.where !== "start", error: p.where === "start" ? "NotReadableError: x" : null })));
+    await pickAndRun(deps({ runMontage, probeAccess }));
+    expect(await screen.findByTestId("stale-file")).toBeTruthy();
+    expect(runMontage).not.toHaveBeenCalled();
+    expect(screen.getByTestId("lab-report").textContent).toMatch(/read-preflight: FAILED — Before building: start NotReadableError/);
+  });
+
+  it("read soak without encoding: passes and records reads, speed and page events", async () => {
+    const soakRead = vi.fn(async () => ({ elapsedMs: 180000, reads: 9000, bytes: 36e9, passes: 157, mbPerSecond: 200, cancelled: false, failure: null, failedAfterMs: null }));
+    const benchmarkEncode = vi.fn();
+    render(<MontageLabScreen deps={deps({ soakRead, benchmarkEncode })} />);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Match video for montage test"), { target: { files: [matchFile()] } });
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Read soak (no encoding)" }));
+    });
+    expect((await screen.findByTestId("read-diag")).textContent).toMatch(/read soak 3 min \(no encoding\): PASSED · 9000 reads, 36000 MB \(157 full passes, 200 MB\/s\)/);
+    expect(soakRead).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ durationMs: 180000 }));
+    expect(benchmarkEncode).not.toHaveBeenCalled();
+  });
+
+  it("read soak with encoding: runs synthetic 720p encodes alongside, stops them at the end, and a failure needs a fresh pick", async () => {
+    let soakSignalled = false;
+    const benchmarkEncode = vi.fn(async (_w: number, _h: number, _s: number, _a: HardwareAcceleration, signal?: AbortSignal) => {
+      await new Promise((r) => setTimeout(r, 5));
+      return { label: "720p", width: 1280, height: 720, acceleration: "no-preference" as const, frames: 900, seconds: 30, elapsedMs: 12000, realtimeFactor: signal?.aborted ? 0 : 2.5, fps: 75, outputBytes: 1, maxQueue: 3, error: null };
+    });
+    const soakRead = vi.fn(async (_f: File, tracker: { fail: (f: typeof FAILURE, ms: number) => void }) => {
+      await new Promise((r) => setTimeout(r, 30));
+      tracker.fail(FAILURE, 3);
+      soakSignalled = true;
+      return { elapsedMs: 61000, reads: 3000, bytes: 12e9, passes: 52, mbPerSecond: 196, cancelled: false, failure: { ...FAILURE, t: 1 }, failedAfterMs: 61000 };
+    });
+    const runForensics = vi.fn(async () => forensics({ verdict: "permanent: whole file unreadable" }));
+    render(<MontageLabScreen deps={deps({ soakRead: soakRead as unknown as LabDeps["soakRead"], benchmarkEncode, runForensics: runForensics as unknown as LabDeps["runForensics"] })} />);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Match video for montage test"), { target: { files: [matchFile()] } });
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Read soak + encoding" }));
+    });
+    await screen.findByTestId("stale-file");
+    expect(soakSignalled).toBe(true);
+    expect(benchmarkEncode).toHaveBeenCalled();
+    const calls = benchmarkEncode.mock.calls.length;
+    await new Promise((r) => setTimeout(r, 30));
+    expect(benchmarkEncode.mock.calls.length).toBe(calls); // encoding stopped with the soak
+    expect(screen.getByTestId("lab-report").textContent).toMatch(/read soak 3 min \+ 720p encoding: FAILED after 1 min 1 s · 3000 reads.*encoding: \d+ × 30 s rounds/);
+    expect(screen.getByTestId("lab-report").textContent).toMatch(/read-failure: read soak 3 min \+ 720p encoding: NotReadableError/);
   });
 });

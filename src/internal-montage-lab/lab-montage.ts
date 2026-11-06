@@ -12,6 +12,7 @@ import { loadEngine } from "../internal-match-clipper/clip-export";
 import { createFileSource, newReadStats } from "../internal-match-clipper/file-source";
 import { isAudible, measureTrackLevel } from "../internal-match-clipper/audio-level";
 import { FrameSequencer } from "./frame-sequencer";
+import { createTrackedFileSource, type ReadTracker } from "./lab-readdiag";
 import { estimateOutputBytes, type OutputProfile } from "./lab-plan";
 import { labDir, removeLabFile, storageEstimate } from "./lab-storage";
 
@@ -29,6 +30,8 @@ export interface MontageRunOptions {
   audioTrackId: number | null;
   signal?: AbortSignal;
   onProgress?: (fraction: number, detail: string) => void;
+  /** Diagnostics: records every source read and reports the first failure. */
+  tracker?: ReadTracker;
 }
 
 export interface MontageVerify {
@@ -110,7 +113,9 @@ export interface MontageRunResult {
 export async function runMontage(file: File, opts: MontageRunOptions): Promise<MontageRunResult> {
   const t0 = performance.now();
   const mb: Mediabunny = await loadEngine();
-  const input = new mb.Input({ source: createFileSource(mb, file, newReadStats()), formats: mb.ALL_FORMATS });
+  const stats = newReadStats();
+  const source = opts.tracker ? createTrackedFileSource(mb, file, stats, opts.tracker) : createFileSource(mb, file, stats);
+  const input = new mb.Input({ source, formats: mb.ALL_FORMATS });
   const est0 = await storageEstimate();
   const result: MontageRunResult = {
     ok: false, cancelled: false, error: null, errorName: null, output: opts.output, outputName: null, file: null, bytes: 0,

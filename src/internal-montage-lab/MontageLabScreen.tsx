@@ -21,6 +21,10 @@ import { PROFILES, WORKLOADS, estimateOutputBytes, formatMB, planRanges, rangesF
 import { buildLabReport } from "./lab-report";
 import { addRecord, clearRecords, endRun, loadRecords, startRun, takeInterruptedRun, updateRun, type LabRecord, type RunMarker } from "./lab-session";
 import { clearLabFiles, listLabFiles, removeLabFile, writeProbe, type LabFile, type WriteProbeResult } from "./lab-storage";
+import {
+  LifecycleLog, ReadTracker, forensicsSummary, lifecycleSummary, probeAccess, runForensics, snapshotFile, soakRead,
+  type FileSnapshot, type Forensics, type SoakResult,
+} from "./lab-readdiag";
 
 export interface LabDeps {
   detectEnvironment: typeof detectEnvironment;
@@ -33,11 +37,14 @@ export interface LabDeps {
   clearLabFiles: typeof clearLabFiles;
   removeLabFile: typeof removeLabFile;
   runReadChecks: (file: Blob) => Promise<ReadCheck[]>;
+  probeAccess: typeof probeAccess;
+  soakRead: typeof soakRead;
+  runForensics: typeof runForensics;
 }
 
 const REAL_DEPS: LabDeps = {
   detectEnvironment, probeSource: v1ProbeSource, runMontage: realRunMontage, writeProbe, encoderSupport,
-  benchmarkEncode, listLabFiles, clearLabFiles, removeLabFile, runReadChecks,
+  benchmarkEncode, listLabFiles, clearLabFiles, removeLabFile, runReadChecks, probeAccess, soakRead, runForensics,
 };
 
 type WakeSentinel = { released: boolean; release: () => Promise<void>; addEventListener: (t: "release", f: () => void) => void };
@@ -87,6 +94,13 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
   const [useSaved, setUseSaved] = useState(false);
   const [montage, setMontage] = useState<(MontageRunResult & { memory: MemorySummary; wake: string[]; hiddenMs: number }) | null>(null);
   const [handoff, setHandoff] = useState<string | null>(null);
+  // ── Source-read diagnostics ──
+  const [snap, setSnap] = useState<FileSnapshot | null>(null);
+  /** Set once the browser can no longer read the picked file: it must be chosen again. */
+  const [stale, setStale] = useState<string | null>(null);
+  const [inputKey, setInputKey] = useState(0);
+  const [diagText, setDiagText] = useState<string | null>(null);
+  const [soakMinutes, setSoakMinutes] = useState(3);
 
   const refreshRecords = () => setRecords(loadRecords());
   const record = (kind: string, summary: string, data: unknown) => {
@@ -232,7 +246,11 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
     setProbe(null);
     setReadChecks(null);
     setMontage(null);
+    setStale(null);
+    setDiagText(null);
     if (!f) return;
+    const s = snapshotFile(f);
+    setSnap(s);
     setBusy("checking video");
     try {
       const pr = await deps.probeSource(f);
@@ -245,8 +263,8 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
         "source",
         `${f.name} · ${formatMB(f.size)} · ${(pr.duration / 60).toFixed(1)} min · ${pr.width}×${pr.height} · video ${pr.videoCodec} · audio tracks: ${
           pr.audioTracks.map((t) => `#${t.index} ${t.codec} ${t.channels}ch ${t.levelDb === null ? "n/a" : `${t.levelDb.toFixed(0)} dB`}${t.id === pr.audioTrackId ? " (used)" : ""}`).join(", ") || "none"
-        } · read checks ${checks.length - failedReads.length}/${checks.length} ok${failedReads.length ? ` — FAILED: ${failedReads.map((c) => `${c.method}@${c.where} ${c.error}`).join("; ")}` : ""}${pr.blocker ? ` · blocker: ${pr.blocker.code} ${pr.blocker.detail ?? ""}` : ""}`,
-        { name: f.name, size: f.size, type: f.type, lastModified: f.lastModified, probe: { ...pr, scan: pr.scan ? { brands: pr.scan.brands, tracks: pr.scan.tracks, error: pr.scan.error } : null }, readChecks: checks },
+        } · read checks ${checks.length - failedReads.length}/${checks.length} ok${failedReads.length ? ` — FAILED: ${failedReads.map((c) => `${c.method}@${c.where} ${c.error}`).join("; ")}` : ""} · type "${f.type}" · lastModified ${new Date(f.lastModified).toISOString()}${s.looksLikeAndroidMediaId ? " · name looks like an Android Photo Picker media id" : ""}${pr.blocker ? ` · blocker: ${pr.blocker.code} ${pr.blocker.detail ?? ""}` : ""}`,
+        { name: f.name, size: f.size, type: f.type, lastModified: f.lastModified, snapshot: s, probe: { ...pr, scan: pr.scan ? { brands: pr.scan.brands, tracks: pr.scan.tracks, error: pr.scan.error } : null }, readChecks: checks },
       );
     } finally {
       setBusy(null);
@@ -262,9 +280,46 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
   const ranges = !probe ? [] : useSaved ? savedClips : planRanges(probe.duration, workload.clips, workload.seconds);
   const plannedSeconds = ranges.reduce((n, [s, e]) => n + (e - s), 0);
 
+  /** The browser can't read this File any more: say so and require a fresh pick. */
+  const markStale = (reason: string) => {
+    setStale(reason);
+    setInputKey((k) => k + 1); // a fresh <input>, so picking the same file again fires
+  };
+  /** Quick start/middle/end read before a long run; a stale file is caught here. */
+  const preflight = async (f: File, what: string): Promise<boolean> => {
+    const probes = await deps.probeAccess(f);
+    const bad = probes.filter((p) => !p.ok);
+    if (!bad.length) return true;
+    const reason = `Before ${what}: ${bad.map((p) => `${p.where} ${p.error}`).join("; ")}`;
+    record("read-preflight", `FAILED — ${reason}`, { probes, snapshot: snap });
+    markStale(reason);
+    return false;
+  };
+  /** After a read failure: re-read immediately, at 2 s and at 10 s, then record everything. */
+  const afterReadFailure = async (what: string, forensics: Promise<Forensics>, lifecycle: string, extra: unknown) => {
+    setBusy("checking file access (10 s)");
+    const f = await forensics;
+    const text = `${what}: ${forensicsSummary(f)} · page events: ${lifecycle}`;
+    setDiagText(text);
+    record("read-failure", text, { forensics: f, snapshot: snap, extra });
+    markStale(`${f.failure.name} at bytes ${f.failure.start}–${f.failure.end} (${f.verdict})`);
+  };
+  const newTracker = (f: File) => {
+    const tracker = new ReadTracker();
+    const ref: { forensics: Promise<Forensics> | null } = { forensics: null };
+    tracker.onFirstFailure = () => {
+      ref.forensics = deps.runForensics(f, snap ?? snapshotFile(f), tracker);
+    };
+    return { tracker, ref };
+  };
+
   const runMontage = async () => {
-    if (!file || !probe || !ranges.length) return;
+    if (!file || !probe || !ranges.length || stale) return;
     const label = `montage ${ranges.length} clips / ${Math.round(plannedSeconds)} s / ${profile.id} / ${output}`;
+    if (!(await preflight(file, "building"))) return;
+    const { tracker, ref } = newTracker(file);
+    const lifecycle = new LifecycleLog();
+    lifecycle.start();
     const signal = await begin("montage", label);
     const mon = new MemoryMonitor();
     mon.start();
@@ -273,26 +328,84 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
     setHandoff(null);
     try {
       const r = await deps.runMontage(file, {
-        ranges, profile, output, audioTrackId: probe.audioTrackId, signal,
+        ranges, profile, output, audioTrackId: probe.audioTrackId, signal, tracker,
         onProgress: (fraction, detail) => {
           setProgress({ fraction, detail, startedAt: started });
           updateRun(fraction, detail);
         },
       });
       const memory = mon.stop();
+      const events = lifecycle.stop();
       const full = { ...r, memory, wake: [...wakeLog.current], hiddenMs: Math.round(hiddenMs.current) };
       setMontage(full);
+      const reads = { reads: tracker.reads, bytes: tracker.bytes, slowReads: tracker.slowReads, maxReadMs: Math.round(tracker.maxReadMs) };
       const v = r.verify;
       record(
         "montage",
         r.ok
           ? `${label}: built in ${fmtTime(r.elapsedMs)} (${r.realtimeFactor}× real time), ${formatMB(r.bytes)} (est. ${formatMB(r.estimateBytes)}), ${r.width}×${r.height} · joins on keyframe ${v?.joinsOnKeyframe}/${v?.joins} · audio gaps ${v?.audioGaps} · timestamps increasing ${v?.videoTimestampsStrictlyIncreasing} · sound ${v?.audioLevelDb?.toFixed(0) ?? "?"} dB · per-clip audio: ${audioSummary(r)} · audio ${r.audioTrack?.codecString ?? "?"} ${r.audioTrack?.sampleRate ?? "?"} Hz ${r.audioTrack?.channels ?? "?"}ch · stalls>500ms ${memory.stallsOver500ms} · hidden ${Math.round(hiddenMs.current / 1000)} s`
-          : `${label}: ${r.cancelled ? "CANCELLED" : `FAILED (${r.errorName}: ${r.error})`} after ${fmtTime(r.elapsedMs)}`,
-        { ...full, file: undefined },
+          : `${label}: ${r.cancelled ? "CANCELLED" : `FAILED (${r.errorName}: ${r.error})`} after ${fmtTime(r.elapsedMs)} · ${reads.reads} source reads, ${formatMB(reads.bytes)} · page events: ${lifecycleSummary(events)} · JS heap peak ${memory.jsHeapPeakMB ?? "n/a"} MB (indicative)`,
+        { ...full, file: undefined, reads, lifecycle: events },
       );
+      if (ref.forensics) await afterReadFailure("Montage", ref.forensics, lifecycleSummary(events), { label, reads, memory, wake: full.wake, hiddenMs: full.hiddenMs });
     } finally {
       await finish();
       setLeftovers(await deps.listLabFiles().catch(() => []));
+    }
+  };
+
+  // ── 4b. Read soak: the file only, no decoding; optionally with encoding running ──
+  const runSoak = async (withEncoding: boolean) => {
+    if (!file || stale) return;
+    const label = `read soak ${soakMinutes} min${withEncoding ? " + 720p encoding" : " (no encoding)"}`;
+    if (!(await preflight(file, "the soak"))) return;
+    const { tracker, ref } = newTracker(file);
+    const lifecycle = new LifecycleLog();
+    lifecycle.start();
+    const signal = await begin("read soak", label);
+    const mon = new MemoryMonitor();
+    mon.start();
+    const started = performance.now();
+    const durationMs = soakMinutes * 60000;
+    // Encoding load: synthetic frames only (no file reads), 30 s rounds until the soak ends.
+    const encAbort = new AbortController();
+    const enc = { rounds: 0, errors: [] as string[], realtime: [] as number[] };
+    const encLoop = withEncoding
+      ? (async () => {
+          while (!encAbort.signal.aborted && !signal.aborted) {
+            const b = await deps.benchmarkEncode(1280, 720, 30, "no-preference", encAbort.signal).catch((e: unknown) => ({ error: errName(e), realtimeFactor: 0 }));
+            if (encAbort.signal.aborted) break;
+            enc.rounds++;
+            if (b.error) {
+              enc.errors.push(b.error);
+              if (enc.errors.length > 3) break;
+            } else enc.realtime.push(b.realtimeFactor);
+          }
+        })()
+      : Promise.resolve();
+    let r: SoakResult | null = null;
+    try {
+      r = await deps.soakRead(file, tracker, {
+        durationMs, signal,
+        onProgress: (ms, bytes) => {
+          const detail = `${Math.round(ms / 1000)} s · ${formatMB(bytes)} read${withEncoding ? ` · encode rounds ${enc.rounds}` : ""}`;
+          setProgress({ fraction: Math.min(1, ms / durationMs), detail, startedAt: started });
+          updateRun(Math.min(1, ms / durationMs), detail);
+        },
+      });
+    } finally {
+      encAbort.abort();
+      await encLoop;
+      const memory = mon.stop();
+      const events = lifecycle.stop();
+      if (r) {
+        const encText = withEncoding ? ` · encoding: ${enc.rounds} × 30 s rounds${enc.realtime.length ? ` at ${Math.min(...enc.realtime)}–${Math.max(...enc.realtime)}× real time` : ""}${enc.errors.length ? `, errors: ${enc.errors.join("; ")}` : ""}` : "";
+        const text = `${label}: ${r.cancelled ? "CANCELLED" : r.failure ? `FAILED after ${fmtTime(r.failedAfterMs ?? 0)}` : "PASSED"} · ${r.reads} reads, ${formatMB(r.bytes)} (${r.passes} full passes, ${r.mbPerSecond} MB/s) · slowest read ${Math.round(tracker.maxReadMs)} ms${encText} · page events: ${lifecycleSummary(events)} · JS heap peak ${memory.jsHeapPeakMB ?? "n/a"} MB (indicative) · stalls>500ms ${memory.stallsOver500ms}`;
+        setDiagText(text);
+        record("read-soak", text, { ...r, withEncoding, enc, memory, lifecycle: events, wake: [...wakeLog.current], hiddenMs: Math.round(hiddenMs.current), snapshot: snap });
+      }
+      if (ref.forensics) await afterReadFailure(label, ref.forensics, lifecycleSummary(events), { soak: r, withEncoding });
+      await finish();
     }
   };
 
@@ -522,7 +635,7 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
           <h2 className="ml-h2">4. Montage test</h2>
           <label className="ml-label">
             Match video
-            <input type="file" accept="video/*" aria-label="Match video for montage test" disabled={!!busy} onChange={(e) => void onPick(e.target.files?.[0] ?? null)} />
+            <input key={inputKey} type="file" accept="video/*" aria-label="Match video for montage test" disabled={!!busy} onChange={(e) => void onPick(e.target.files?.[0] ?? null)} />
           </label>
           {probe && (
             <p className={`ml-muted${probe.blocker ? " ml-no" : ""}`}>
@@ -545,6 +658,14 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
             <p className="ml-no" role="alert">
               File read problems: {readChecks.filter((c) => !c.ok).map((c) => `${c.method} at ${c.where}: ${c.error}`).join("; ")}
             </p>
+          )}
+          {stale && (
+            <p className="ml-no" role="alert" data-testid="stale-file">
+              The browser can no longer read “{file?.name}” ({stale}). Choose the video again before the next test — retrying with the same selection would only repeat this failure.
+            </p>
+          )}
+          {snap?.looksLikeAndroidMediaId && (
+            <p className="ml-muted">“{snap.name}” is named like an Android Photo Picker item (a media id), so it was probably served by the phone's media provider, not opened from Files/Downloads.</p>
           )}
           <div className="ml-grid">
             <label className="ml-label">
@@ -579,9 +700,26 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
               {output === "memory" ? " — memory mode holds the whole file in RAM; it may crash the tab on long montages (that is a valid result)." : ""}
             </p>
           )}
-          <button type="button" className="ml-primary" disabled={!!busy || !probe || !!probe.blocker || !ranges.length} onClick={() => void runMontage()}>
+          <button type="button" className="ml-primary" disabled={!!busy || !probe || !!probe.blocker || !ranges.length || !!stale} onClick={() => void runMontage()}>
             Build montage
           </button>
+
+          <div className="ml-soak" aria-label="Source read soak">
+            <p className="ml-strong">Source read soak (diagnostic)</p>
+            <p className="ml-muted">Reads the selected video over and over with no decoding, to see whether reading alone loses access to the file. The second run adds a synthetic 720p encode (no extra file reads) to test memory and processor pressure.</p>
+            <div className="ml-row">
+              <label className="ml-label">
+                Duration
+                <select value={soakMinutes} onChange={(e) => setSoakMinutes(Number(e.target.value))} aria-label="Soak duration">
+                  <option value={3}>3 min</option>
+                  <option value={6}>6 min</option>
+                </select>
+              </label>
+              <button type="button" className="ml-secondary" disabled={!!busy || !file || !!stale} onClick={() => void runSoak(false)}>Read soak (no encoding)</button>
+              <button type="button" className="ml-secondary" disabled={!!busy || !file || !!stale} onClick={() => void runSoak(true)}>Read soak + encoding</button>
+            </div>
+          </div>
+          {diagText && <p className="ml-result" data-testid="read-diag">{diagText}</p>}
 
           {montage && (
             <div className="ml-result-box">
@@ -677,6 +815,7 @@ const CSS = `
 .ml-result { margin:0; font-size:13px; }
 .ml-result-box { border-top:1px solid var(--border); padding-top:10px; display:grid; gap:8px; }
 .ml-job { position:sticky; bottom:8px; z-index:3; border:1px solid var(--primary); background:#0A2216; border-radius:14px; padding:14px; display:grid; gap:8px; }
+.ml-soak { display:grid; gap:6px; border-top:1px solid #275C3B; padding-top:10px; }
 .ml-bar { height:8px; border-radius:4px; background:#10291B; overflow:hidden; }
 .ml-bar-fill { height:100%; background:var(--primary); transition:width 0.3s; }
 .ml-pre { margin:0; max-height:40dvh; overflow:auto; white-space:pre-wrap; word-break:break-word; font-size:11px; background:#03100B; border:1px solid var(--border); border-radius:8px; padding:8px; }
