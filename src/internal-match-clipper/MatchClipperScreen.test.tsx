@@ -14,6 +14,7 @@ const OK_PROBE: SourceProbe = {
 let mediaTime = 0;
 beforeEach(() => {
   window.localStorage.clear();
+  window.history.replaceState(null, "", "/internal/match-clipper");
   mediaTime = 0;
   vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:match"), revokeObjectURL: vi.fn() }));
   Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
@@ -605,6 +606,188 @@ describe("Match Clipper — final review regressions", () => {
     });
     // Exported with the second video's own audio-track choice, not the first video's.
     expect(eng.exportClip).toHaveBeenCalledWith(expect.any(File), expect.anything(), expect.objectContaining({ audioTrackId: 7 }));
+  });
+});
+
+describe("Match Clipper — Add to Montage (Montage V2)", () => {
+  const MONTAGE_KEY = "paircvision_internal_match_montage_v1";
+  async function withThree() {
+    render(<MatchClipperScreen engine={engine()} />);
+    await openMatch();
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "01:00 A\n02:00 B\n03:00 C" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+  }
+  const montages = () => JSON.parse(window.localStorage.getItem(MONTAGE_KEY) ?? '{"projects":[]}').projects as {
+    name: string; sourceKey: string; items: { clipId: string; name: string; start: number; end: number }[];
+  }[];
+
+  it("adds one saved clip to a new named montage as a copy; V1 data is not written", async () => {
+    await withThree();
+    const v1Before = window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY);
+    fireEvent.click(screen.getByRole("button", { name: "Add B to montage" }));
+    const sheet = screen.getByRole("dialog", { name: "Add to montage" });
+    fireEvent.change(within(sheet).getByLabelText("New montage name"), { target: { value: "Defensive shape" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Create montage and add" }));
+    expect(montages()).toMatchObject([{ name: "Defensive shape", sourceKey: "final.mp4::451000000", items: [{ name: "B", start: 119, end: 125 }] }]);
+    expect(screen.getByText("Added 1 clip to “Defensive shape”.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open in Montage" })).toBeTruthy();
+    expect(window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY)).toBe(v1Before);
+  });
+
+  it("adds the selected clips to an existing montage for the same video, skipping ones already in it", async () => {
+    await withThree();
+    fireEvent.click(screen.getByRole("button", { name: "Add A to montage" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Add to montage" })).getByRole("button", { name: "Create montage and add" }));
+    const v1Before = window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY);
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add 3 selected to montage" }));
+    const sheet = screen.getByRole("dialog", { name: "Add to montage" });
+    expect(within(sheet).getByText(/1 clip · 6s/)).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Add to Montage / }));
+    expect(montages()).toHaveLength(1);
+    expect(montages()[0]!.items.map((i) => i.name)).toEqual(["A", "B", "C"]);
+    expect(screen.getByText(/Added 2 clips to .* \(1 already in it\)/)).toBeTruthy();
+    expect(window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY)).toBe(v1Before);
+  });
+
+  it("only offers montages made from the same match video", async () => {
+    window.localStorage.setItem(MONTAGE_KEY, JSON.stringify({ version: 1, projects: [
+      { id: "m-other", name: "Other match", sourceKey: "league.mp4::1", sourceName: "league.mp4", sourceSize: 1, sourceDuration: null, items: [], createdAt: 1, updatedAt: 1 },
+    ] }));
+    await withThree();
+    fireEvent.click(screen.getByRole("button", { name: "Add A to montage" }));
+    const sheet = screen.getByRole("dialog", { name: "Add to montage" });
+    expect(within(sheet).queryByRole("button", { name: "Add to Other match" })).toBeNull();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: "Add to montage" })).toBeNull();
+  });
+});
+
+describe("Match Clipper | Montage modes (Montage V2)", () => {
+  const MONTAGE_KEY = "paircvision_internal_match_montage_v1";
+  async function withThree() {
+    const eng = engine();
+    render(<MatchClipperScreen engine={eng} />);
+    const video = await openMatch();
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "01:00 A\n02:00 B\n03:00 C" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    return { eng, video };
+  }
+  const tab = (name: string) => screen.getByRole("tab", { name });
+
+  it("starts in Clip mode with a two-mode switch; Montage loads only when chosen", () => {
+    render(<MatchClipperScreen engine={engine()} />);
+    expect(tab("Match Clipper").getAttribute("aria-selected")).toBe("true");
+    expect(tab("Montage").getAttribute("aria-selected")).toBe("false");
+    expect(screen.queryByText("My Montages")).toBeNull();
+    expect(screen.queryByRole("button", { name: "My Montages" })).toBeNull(); // no separate tool or page
+  });
+
+  it("switches modes without reopening the video; Clip mode keeps its clips, marks and position", async () => {
+    const { video } = await withThree();
+    at(42, video);
+    fireEvent.click(screen.getByRole("button", { name: "Mark Start" }));
+    const createUrl = vi.mocked(URL.createObjectURL);
+    const urlsBefore = createUrl.mock.calls.length;
+    fireEvent.click(tab("Montage"));
+    expect(window.location.search).toBe("?mode=montage");
+    expect(video.pause).toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "My Montages" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save Clip" })).toBeNull(); // Clip mode hidden, not removed
+    fireEvent.click(tab("Match Clipper"));
+    expect(window.location.search).toBe("");
+    expect(document.querySelector("video")).toBe(video); // same element, same source
+    expect(screen.getByRole("button", { name: "Save Clip" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export A" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Start 00:42/ })).toBeTruthy();
+    expect(createUrl.mock.calls.length).toBe(urlsBefore); // the match video was never reloaded
+  });
+
+  it("Save Clip → Add to Montage → Open in Montage previews from the same open video", async () => {
+    await withThree();
+    fireEvent.click(screen.getByRole("button", { name: "Add B to montage" }));
+    const sheet = screen.getByRole("dialog", { name: "Add to montage" });
+    fireEvent.change(within(sheet).getByLabelText("New montage name"), { target: { value: "Kickouts" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Create montage and add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open in Montage" }));
+    expect(window.location.search).toMatch(/^\?mode=montage&montage=montage/);
+    expect((await screen.findByTestId("montage-totals")).textContent).toBe("1 clip · 0:06 total");
+    expect(screen.queryByLabelText("Select match video")).toBeNull(); // no reselecting
+    const videos = document.querySelectorAll("video");
+    expect(videos).toHaveLength(2);
+    expect(videos[1]!.getAttribute("src")).toBe("blob:match");
+  });
+
+  it("New Montage in Montage mode uses the open match and its saved clips; V1 clips unchanged", async () => {
+    await withThree();
+    const v1Before = window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY);
+    fireEvent.click(tab("Montage"));
+    fireEvent.click(await screen.findByRole("button", { name: "New Montage" }));
+    fireEvent.change(screen.getByLabelText("New montage name"), { target: { value: "Attack" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create montage" }));
+    fireEvent.click(screen.getByRole("button", { name: "＋ Add clips" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add 3 clips" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move C up" }));
+    const stored = JSON.parse(window.localStorage.getItem(MONTAGE_KEY)!).projects;
+    expect(stored).toMatchObject([{ name: "Attack", sourceKey: "final.mp4::451000000" }]);
+    expect(stored[0].items.map((i: { name: string }) => i.name)).toEqual(["A", "C", "B"]);
+    expect(window.localStorage.getItem(MATCH_CLIPPER_STORAGE_KEY)).toBe(v1Before);
+    fireEvent.click(tab("Match Clipper"));
+    expect(screen.getAllByRole("button", { name: /^Export [ABC]$/ }).map((b) => b.textContent)).toHaveLength(3);
+  });
+
+  it("a confirmed montage trim survives Montage → Match Clipper → Montage and a reload; the V1 clip keeps its times", async () => {
+    await withThree();
+    const v1Clips = () => JSON.stringify(loadClipperStore().store.projects[0]!.clips.map((c) => [c.name, c.start, c.end]));
+    const v1Before = v1Clips();
+    fireEvent.click(screen.getByRole("button", { name: "Add B to montage" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Add to montage" })).getByRole("button", { name: "Create montage and add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open in Montage" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Trim B" }));
+    fireEvent.change(screen.getByLabelText("Montage clip end"), { target: { value: "02:15.0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    const item = () => JSON.parse(window.localStorage.getItem(MONTAGE_KEY)!).projects[0].items[0];
+    expect(item()).toMatchObject({ start: 119, end: 135 });
+    fireEvent.click(tab("Match Clipper"));
+    fireEvent.click(tab("Montage"));
+    expect(screen.getByText(/01:59.0–02:15.0 \(16.0s\)/)).toBeTruthy();
+    expect(screen.getByTestId("montage-totals").textContent).toBe("1 clip · 0:16 total");
+    expect(v1Clips()).toBe(v1Before); // B is still 01:59–02:05 in Match Clipper
+    const url = window.location.pathname + window.location.search;
+    cleanup(); // reload
+    window.history.replaceState(null, "", url);
+    render(<MatchClipperScreen engine={engine()} />);
+    expect(await screen.findByText(/01:59.0–02:15.0 \(16.0s\)/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Select match video"), { target: { files: [matchFile()] } });
+    expect(screen.getByText(/01:59.0–02:15.0 \(16.0s\)/)).toBeTruthy();
+    expect(item()).toMatchObject({ start: 119, end: 135 });
+    expect(v1Clips()).toBe(v1Before);
+  });
+
+  it("Back and reload restore the mode and open montage from the URL", async () => {
+    window.localStorage.setItem(MONTAGE_KEY, JSON.stringify({ version: 1, projects: [
+      { id: "m1", name: "Defence", sourceKey: "final.mp4::451000000", sourceName: "final.mp4", sourceSize: 451000000, sourceDuration: null,
+        items: [{ id: "i1", clipId: "x", name: "Turnover", category: "score", start: 10, end: 16, addedAt: 1 }], createdAt: 1, updatedAt: 1 },
+    ] }));
+    window.history.replaceState(null, "", "/internal/match-clipper?mode=montage&montage=m1");
+    render(<MatchClipperScreen engine={engine()} />);
+    expect(tab("Montage").getAttribute("aria-selected")).toBe("true");
+    expect((await screen.findByTestId("montage-totals")).textContent).toBe("1 clip · 0:06 total");
+    // No video open after a reload: choose it once, here, and Match Clipper gets it too.
+    fireEvent.change(screen.getByLabelText("Select match video"), { target: { files: [matchFile()] } });
+    expect(document.querySelectorAll("video")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "← My Montages" }));
+    expect(window.location.search).toBe("?mode=montage");
+    await act(async () => {
+      window.history.back();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(await screen.findByTestId("montage-totals")).toBeTruthy();
+    fireEvent.click(tab("Match Clipper"));
+    expect(screen.getByRole("button", { name: "Save Clip" })).toBeTruthy(); // the video chosen in Montage is open here
   });
 });
 

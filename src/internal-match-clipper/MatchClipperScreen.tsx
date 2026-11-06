@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadClipBlob } from "../features/shared/mediaClipExport";
 import { CLIP_MP4_MIME, makeClipFile, shareClipFile, shareOutcomeMessage, shareSupport, type ShareOutcome } from "./clip-share";
 import {
@@ -48,6 +48,33 @@ import {
   type ReadCheck,
 } from "./diagnostics";
 import { clipFilename, safeFilename } from "./clip-files";
+import AddToMontageSheet from "../internal-match-montage/AddToMontageSheet";
+
+// Montage mode (Match Montage V2) loads only when the coach first switches to it.
+const MontageMode = lazy(() => import("../internal-match-montage/MontageMode"));
+
+type ClipperMode = "clip" | "montage";
+interface ClipperView {
+  mode: ClipperMode;
+  /** Open montage in Montage mode (remembered while Clip mode is showing). */
+  montageId: string | null;
+}
+/** Mode lives in the URL (?mode=montage&montage=<id>) so reload and Back work. */
+function readView(): ClipperView {
+  const q = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  return { mode: q.get("mode") === "montage" ? "montage" : "clip", montageId: q.get("montage") };
+}
+function writeView(v: ClipperView) {
+  const q = new URLSearchParams(window.location.search);
+  q.delete("mode");
+  q.delete("montage");
+  if (v.mode === "montage") {
+    q.set("mode", "montage");
+    if (v.montageId) q.set("montage", v.montageId);
+  }
+  const qs = q.toString();
+  window.history.pushState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+}
 
 /** Batches estimated above this get an explicit "export anyway" step (ZIPs are built in memory). */
 const LARGE_BATCH_BYTES = 300 * 1024 * 1024;
@@ -117,6 +144,11 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   const [probe, setProbe] = useState<SourceProbe | null>(null);
   const [probing, setProbing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Clips being added to a montage (Montage V2). Montage data lives in its own store. */
+  const [montageClips, setMontageClips] = useState<ClipSelection[] | null>(null);
+  const [montageAdded, setMontageAdded] = useState<{ message: string; id: string } | null>(null);
+  const [view, setView] = useState<ClipperView>(readView);
+  const [montageVisited, setMontageVisited] = useState(() => view.mode === "montage");
   const [mismatch, setMismatch] = useState<string | null>(null);
   /** Playback decoded audio although the file check found none — never export silently then. */
   const [audioContradiction, setAudioContradiction] = useState(false);
@@ -641,6 +673,43 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
     }
   };
 
+  // ── Modes: Match Clipper | Montage ─────────────────────────────────────
+  // Both modes stay mounted once visited, so switching never reloads the
+  // match video or loses Clip-mode state (position, marks, selection, exports).
+  const showView = (next: ClipperView) => {
+    writeView(next);
+    setView(next);
+  };
+  const switchMode = (mode: ClipperMode) => {
+    if (mode !== view.mode) showView({ ...view, mode });
+  };
+  useEffect(() => {
+    const onPop = () => setView((prev) => {
+      const v = readView();
+      return v.mode === "clip" ? { mode: "clip", montageId: prev.montageId } : v;
+    });
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    if (view.mode !== "montage") return;
+    videoRef.current?.pause();
+    setMontageVisited(true);
+    setMontageAdded(null);
+  }, [view.mode]);
+
+  const montageCurrent = project
+    ? { key: project.key, fileName: project.fileName, fileSize: project.fileSize, duration: duration ?? project.duration }
+    : null;
+  const montageLoaded = montageCurrent && fileReady && videoUrl ? { ...montageCurrent, url: videoUrl } : null;
+  const savedClipsFor = (key: string): ClipSelection[] =>
+    project?.key === key ? project.clips : (store.projects.find((p) => p.key === key)?.clips ?? []);
+  const pickVideoFromMontage = (picked: File): string | null => {
+    if (busy) return "Wait for the clip export in Match Clipper to finish before changing the video.";
+    onPickFile(picked);
+    return null;
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────
   const savedOther = store.projects.filter((p) => p.key !== project?.key && p.clips.length > 0);
   const selectedCount = clips.filter((c) => selected.has(c.id)).length;
@@ -656,6 +725,17 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
           </button>
           <h1 className="mc-title">Match Clipper</h1>
         </div>
+        <div className="mc-modes" role="tablist" aria-label="Match Clipper mode">
+          <button type="button" role="tab" id="mc-tab-clip" aria-controls="mc-panel-clip" aria-selected={view.mode === "clip"} className={`mc-mode${view.mode === "clip" ? " mc-mode-on" : ""}`} onClick={() => switchMode("clip")}>
+            Match Clipper
+          </button>
+          <button type="button" role="tab" id="mc-tab-montage" aria-controls="mc-panel-montage" aria-selected={view.mode === "montage"} className={`mc-mode${view.mode === "montage" ? " mc-mode-on" : ""}`} onClick={() => switchMode("montage")}>
+            Montage
+          </button>
+        </div>
+        {view.mode === "montage" && busy && <p className="mc-banner" role="status">A clip export is still running in Match Clipper.</p>}
+
+        <div className="mc-mode-panel" role="tabpanel" id="mc-panel-clip" aria-labelledby="mc-tab-clip" hidden={view.mode !== "clip"}>
 
         {storeUnreadable && (
           <p className="mc-banner mc-banner-bad" role="alert">
@@ -877,6 +957,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                 <button type="button" className="mc-mini" onClick={() => moveClip(clip.id, -1)} disabled={i === 0} aria-label={`Move ${clip.name} up`}>↑</button>
                 <button type="button" className="mc-mini" onClick={() => moveClip(clip.id, 1)} disabled={i === clips.length - 1} aria-label={`Move ${clip.name} down`}>↓</button>
                 <button type="button" className="mc-mini" onClick={() => void runExport("single", [clip.id])} disabled={!!exportBlocker || busy} aria-label={`Export ${clip.name}`}>Export</button>
+                <button type="button" className="mc-mini" onClick={() => setMontageClips([clip])} disabled={busy} aria-label={`Add ${clip.name} to montage`}>＋ Montage</button>
               </div>
               {editingId === clip.id && (
                 <ClipEditor
@@ -907,6 +988,34 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
               {largeBatchConfirm ? "Export anyway" : selectedCount ? `Export ${selectedCount} selected as ZIP` : "Select clips to export as ZIP"}
             </button>
             {exportBlocker && fileReady === false && <p className="mc-muted">{exportBlocker}</p>}
+            <button
+              type="button"
+              className="mc-secondary"
+              onClick={() => setMontageClips(clips.filter((c) => selected.has(c.id)))}
+              disabled={!selectedCount || busy}
+            >
+              {selectedCount ? `Add ${selectedCount} selected to montage` : "Select clips to add to a montage"}
+            </button>
+          </div>
+        )}
+
+        {montageClips && project && (
+          <AddToMontageSheet
+            clips={montageClips}
+            source={{ key: project.key, fileName: project.fileName, fileSize: project.fileSize, duration: project.duration ?? duration }}
+            onClose={() => setMontageClips(null)}
+            onDone={(message, id) => {
+              setMontageClips(null);
+              setMontageAdded({ message, id });
+            }}
+          />
+        )}
+        {montageAdded && !montageClips && (
+          <div className="mc-banner mc-added" role="status">
+            <span>{montageAdded.message}</span>
+            <button type="button" className="mc-mini" onClick={() => showView({ mode: "montage", montageId: montageAdded.id })}>
+              Open in Montage
+            </button>
           </div>
         )}
 
@@ -1038,6 +1147,23 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        </div>
+
+        {montageVisited && (
+          <div className="mc-mode-panel" role="tabpanel" id="mc-panel-montage" aria-labelledby="mc-tab-montage" hidden={view.mode !== "montage"}>
+            <Suspense fallback={<p className="mc-muted">Loading Montage…</p>}>
+              <MontageMode
+                active={view.mode === "montage"}
+                openId={view.montageId}
+                onOpen={(id) => showView({ mode: "montage", montageId: id })}
+                loaded={montageLoaded}
+                current={montageCurrent}
+                savedClips={savedClipsFor}
+                onPickVideo={pickVideoFromMontage}
+              />
+            </Suspense>
           </div>
         )}
       </div>
@@ -1226,6 +1352,12 @@ const CSS = `
 .mc-mark { display: flex; align-items: center; gap: 4px; }
 .mc-mark-label { font-size: 12px; color: var(--mc-muted); min-width: 34px; }
 .mc-mark-value { flex: 1; min-height: 36px; background: transparent; border: 1px solid var(--mc-border); color: var(--mc-text); border-radius: 8px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.mc-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--mc-border); border-radius: 12px; background: rgba(3,16,11,0.6); }
+.mc-mode { min-height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--mc-muted); font-size: 14px; font-weight: 750; font-family: inherit; cursor: pointer; }
+.mc-mode-on { background: var(--mc-primary); color: #03100B; }
+.mc-mode-panel { display: grid; gap: 10px; }
+.mc-mode-panel[hidden] { display: none; }
+.mc-added { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .mc-mini { min-height: 36px; min-width: 40px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--mc-border); background: #10291B; color: var(--mc-text); font-size: 13px; font-weight: 700; }
 .mc-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .mc-chip { flex: none; min-height: 34px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--mc-border); background: transparent; color: var(--mc-muted); font-size: 12px; font-weight: 700; }
