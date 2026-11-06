@@ -26,7 +26,7 @@ import {
   type MontageSource,
 } from "./montage-ops";
 import { PreviewController, type PreviewState } from "./montage-preview";
-import { loadMontages, saveMontages, type MontageSave } from "./montage-storage";
+import { MONTAGE_STORAGE_KEY, loadMontages, saveMontages, type MontageSave } from "./montage-storage";
 import { LONG_MONTAGE_SECONDS, MAX_MONTAGE_ITEMS, type MontageItem, type MontageProject, type MontageStoreV1 } from "./montage-types";
 
 /** The match video Match Clipper currently has open and playable. */
@@ -68,25 +68,59 @@ export default function MontageMode({ active, openId, onOpen, loaded, current, s
   const [newName, setNewName] = useState("");
   const [pickError, setPickError] = useState<string | null>(null);
 
+  const sync = (next: MontageStoreV1) => {
+    storeRef.current = next;
+    setStore(next);
+  };
+  const latestStore = (): MontageStoreV1 | null => {
+    const l = loadMontages();
+    return l.status === "unreadable" ? null : l.store;
+  };
+
   // Clips may have been added from Clip mode while this was hidden: re-read.
   useEffect(() => {
     if (!active || unreadable) return;
-    const l = loadMontages();
-    if (l.status !== "unreadable") {
-      storeRef.current = l.store;
-      setStore(l.store);
-    }
+    const latest = latestStore();
+    if (latest) sync(latest);
     setConfirmDelete(null);
   }, [active, unreadable]);
 
-  const persist = (next: MontageStoreV1) => {
-    storeRef.current = next;
-    setStore(next);
-    setSaveResult(saveMontages(next));
+  // Another tab of PáircVision changed montages: show its version.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== MONTAGE_STORAGE_KEY || unreadable) return;
+      const latest = latestStore();
+      if (latest) sync(latest);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [unreadable]);
+
+  /**
+   * Every change is applied to the latest saved montages (not to this
+   * screen's copy, which may be older) and only shown once it is saved, so an
+   * out-of-date copy can never overwrite newer edits such as a confirmed trim.
+   */
+  const commit = (change: (s: MontageStoreV1) => MontageStoreV1): MontageSave => {
+    const base = unreadable ? null : latestStore();
+    if (!base) {
+      const refused: MontageSave = { ok: false, reason: "unreadable" };
+      setSaveResult(refused);
+      return refused;
+    }
+    const next = change(base);
+    const result: MontageSave = next === base ? { ok: true } : saveMontages(next);
+    setSaveResult(result);
+    sync(result.ok ? next : base);
+    return result;
   };
-  const update = (project: MontageProject) => {
-    if (project !== storeRef.current.projects.find((p) => p.id === project.id)) persist(upsertMontage(storeRef.current, project));
-  };
+  const edit = (id: string, change: (p: MontageProject) => MontageProject): MontageSave =>
+    commit((s) => {
+      const cur = s.projects.find((p) => p.id === id);
+      if (!cur) return s;
+      const next = change(cur);
+      return next === cur ? s : upsertMontage(s, next);
+    });
 
   const startNew = () => {
     setNewName(defaultMontageName(new Date()));
@@ -95,7 +129,7 @@ export default function MontageMode({ active, openId, onOpen, loaded, current, s
   const create = () => {
     if (!current) return;
     const m = createMontage(newName, { ...current, duration: loaded?.key === current.key ? loaded.duration : current.duration });
-    persist(upsertMontage(storeRef.current, m));
+    if (!commit((s) => upsertMontage(s, m)).ok) return;
     setCreating(false);
     onOpen(m.id);
   };
@@ -191,7 +225,7 @@ export default function MontageMode({ active, openId, onOpen, loaded, current, s
                       className={confirmDelete === m.id ? "mw-danger" : "mw-ghost"}
                       onClick={() => {
                         if (confirmDelete === m.id) {
-                          persist(deleteMontage(storeRef.current, m.id));
+                          commit((s) => deleteMontage(s, m.id));
                           setConfirmDelete(null);
                         } else setConfirmDelete(m.id);
                       }}
@@ -217,7 +251,7 @@ export default function MontageMode({ active, openId, onOpen, loaded, current, s
           savedClips={savedClips(project.sourceKey)}
           onPickVideo={onPickVideo}
           onBack={() => onOpen(null)}
-          onChange={update}
+          onEdit={(change) => edit(project.id, change)}
         />
       )}
     </div>
@@ -231,7 +265,7 @@ function MontageDetail({
   savedClips,
   onPickVideo,
   onBack,
-  onChange,
+  onEdit,
 }: {
   project: MontageProject;
   active: boolean;
@@ -239,7 +273,8 @@ function MontageDetail({
   savedClips: ClipSelection[];
   onPickVideo: (file: File) => string | null;
   onBack: () => void;
-  onChange: (p: MontageProject) => void;
+  /** Applies a change to the latest saved copy of this montage and saves it. */
+  onEdit: (change: (p: MontageProject) => MontageProject) => MontageSave;
 }) {
   const [name, setName] = useState(project.name);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -298,7 +333,7 @@ function MontageDetail({
   const onLoadedMetadata = () => {
     const v = videoRef.current;
     if (!v || controller.current) return;
-    if (Number.isFinite(v.duration) && project.sourceDuration === null) onChange(setSourceDuration(project, v.duration));
+    if (Number.isFinite(v.duration) && project.sourceDuration === null) onEdit((p) => (p.sourceDuration === null ? setSourceDuration(p, v.duration) : p));
     const c = new PreviewController(v, segments, setPreview);
     controller.current = c;
     if (resumeIndex.current > 0 && resumeIndex.current < segments.length) c.select(resumeIndex.current);
@@ -326,8 +361,8 @@ function MontageDetail({
             maxLength={60}
             aria-label="Montage name"
             onChange={(e) => setName(e.target.value)}
-            onBlur={() => onChange(renameMontage(project, name))}
-            onKeyDown={(e) => e.key === "Enter" && onChange(renameMontage(project, name))}
+            onBlur={() => onEdit((p) => renameMontage(p, name))}
+            onKeyDown={(e) => e.key === "Enter" && onEdit((p) => renameMontage(p, name))}
           />
         </label>
         <p className="mw-strong" data-testid="montage-totals">
@@ -413,7 +448,7 @@ function MontageDetail({
             {adding ? "Done adding" : "＋ Add clips"}
           </button>
         </div>
-        {adding && <AddSavedClips clips={addable} anySaved={savedClips.length > 0} onAdd={(chosen) => onChange(addClips(project, chosen).project)} />}
+        {adding && <AddSavedClips clips={addable} anySaved={savedClips.length > 0} onAdd={(chosen) => onEdit((p) => addClips(p, chosen).project)} />}
         {project.items.length === 0 && !adding && <p className="mw-muted">No clips yet. Tap “＋ Add clips” to choose from this match's saved clips.</p>}
       </div>
 
@@ -425,15 +460,15 @@ function MontageDetail({
               <span className="mw-muted">{categoryLabel(item.category)} · {formatPrecise(item.start)}–{formatPrecise(item.end)} ({(item.end - item.start).toFixed(1)}s)</span>
             </button>
             <div className="mw-actions">
-              <button type="button" className="mw-mini" onClick={() => onChange(moveItem(project, item.id, -1))} disabled={i === 0} aria-label={`Move ${item.name} up`}>↑</button>
-              <button type="button" className="mw-mini" onClick={() => onChange(moveItem(project, item.id, 1))} disabled={i === project.items.length - 1} aria-label={`Move ${item.name} down`}>↓</button>
-              <button type="button" className="mw-mini" onClick={() => setTrimming(trimming === item.id ? null : item.id)} aria-expanded={trimming === item.id} aria-label={`Trim ${item.name}`}>Trim</button>
+              <button type="button" className="mw-mini" onClick={() => onEdit((p) => moveItem(p, item.id, -1))} disabled={i === 0} aria-label={`Move ${item.name} up`}>↑</button>
+              <button type="button" className="mw-mini" onClick={() => onEdit((p) => moveItem(p, item.id, 1))} disabled={i === project.items.length - 1} aria-label={`Move ${item.name} down`}>↓</button>
+              <button type="button" className="mw-mini" onClick={() => setTrimming(trimming === item.id ? null : item.id)} aria-expanded={trimming === item.id} aria-label={`Trim ${item.name}`} disabled={trimming !== null && trimming !== item.id}>Trim</button>
               <button
                 type="button"
                 className={confirmRemove === item.id ? "mw-mini mw-danger" : "mw-mini"}
                 onClick={() => {
                   if (confirmRemove === item.id) {
-                    onChange(removeItem(project, item.id));
+                    onEdit((p) => removeItem(p, item.id));
                     setConfirmRemove(null);
                   } else setConfirmRemove(item.id);
                 }}
@@ -446,11 +481,24 @@ function MontageDetail({
               <TrimEditor
                 item={item}
                 currentTime={() => videoRef.current?.currentTime ?? null}
-                onApply={(range) => {
+                validate={(range) => {
                   const r = trimItem(project, item.id, range);
-                  if (r.ok) onChange(r.project);
                   return r.ok ? null : r.reason;
                 }}
+                onConfirm={(range) => {
+                  let refused: string | null = null;
+                  const saved = onEdit((p) => {
+                    const r = trimItem(p, item.id, range);
+                    if (r.ok) return r.project;
+                    refused = r.reason;
+                    return p;
+                  });
+                  if (refused) return refused;
+                  if (!saved.ok) return "The trim couldn't be saved on this device, so it wasn't applied.";
+                  setTrimming(null);
+                  return null;
+                }}
+                onCancel={() => setTrimming(null)}
               />
             )}
           </li>
@@ -512,46 +560,96 @@ function AddSavedClips({ clips, anySaved, onAdd }: { clips: ClipSelection[]; any
   );
 }
 
+const round1 = (n: number) => Math.round(Math.max(0, n) * 10) / 10;
+const FORMAT_HINT = "Use MM:SS or HH:MM:SS, e.g. 25:29.5";
+
+/**
+ * Edits a draft start/end, kept apart from the saved item. Nothing is saved
+ * until Confirm Trim; Cancel throws the draft away.
+ */
 function TrimEditor({
   item,
   currentTime,
-  onApply,
+  validate,
+  onConfirm,
+  onCancel,
 }: {
   item: MontageItem;
   currentTime: () => number | null;
-  onApply: (range: { start: number; end: number }) => string | null;
+  /** Why a range can't be saved, or null if it can. Saves nothing. */
+  validate: (range: { start: number; end: number }) => string | null;
+  /** Saves the range. Returns why it wasn't saved, or null on success. */
+  onConfirm: (range: { start: number; end: number }) => string | null;
+  onCancel: () => void;
 }) {
-  const [start, setStart] = useState(formatPrecise(item.start));
-  const [end, setEnd] = useState(formatPrecise(item.end));
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    setStart(formatPrecise(item.start));
-    setEnd(formatPrecise(item.end));
-  }, [item.start, item.end]);
-  const apply = (s: number, e: number) => setError(onApply({ start: s, end: e }));
-  const commit = () => {
-    const s = parseTimestamp(start), e = parseTimestamp(end);
-    if (s === null || e === null) {
-      setError("Use MM:SS or HH:MM:SS, e.g. 25:29.5");
-      return;
-    }
-    apply(s, e);
+  const [text, setText] = useState({ start: formatPrecise(item.start), end: formatPrecise(item.end) });
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const start = parseTimestamp(text.start);
+  const end = parseTimestamp(text.end);
+  const range = start !== null && end !== null ? { start: round1(start), end: round1(end) } : null;
+  const problem = range ? validate(range) : FORMAT_HINT;
+  const changed = !range || range.start !== item.start || range.end !== item.end;
+
+  const set = (key: "start" | "end", value: number) => {
+    setSaveError(null);
+    setText((t) => ({ ...t, [key]: formatPrecise(round1(value)) }));
   };
-  const now = currentTime();
-  const row = (key: "start" | "end", text: string, set: (v: string) => void) => (
+  const nudge = (key: "start" | "end", delta: number) => set(key, (parseTimestamp(text[key]) ?? item[key]) + delta);
+  const tidy = (key: "start" | "end") => {
+    const v = parseTimestamp(text[key]);
+    if (v !== null) set(key, v);
+  };
+
+  const row = (key: "start" | "end") => (
     <div className="mw-trim-row">
       <span className="mw-muted mw-trim-label">{key === "start" ? "Start" : "End"}</span>
-      <input className="mw-input mw-time" value={text} inputMode="decimal" aria-label={`Montage clip ${key}`} onChange={(e) => set(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
-      <button type="button" className="mw-mini" aria-label={`${key} back half a second`} onClick={() => (key === "start" ? apply(item.start - 0.5, item.end) : apply(item.start, item.end - 0.5))}>−½</button>
-      <button type="button" className="mw-mini" aria-label={`${key} forward half a second`} onClick={() => (key === "start" ? apply(item.start + 0.5, item.end) : apply(item.start, item.end + 0.5))}>+½</button>
-      <button type="button" className="mw-mini" disabled={now === null} aria-label={`Set ${key} to current position`} onClick={() => now !== null && (key === "start" ? apply(now, item.end) : apply(item.start, now))}>Now</button>
+      <input
+        className="mw-input mw-time"
+        value={text[key]}
+        inputMode="decimal"
+        aria-label={`Montage clip ${key}`}
+        onChange={(e) => {
+          setSaveError(null);
+          setText({ ...text, [key]: e.target.value });
+        }}
+        onBlur={() => tidy(key)}
+      />
+      <button type="button" className="mw-mini" aria-label={`${key} back half a second`} onClick={() => nudge(key, -0.5)}>−½</button>
+      <button type="button" className="mw-mini" aria-label={`${key} forward half a second`} onClick={() => nudge(key, 0.5)}>+½</button>
+      <button
+        type="button"
+        className="mw-mini"
+        aria-label={`Set ${key} to current position`}
+        onClick={() => {
+          const now = currentTime();
+          if (now !== null) set(key, now);
+        }}
+      >
+        Now
+      </button>
     </div>
   );
   return (
-    <div className="mw-trim">
-      {row("start", start, setStart)}
-      {row("end", end, setEnd)}
-      {error && <p className="mw-error" role="alert">{error}</p>}
+    <div className="mw-trim" role="group" aria-label={`Trim ${item.name}`}>
+      {row("start")}
+      {row("end")}
+      <p className="mw-muted" data-testid="trim-draft">
+        {range ? `${formatPrecise(range.start)}–${formatPrecise(range.end)} (${(range.end - range.start).toFixed(1)}s)` : "—"}
+        {changed && !problem ? " · not saved yet — tap Confirm Trim" : ""}
+      </p>
+      {changed && problem && <p className="mw-error" role="alert">{problem}</p>}
+      {saveError && <p className="mw-error" role="alert">{saveError}</p>}
+      <div className="mw-row">
+        <button
+          type="button"
+          className="mw-primary"
+          disabled={!changed || problem !== null}
+          onClick={() => range && setSaveError(onConfirm(range))}
+        >
+          Confirm Trim
+        </button>
+        <button type="button" className="mw-ghost" onClick={onCancel}>Cancel</button>
+      </div>
     </div>
   );
 }

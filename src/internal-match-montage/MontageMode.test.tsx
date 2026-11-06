@@ -61,6 +61,16 @@ function matchFile(name = "final.mp4", size = 451000000) {
   return f;
 }
 const stored = () => loadMontages().store.projects[0]!;
+/** Opens the trim editor for an item and types draft values (nothing saved). */
+function trim(name: string, values: { start?: string; end?: string }) {
+  if (!screen.queryByRole("group", { name: `Trim ${name}` })) fireEvent.click(screen.getByRole("button", { name: `Trim ${name}` }));
+  for (const key of ["start", "end"] as const) {
+    const v = values[key];
+    if (v === undefined) continue;
+    fireEvent.change(screen.getByLabelText(`Montage clip ${key}`), { target: { value: v } });
+    fireEvent.blur(screen.getByLabelText(`Montage clip ${key}`));
+  }
+}
 async function loadPlayer() {
   await act(async () => {
     fireEvent.loadedMetadata(document.querySelector("video")!);
@@ -115,7 +125,7 @@ describe("Montage mode — My Montages", () => {
     expect(screen.getByRole("heading", { name: "My Montages" })).toBeTruthy();
   });
 
-  it("reorders, removes, trims and renames — all persisted, V1 data untouched", () => {
+  it("reorders, removes, trims (with Confirm Trim) and renames — all persisted, V1 data untouched", () => {
     seed();
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Open Defensive shape" }));
@@ -124,16 +134,10 @@ describe("Montage mode — My Montages", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove Clip c" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm remove Clip c" }));
     expect(stored().items).toHaveLength(2);
-    fireEvent.click(screen.getByRole("button", { name: "Trim Kickout setup" }));
-    fireEvent.change(screen.getByLabelText("Montage clip start"), { target: { value: "01:45.5" } });
-    fireEvent.blur(screen.getByLabelText("Montage clip start"));
-    expect(stored().items[0]).toMatchObject({ start: 105.5, end: 130 });
+    trim("Kickout setup", { start: "01:45.5" });
     fireEvent.click(screen.getByRole("button", { name: "end forward half a second" }));
-    expect(stored().items[0]).toMatchObject({ end: 130.5 });
-    fireEvent.change(screen.getByLabelText("Montage clip start"), { target: { value: "02:10.4" } });
-    fireEvent.blur(screen.getByLabelText("Montage clip start"));
-    expect(screen.getByText(/at least 0.5 s long/)).toBeTruthy(); // invalid trim refused
-    expect(stored().items[0]).toMatchObject({ start: 105.5 });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    expect(stored().items[0]).toMatchObject({ start: 105.5, end: 130.5 });
     fireEvent.change(screen.getByLabelText("Montage name"), { target: { value: "Kickouts — 2nd half" } });
     fireEvent.blur(screen.getByLabelText("Montage name"));
     expect(stored().name).toBe("Kickouts — 2nd half");
@@ -166,6 +170,106 @@ describe("Montage mode — My Montages", () => {
     seed(); // e.g. “＋ Montage” in Clip mode while this was hidden
     rerender(<Harness active />);
     expect(screen.getByRole("button", { name: "Open Defensive shape" })).toBeTruthy();
+  });
+});
+
+describe("Montage mode — trim confirmation (Samsung defect: trims reverting)", () => {
+  it("draft edits are not saved until Confirm Trim; then they persist and the total updates", () => {
+    const m = seed();
+    render(<Harness initialOpen={m.id} />);
+    trim("Kickout setup", { start: "01:45.0", end: "02:20.0" });
+    fireEvent.click(screen.getByRole("button", { name: "start back half a second" }));
+    expect(screen.getByTestId("trim-draft").textContent).toBe("01:44.5–02:20.0 (35.5s) · not saved yet — tap Confirm Trim");
+    expect(stored().items[1]).toMatchObject({ start: 100, end: 130 }); // draft only
+    expect(screen.getByTestId("montage-totals").textContent).toBe("3 clips · 0:39 total");
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    expect(stored().items[1]).toMatchObject({ start: 104.5, end: 140 });
+    expect(screen.queryByRole("group", { name: "Trim Kickout setup" })).toBeNull();
+    expect(screen.getByText(/01:44.5–02:20.0 \(35.5s\)/)).toBeTruthy();
+    expect(screen.getByTestId("montage-totals").textContent).toBe("3 clips · 0:44 total");
+    expect(window.localStorage.getItem(V1_KEY)).toBe(V1_VALUE);
+  });
+
+  it("Cancel discards the draft and restores the last confirmed values", () => {
+    const m = seed();
+    render(<Harness initialOpen={m.id} />);
+    trim("Kickout setup", { start: "01:50.0" });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    trim("Kickout setup", { start: "01:30.0", end: "02:30.0" });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(stored().items[1]).toMatchObject({ start: 110, end: 130 });
+    fireEvent.click(screen.getByRole("button", { name: "Trim Kickout setup" }));
+    expect((screen.getByLabelText("Montage clip start") as HTMLInputElement).value).toBe("01:50.0");
+    expect((screen.getByLabelText("Montage clip end") as HTMLInputElement).value).toBe("02:10.0");
+  });
+
+  it("invalid ranges cannot be confirmed", () => {
+    const m = seed();
+    render(<Harness initialOpen={m.id} />);
+    const confirm = () => screen.getByRole("button", { name: "Confirm Trim" }) as HTMLButtonElement;
+    trim("Kickout setup", { start: "02:10.0" }); // start at the end → too short
+    expect(screen.getByRole("alert").textContent).toMatch(/at least 0.5 s long/);
+    expect(confirm().disabled).toBe(true);
+    trim("Kickout setup", { start: "1:40", end: "12:00.0" }); // over 10 minutes
+    expect(confirm().disabled).toBe(true);
+    trim("Kickout setup", { start: "77:40.0", end: "77:50.0" }); // after the end of the video
+    expect(screen.getByRole("alert").textContent).toMatch(/after the end of the video/);
+    expect(confirm().disabled).toBe(true);
+    trim("Kickout setup", { start: "abc", end: "02:00.0" });
+    expect(screen.getByRole("alert").textContent).toMatch(/Use MM:SS/);
+    expect(confirm().disabled).toBe(true);
+    fireEvent.click(confirm());
+    expect(stored().items[1]).toMatchObject({ start: 100, end: 130 });
+  });
+
+  it("a confirmed trim survives leaving and returning, opening another montage, and a reload", () => {
+    const m = seed();
+    const other = createMontage("Other", source, 5);
+    saveMontages(upsertMontage(loadMontages().store, other));
+    const { rerender, unmount } = render(<Harness initialOpen={m.id} active loaded={loadedVideo} current={source} />);
+    trim("Turnover", { end: "00:18.0" });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    rerender(<Harness initialOpen={m.id} active={false} loaded={loadedVideo} current={source} />);
+    rerender(<Harness initialOpen={m.id} active loaded={loadedVideo} current={source} />);
+    expect(screen.getByText(/00:10.0–00:18.0 \(8.0s\)/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "← My Montages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Other" }));
+    fireEvent.click(screen.getByRole("button", { name: "← My Montages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Defensive shape" }));
+    expect(screen.getByText(/00:10.0–00:18.0 \(8.0s\)/)).toBeTruthy();
+    unmount(); // reload: nothing in memory, the video needs choosing again
+    render(<Harness initialOpen={m.id} />);
+    expect(screen.getByText(/00:10.0–00:18.0 \(8.0s\)/)).toBeTruthy();
+    expect(screen.getByTestId("montage-totals").textContent).toBe("3 clips · 0:41 total");
+  });
+
+  it("an out-of-date copy (e.g. another tab) can't overwrite a confirmed trim", () => {
+    const m = seed();
+    render(<Harness initialOpen={m.id} />); // this screen loaded before the trim below
+    const newer = loadMontages().store;
+    const trimmed = { ...newer.projects[0]!, items: newer.projects[0]!.items.map((i) => (i.name === "Turnover" ? { ...i, end: 18 } : i)) };
+    saveMontages(upsertMontage(newer, trimmed)); // saved by another tab, no storage event here
+    fireEvent.click(screen.getByRole("button", { name: "Move Clip c up" }));
+    expect(stored().items.map((i) => [i.name, i.end])).toEqual([["Turnover", 18], ["Clip c", 53], ["Kickout setup", 130]]);
+  });
+
+  it("the preview plays the confirmed trim, not the draft", async () => {
+    const m = seed();
+    render(<Harness initialOpen={m.id} loaded={loadedVideo} current={source} />);
+    await loadPlayer();
+    trim("Turnover", { start: "00:12.0" });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    });
+    expect(mediaTime).toBe(10); // draft not used
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    });
+    expect(mediaTime).toBe(12);
   });
 });
 

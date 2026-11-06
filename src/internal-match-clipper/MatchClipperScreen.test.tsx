@@ -739,6 +739,34 @@ describe("Match Clipper | Montage modes (Montage V2)", () => {
     expect(screen.getAllByRole("button", { name: /^Export [ABC]$/ }).map((b) => b.textContent)).toHaveLength(3);
   });
 
+  it("a confirmed montage trim survives Montage → Match Clipper → Montage and a reload; the V1 clip keeps its times", async () => {
+    await withThree();
+    const v1Clips = () => JSON.stringify(loadClipperStore().store.projects[0]!.clips.map((c) => [c.name, c.start, c.end]));
+    const v1Before = v1Clips();
+    fireEvent.click(screen.getByRole("button", { name: "Add B to montage" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Add to montage" })).getByRole("button", { name: "Create montage and add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open in Montage" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Trim B" }));
+    fireEvent.change(screen.getByLabelText("Montage clip end"), { target: { value: "02:15.0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Trim" }));
+    const item = () => JSON.parse(window.localStorage.getItem(MONTAGE_KEY)!).projects[0].items[0];
+    expect(item()).toMatchObject({ start: 119, end: 135 });
+    fireEvent.click(tab("Match Clipper"));
+    fireEvent.click(tab("Montage"));
+    expect(screen.getByText(/01:59.0–02:15.0 \(16.0s\)/)).toBeTruthy();
+    expect(screen.getByTestId("montage-totals").textContent).toBe("1 clip · 0:16 total");
+    expect(v1Clips()).toBe(v1Before); // B is still 01:59–02:05 in Match Clipper
+    const url = window.location.pathname + window.location.search;
+    cleanup(); // reload
+    window.history.replaceState(null, "", url);
+    render(<MatchClipperScreen engine={engine()} />);
+    expect(await screen.findByText(/01:59.0–02:15.0 \(16.0s\)/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Select match video"), { target: { files: [matchFile()] } });
+    expect(screen.getByText(/01:59.0–02:15.0 \(16.0s\)/)).toBeTruthy();
+    expect(item()).toMatchObject({ start: 119, end: 135 });
+    expect(v1Clips()).toBe(v1Before);
+  });
+
   it("Back and reload restore the mode and open montage from the URL", async () => {
     window.localStorage.setItem(MONTAGE_KEY, JSON.stringify({ version: 1, projects: [
       { id: "m1", name: "Defence", sourceKey: "final.mp4::451000000", sourceName: "final.mp4", sourceSize: 451000000, sourceDuration: null,
