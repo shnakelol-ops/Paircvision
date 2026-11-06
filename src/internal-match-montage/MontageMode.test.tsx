@@ -10,7 +10,7 @@ import type { ClipSelection } from "../internal-match-clipper/clip-types";
 const V1_KEY = "paircvision_internal_match_clipper_v1";
 const V1_VALUE = '{"version":1,"lastProjectKey":"final.mp4::451000000","projects":[]}';
 const source = { key: "final.mp4::451000000", fileName: "final.mp4", fileSize: 451000000, duration: 4662 };
-const loadedVideo: LoadedVideo = { ...source, url: "blob:match" };
+const loadedVideo: LoadedVideo = { ...source, url: "blob:match", file: new File([new Uint8Array(4)], "final.mp4"), audioTrackId: null };
 const clip = (id: string, start: number, end: number, name = `Clip ${id}`): ClipSelection => ({ id, name, category: "score", start, end, origin: "manual", createdAt: 1 });
 
 let mediaTime = 0;
@@ -302,7 +302,7 @@ describe("Montage mode — source video", () => {
 
   it("explains when Match Clipper has a different match open, and shows a refusal from Match Clipper", () => {
     const m = seed();
-    const other = { key: "league.mp4::300000000", fileName: "league.mp4", fileSize: 300e6, duration: 3000, url: "blob:other" };
+    const other = { key: "league.mp4::300000000", fileName: "league.mp4", fileSize: 300e6, duration: 3000, url: "blob:other", file: new File([], "league.mp4"), audioTrackId: null };
     render(<Harness initialOpen={m.id} loaded={other} current={other} onPickVideo={() => "Wait for the clip export in Match Clipper to finish before changing the video."} />);
     expect(document.querySelector("video")).toBeNull();
     expect(screen.getByText(/Match Clipper has “league.mp4” open, but this montage was made from “final.mp4”/)).toBeTruthy();

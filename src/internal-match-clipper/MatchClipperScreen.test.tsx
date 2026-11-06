@@ -4,6 +4,17 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import MatchClipperScreen, { type ClipperEngine } from "./MatchClipperScreen";
 import { ClipExportError, type SourceProbe } from "./clip-export";
 import { MATCH_CLIPPER_STORAGE_KEY, loadClipperStore } from "./clip-storage";
+import { resetExportSessionForTests } from "../internal-match-montage/MontageExportPanel";
+
+// Montage MP4 export (Stage 3): a stand-in engine that runs until cancelled.
+const montageExport = vi.hoisted(() => ({ calls: [] as { file: File; opts: { audioTrackId: number | null; signal?: AbortSignal } }[] }));
+vi.mock("../internal-match-montage/montage-export", async (orig) => ({
+  ...(await orig<typeof import("../internal-match-montage/montage-export")>()),
+  exportMontage: vi.fn((file: File, opts: { audioTrackId: number | null; signal?: AbortSignal }) => {
+    montageExport.calls.push({ file, opts });
+    return new Promise((_res, rej) => opts.signal?.addEventListener("abort", () => rej(Object.assign(new Error("Export cancelled."), { code: "cancelled" }))));
+  }),
+}));
 
 const OK_PROBE: SourceProbe = {
   duration: 4620, width: 854, height: 480, videoCodec: "avc", audioCodec: "aac", hasAudio: true, blocker: null,
@@ -788,6 +799,47 @@ describe("Match Clipper | Montage modes (Montage V2)", () => {
     expect(await screen.findByTestId("montage-totals")).toBeTruthy();
     fireEvent.click(tab("Match Clipper"));
     expect(screen.getByRole("button", { name: "Save Clip" })).toBeTruthy(); // the video chosen in Montage is open here
+  });
+});
+
+describe("Match Clipper | Montage — Create MP4 (Montage V2 Stage 3)", () => {
+  beforeEach(() => {
+    resetExportSessionForTests();
+    montageExport.calls.length = 0;
+  });
+
+  it("creates the MP4 from the video already open, with the commentary track chosen in Clip mode; clip exports wait meanwhile", async () => {
+    const eng = engine({ probe: vi.fn(async () => ({ ...OK_PROBE, audioTrackId: 7 })) });
+    render(<MatchClipperScreen engine={eng} />);
+    await openMatch();
+    fireEvent.click(screen.getByRole("button", { name: "Add timestamps" }));
+    fireEvent.change(screen.getByLabelText(/Timestamps — one per line/), { target: { value: "01:00 A\n02:00 B" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add clips" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add A to montage" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Add to montage" })).getByRole("button", { name: "Create montage and add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open in Montage" }));
+    const create = await screen.findByRole("button", { name: "Create MP4" });
+    await act(async () => {
+      fireEvent.click(create);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    await waitFor(() => expect(montageExport.calls).toHaveLength(1));
+    expect(montageExport.calls[0]!.file.name).toBe("final.mp4");
+    expect(montageExport.calls[0]!.opts.audioTrackId).toBe(7);
+    expect(await screen.findByTestId("export-progress")).toBeTruthy();
+    // One encoder at a time: Clip mode says so and its exports are disabled.
+    fireEvent.click(screen.getByRole("tab", { name: "Match Clipper" }));
+    expect(screen.getByText(/A montage MP4 is being created in Montage mode/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export A" }).hasAttribute("disabled")).toBe(true);
+    // Switching back: still running; cancel releases Clip mode.
+    fireEvent.click(screen.getByRole("tab", { name: "Montage" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cancel export" }));
+    });
+    expect(await screen.findByText(/Export cancelled\. Nothing was kept\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Match Clipper" }));
+    expect(screen.getByRole("button", { name: "Export A" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.queryByText(/A montage MP4 is being created/)).toBeNull();
   });
 });
 
