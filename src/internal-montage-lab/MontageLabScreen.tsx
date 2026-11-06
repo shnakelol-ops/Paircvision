@@ -10,6 +10,8 @@
 import { useEffect, useRef, useState } from "react";
 import { probeSource as v1ProbeSource, type SourceProbe } from "../internal-match-clipper/clip-export";
 import { loadClipperStore } from "../internal-match-clipper/clip-storage";
+import { isAudible } from "../internal-match-clipper/audio-level";
+import { runReadChecks, type ReadCheck } from "../internal-match-clipper/diagnostics";
 import { sourceKey } from "../internal-match-clipper/clip-types";
 import { detectEnvironment, type LabEnvironment } from "./lab-env";
 import { aacEncodeSupported, benchmarkEncode, encoderSupport, type EncodeBenchResult, type EncoderSupportRow } from "./lab-encode";
@@ -30,14 +32,30 @@ export interface LabDeps {
   listLabFiles: typeof listLabFiles;
   clearLabFiles: typeof clearLabFiles;
   removeLabFile: typeof removeLabFile;
+  runReadChecks: (file: Blob) => Promise<ReadCheck[]>;
 }
 
 const REAL_DEPS: LabDeps = {
   detectEnvironment, probeSource: v1ProbeSource, runMontage: realRunMontage, writeProbe, encoderSupport,
-  benchmarkEncode, listLabFiles, clearLabFiles, removeLabFile,
+  benchmarkEncode, listLabFiles, clearLabFiles, removeLabFile, runReadChecks,
 };
 
 type WakeSentinel = { released: boolean; release: () => Promise<void>; addEventListener: (t: "release", f: () => void) => void };
+
+/** DOMException is not guaranteed to be an Error subclass in every engine; read its fields directly. */
+function errName(err: unknown): string {
+  return err && typeof err === "object" && "name" in err ? String((err as { name: unknown }).name) : String(err);
+}
+function errMessage(err: unknown): string {
+  return err && typeof err === "object" && "message" in err ? String((err as { message: unknown }).message) : "";
+}
+
+function audioSummary(r: MontageRunResult): string {
+  if (!r.clipAudio.length) return "not measured";
+  const count = (v: string) => r.clipAudio.filter((c) => c.verdict === v).length;
+  const lost = r.clipAudio.filter((c) => c.verdict === "LOST-IN-MONTAGE").map((c) => c.clip);
+  return `${count("ok")} ok, ${count("source-silent")} silent in the source, ${lost.length} LOST in montage${lost.length ? ` (clips ${lost.join(", ")})` : ""}, ${count("unmeasured")} unmeasured`;
+}
 
 function fmtTime(ms: number): string {
   const s = Math.round(ms / 1000);
@@ -62,6 +80,7 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
 
   const [file, setFile] = useState<File | null>(null);
   const [probe, setProbe] = useState<SourceProbe | null>(null);
+  const [readChecks, setReadChecks] = useState<ReadCheck[] | null>(null);
   const [workloadId, setWorkloadId] = useState("five");
   const [profileId, setProfileId] = useState<"1080p" | "720p">("1080p");
   const [output, setOutput] = useState<OutputMode>("opfs");
@@ -211,11 +230,24 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
   const onPick = async (f: File | null) => {
     setFile(f);
     setProbe(null);
+    setReadChecks(null);
     setMontage(null);
     if (!f) return;
     setBusy("checking video");
     try {
-      setProbe(await deps.probeSource(f));
+      const pr = await deps.probeSource(f);
+      setProbe(pr);
+      // Is the file readable from start to end, by both read methods? (Investigates NotReadableError.)
+      const checks = await deps.runReadChecks(f).catch(() => [] as ReadCheck[]);
+      setReadChecks(checks);
+      const failedReads = checks.filter((c) => !c.ok);
+      record(
+        "source",
+        `${f.name} · ${formatMB(f.size)} · ${(pr.duration / 60).toFixed(1)} min · ${pr.width}×${pr.height} · video ${pr.videoCodec} · audio tracks: ${
+          pr.audioTracks.map((t) => `#${t.index} ${t.codec} ${t.channels}ch ${t.levelDb === null ? "n/a" : `${t.levelDb.toFixed(0)} dB`}${t.id === pr.audioTrackId ? " (used)" : ""}`).join(", ") || "none"
+        } · read checks ${checks.length - failedReads.length}/${checks.length} ok${failedReads.length ? ` — FAILED: ${failedReads.map((c) => `${c.method}@${c.where} ${c.error}`).join("; ")}` : ""}${pr.blocker ? ` · blocker: ${pr.blocker.code} ${pr.blocker.detail ?? ""}` : ""}`,
+        { name: f.name, size: f.size, type: f.type, lastModified: f.lastModified, probe: { ...pr, scan: pr.scan ? { brands: pr.scan.brands, tracks: pr.scan.tracks, error: pr.scan.error } : null }, readChecks: checks },
+      );
     } finally {
       setBusy(null);
     }
@@ -254,7 +286,7 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
       record(
         "montage",
         r.ok
-          ? `${label}: built in ${fmtTime(r.elapsedMs)} (${r.realtimeFactor}× real time), ${formatMB(r.bytes)} (est. ${formatMB(r.estimateBytes)}), ${r.width}×${r.height} · joins on keyframe ${v?.joinsOnKeyframe}/${v?.joins} · audio gaps ${v?.audioGaps} · timestamps increasing ${v?.videoTimestampsStrictlyIncreasing} · sound ${v?.audioLevelDb?.toFixed(0) ?? "?"} dB · stalls>500ms ${memory.stallsOver500ms} · hidden ${Math.round(hiddenMs.current / 1000)} s`
+          ? `${label}: built in ${fmtTime(r.elapsedMs)} (${r.realtimeFactor}× real time), ${formatMB(r.bytes)} (est. ${formatMB(r.estimateBytes)}), ${r.width}×${r.height} · joins on keyframe ${v?.joinsOnKeyframe}/${v?.joins} · audio gaps ${v?.audioGaps} · timestamps increasing ${v?.videoTimestampsStrictlyIncreasing} · sound ${v?.audioLevelDb?.toFixed(0) ?? "?"} dB · per-clip audio: ${audioSummary(r)} · audio ${r.audioTrack?.codecString ?? "?"} ${r.audioTrack?.sampleRate ?? "?"} Hz ${r.audioTrack?.channels ?? "?"}ch · stalls>500ms ${memory.stallsOver500ms} · hidden ${Math.round(hiddenMs.current / 1000)} s`
           : `${label}: ${r.cancelled ? "CANCELLED" : `FAILED (${r.errorName}: ${r.error})`} after ${fmtTime(r.elapsedMs)}`,
         { ...full, file: undefined },
       );
@@ -325,12 +357,45 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
         record("share", msg, { ...base, outcome: "shared", ms: Math.round(performance.now() - t1), heapAfterShareMB: jsHeapMB() });
       })
       .catch((err: unknown) => {
-        const name = err instanceof Error ? err.name : String(err);
-        const msg = name === "AbortError" ? "Share sheet closed (cancelled)." : `Share failed: ${name}: ${err instanceof Error ? err.message : ""}`;
+        const name = errName(err);
+        const msg = name === "AbortError" ? "Share sheet closed (cancelled)." : `Share failed: ${name}: ${errMessage(err)}`;
         setHandoff(msg);
         record("share", msg, { ...base, outcome: name, ms: Math.round(performance.now() - t1), heapAfterShareMB: jsHeapMB() });
       });
   };
+  /**
+   * Share-size ladder: shares the first N MB of the finished montage (a Blob slice, so it is instant and the
+   * tap still counts as a user gesture). Finds the browser's real share-size limit and whether it is per
+   * file or total. The slices are not playable videos — just close the share sheet when it opens.
+   */
+  const shareSlice = (sizesMB: number[]) => {
+    if (!montage?.file) return;
+    const files = sizesMB.map((n, i) => new File([montage.file!.slice(0, Math.min(montage.file!.size, n * 1e6))], `share-test-${n}MB-${i + 1}.mp4`, { type: "video/mp4" }));
+    const label = sizesMB.length > 1 ? `${sizesMB.length} files × ${sizesMB[0]} MB` : `${sizesMB[0]} MB`;
+    const can = !!(navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare?.({ files });
+    if (typeof navigator.share !== "function") {
+      record("share-ladder", `${label}: navigator.share unavailable`, { sizesMB });
+      setHandoff(`${label}: navigator.share unavailable`);
+      return;
+    }
+    const t = performance.now();
+    navigator
+      .share({ files })
+      .then(() => {
+        const msg = `${label}: ALLOWED — the share sheet opened and a target was chosen`;
+        setHandoff(msg);
+        record("share-ladder", msg, { sizesMB, canShare: can, ms: Math.round(performance.now() - t) });
+      })
+      .catch((err: unknown) => {
+        const name = errName(err);
+        const msg = name === "AbortError"
+          ? `${label}: ALLOWED — the share sheet opened (closed without sharing)`
+          : `${label}: REFUSED — ${name}: ${errMessage(err)}`;
+        setHandoff(msg);
+        record("share-ladder", msg, { sizesMB, canShare: can, error: name, ms: Math.round(performance.now() - t) });
+      });
+  };
+
   const deleteMontage = async () => {
     if (montage?.outputName) await deps.removeLabFile(montage.outputName);
     setMontage(null);
@@ -465,6 +530,22 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
               {probe.blocker ? ` — ${probe.blocker.message}` : ""}
             </p>
           )}
+          {probe && (
+            <ul className="ml-list" aria-label="Source audio tracks">
+              {probe.audioTracks.length === 0 && <li className="ml-no">✗ no audio track the engine can read</li>}
+              {probe.audioTracks.map((t) => (
+                <li key={t.id} className={isAudible(t.levelDb) ? "ml-yes" : "ml-no"}>
+                  Audio track {t.index}: {t.codec} {t.channels}ch {t.sampleRate} Hz — {t.levelDb === null ? "level n/a" : isAudible(t.levelDb) ? `sound ${t.levelDb.toFixed(0)} dB` : `SILENT (${t.levelDb.toFixed(0)} dB at 20/50/80% of the video)`}
+                  {t.id === probe.audioTrackId ? " · used" : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+          {readChecks && readChecks.some((c) => !c.ok) && (
+            <p className="ml-no" role="alert">
+              File read problems: {readChecks.filter((c) => !c.ok).map((c) => `${c.method} at ${c.where}: ${c.error}`).join("; ")}
+            </p>
+          )}
           <div className="ml-grid">
             <label className="ml-label">
               Workload
@@ -512,11 +593,19 @@ export default function MontageLabScreen({ deps: depsOverride }: { deps?: Partia
                     joins on keyframe {montage.verify?.joinsOnKeyframe}/{montage.verify?.joins} · audio gaps {montage.verify?.audioGaps} · timestamps increasing {String(montage.verify?.videoTimestampsStrictlyIncreasing)} ·
                     commentary {montage.verify?.audioLevelDb?.toFixed(0) ?? "?"} dB · page stalls &gt;0.5 s: {montage.memory.stallsOver500ms} · JS heap peak {montage.memory.jsHeapPeakMB ?? "n/a"} MB (indicative)
                   </p>
+                  <p className="ml-muted" data-testid="clip-audio">Per-clip audio (source → montage): {audioSummary(montage)}</p>
                   <div className="ml-row">
                     <button type="button" className="ml-primary" onClick={share}>Share to WhatsApp</button>
                     <button type="button" className="ml-secondary" onClick={saveDownload}>Save MP4 to Downloads</button>
                     {hasPicker && <button type="button" className="ml-ghost" onClick={() => void saveWithPicker()}>Save to… (picker)</button>}
                     <button type="button" className="ml-ghost" onClick={() => void deleteMontage()}>Delete montage</button>
+                  </div>
+                  <p className="ml-muted">Share-size test — each button shares the first part of the montage (not playable; close the sheet when it opens):</p>
+                  <div className="ml-row">
+                    {[10, 45, 55, 100].filter((n) => n * 1e6 <= montage.bytes).map((n) => (
+                      <button key={n} type="button" className="ml-ghost" onClick={() => shareSlice([n])}>Share {n} MB</button>
+                    ))}
+                    {montage.bytes >= 60e6 && <button type="button" className="ml-ghost" onClick={() => shareSlice([30, 30])}>Share 2 × 30 MB</button>}
                   </div>
                   {handoff && <p className="ml-result" role="status">{handoff}</p>}
                 </>

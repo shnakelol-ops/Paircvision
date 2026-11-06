@@ -42,6 +42,38 @@ export interface MontageVerify {
   /** RMS dBFS over 3 windows of the finished montage; null if not decodable here. */
   audioLevelDb: number | null;
   audible: boolean | null;
+  /** Montage audio level for each clip (2 s at the clip's middle), dBFS; null if not decodable here. */
+  clipOutputDb: (number | null)[];
+}
+
+/** Source vs montage audio for one clip — separates "the source is silent" from "the montage lost the sound". */
+export interface ClipAudioCheck {
+  clip: number;
+  sourceDb: number | null;
+  outputDb: number | null;
+  verdict: "ok" | "source-silent" | "LOST-IN-MONTAGE" | "unmeasured";
+}
+
+export interface AudioTrackFacts {
+  trackId: number;
+  codec: string | null;
+  /** WebCodecs codec string, e.g. mp4a.40.2 (AAC-LC), mp4a.40.5 (HE-AAC), mp4a.40.29 (HE-AAC v2). */
+  codecString: string | null;
+  sampleRate: number;
+  channels: number;
+  descriptionBytes: number;
+}
+
+export function clipAudioVerdicts(sourceDb: (number | null)[], outputDb: (number | null)[]): ClipAudioCheck[] {
+  return sourceDb.map((src, i) => {
+    const out = outputDb[i] ?? null;
+    let verdict: ClipAudioCheck["verdict"] = "unmeasured";
+    if (src !== null && out !== null) {
+      if (!isAudible(src)) verdict = "source-silent";
+      else verdict = isAudible(out) ? "ok" : "LOST-IN-MONTAGE";
+    }
+    return { clip: i + 1, sourceDb: src, outputDb: out, verdict };
+  });
 }
 
 export interface MontageRunResult {
@@ -68,6 +100,10 @@ export interface MontageRunResult {
   usageAfter: number | null;
   /** Length of each clip in the montage (seconds), in order; joins are their running sums. */
   spans: number[];
+  audioTrack: AudioTrackFacts | null;
+  /** Per-clip source level (2 s at each clip's middle, on the chosen track), measured before building. */
+  clipSourceDb: (number | null)[];
+  clipAudio: ClipAudioCheck[];
   verify: MontageVerify | null;
 }
 
@@ -79,7 +115,8 @@ export async function runMontage(file: File, opts: MontageRunOptions): Promise<M
   const result: MontageRunResult = {
     ok: false, cancelled: false, error: null, errorName: null, output: opts.output, outputName: null, file: null, bytes: 0,
     estimateBytes: 0, montageSeconds: 0, elapsedMs: 0, realtimeFactor: 0, width: 0, height: 0, downscaled: false,
-    seekWasteSeconds: 0, droppedFrames: 0, usageBefore: est0.usage, usageAfter: null, spans: [], verify: null,
+    seekWasteSeconds: 0, droppedFrames: 0, usageBefore: est0.usage, usageAfter: null, spans: [], audioTrack: null,
+    clipSourceDb: [], clipAudio: [], verify: null,
   };
   let output: InstanceType<Mediabunny["Output"]> | null = null;
   let writable: FileSystemWritableFileStream | null = null;
@@ -157,6 +194,21 @@ export async function runMontage(file: File, opts: MontageRunOptions): Promise<M
     await output.start();
 
     const decoderConfig = (await audio.getDecoderConfig()) ?? undefined;
+    result.audioTrack = {
+      trackId: audio.id, codec: audio.codec, codecString: decoderConfig?.codec ?? null, sampleRate: audio.sampleRate,
+      channels: audio.numberOfChannels,
+      descriptionBytes: decoderConfig?.description ? (decoderConfig.description as ArrayBufferLike & { byteLength: number }).byteLength : 0,
+    };
+    // Source commentary level for each clip, before building (2 s at the middle of each clip).
+    for (const c of plan) {
+      if (canceled()) break;
+      const mid = c.a0 + c.span / 2;
+      try {
+        result.clipSourceDb.push((await measureTrackLevel(mb, audio, [[Math.max(c.a0, mid - 1), Math.min(c.a0 + c.span, mid + 1)]])).db);
+      } catch {
+        result.clipSourceDb.push(null);
+      }
+    }
     const vSink = result.downscaled ? null : new mb.VideoSampleSink(video);
     const cSink = result.downscaled
       ? new mb.CanvasSink(video, { width: result.width, height: result.height, fit: "contain", poolSize: 2 })
@@ -246,6 +298,7 @@ export async function runMontage(file: File, opts: MontageRunOptions): Promise<M
     result.realtimeFactor = +(result.montageSeconds / (result.elapsedMs / 1000)).toFixed(2);
     opts.onProgress?.(1, "verifying");
     result.verify = await verifyMontage(mb, result.file, plan.map((c) => c.span));
+    result.clipAudio = clipAudioVerdicts(result.clipSourceDb, result.verify.clipOutputDb);
     result.usageAfter = (await storageEstimate()).usage;
     result.ok = true;
     return result;
@@ -292,6 +345,7 @@ export async function verifyMontage(mb: Mediabunny, file: Blob, spans: number[])
     }
     let audioPackets = 0, audioGaps = 0;
     let audioLevelDb: number | null = null;
+    const clipOutputDb: (number | null)[] = [];
     if (audio) {
       const as = new mb.EncodedPacketSink(audio);
       let prev: { t: number; d: number } | null = null;
@@ -307,6 +361,14 @@ export async function verifyMontage(mb: Mediabunny, file: Blob, spans: number[])
       } catch {
         audioLevelDb = null;
       }
+      for (let k = 0; k < spans.length; k++) {
+        const mid = joins[k]! + spans[k]! / 2;
+        try {
+          clipOutputDb.push((await measureTrackLevel(mb, audio, [[Math.max(joins[k]!, mid - 1), Math.min(joins[k]! + spans[k]!, mid + 1)]])).db);
+        } catch {
+          clipOutputDb.push(null);
+        }
+      }
     }
     return {
       durationSeconds: await input.computeDuration(),
@@ -318,6 +380,7 @@ export async function verifyMontage(mb: Mediabunny, file: Blob, spans: number[])
       audioGaps,
       audioLevelDb,
       audible: audioLevelDb === null ? null : isAudible(audioLevelDb),
+      clipOutputDb,
     };
   } finally {
     input.dispose();

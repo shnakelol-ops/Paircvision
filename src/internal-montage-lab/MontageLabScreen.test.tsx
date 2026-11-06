@@ -31,7 +31,10 @@ function okResult(over: Partial<MontageRunResult> = {}): MontageRunResult {
     file: new File([new Uint8Array(16)], "montage-1.mp4"), bytes: 230e6, estimateBytes: 234e6, montageSeconds: 300,
     elapsedMs: 120000, realtimeFactor: 2.5, width: 1920, height: 1080, downscaled: false, seekWasteSeconds: 8,
     droppedFrames: 0, usageBefore: 0, usageAfter: 230e6, spans: Array(20).fill(15),
-    verify: { durationSeconds: 300, videoPackets: 9000, videoTimestampsStrictlyIncreasing: true, joins: 20, joinsOnKeyframe: 20, audioPackets: 14063, audioGaps: 0, audioLevelDb: -19, audible: true },
+    verify: { durationSeconds: 300, videoPackets: 9000, videoTimestampsStrictlyIncreasing: true, joins: 20, joinsOnKeyframe: 20, audioPackets: 14063, audioGaps: 0, audioLevelDb: -19, audible: true, clipOutputDb: Array(20).fill(-19) },
+    audioTrack: { trackId: 2, codec: "aac", codecString: "mp4a.40.2", sampleRate: 48000, channels: 2, descriptionBytes: 2 },
+    clipSourceDb: Array(20).fill(-19),
+    clipAudio: Array.from({ length: 20 }, (_, i) => ({ clip: i + 1, sourceDb: -19, outputDb: -19, verdict: "ok" as const })),
     ...over,
   };
 }
@@ -48,6 +51,7 @@ function deps(over: Partial<LabDeps> = {}): Partial<LabDeps> {
     listLabFiles: vi.fn(async () => []),
     clearLabFiles: vi.fn(async () => []),
     removeLabFile: vi.fn(async () => undefined),
+    runReadChecks: vi.fn(async () => []),
     ...over,
   };
 }
@@ -74,11 +78,73 @@ async function pickAndRun(d: Partial<LabDeps>) {
   await act(async () => {
     fireEvent.change(screen.getByLabelText("Match video for montage test"), { target: { files: [matchFile()] } });
   });
-  await screen.findByText(/77\.7 min · 1920×1080/);
+  await screen.findByText(/final\.mp4 · 77\.7 min · 1920×1080/);
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Build montage" }));
   });
 }
+
+describe("Montage Lab — R1 audio and share investigation", () => {
+  it("shows a silent source audio track before any montage is built, and records the read checks", async () => {
+    const d = deps({
+      probeSource: vi.fn(async () => ({ ...PROBE, audioTracks: [{ id: 2, index: 1, codec: "aac", channels: 2, sampleRate: 48000, language: "und", name: null, isDefault: true, levelDb: -120 }] })),
+      runReadChecks: vi.fn(async () => [
+        { method: "slice" as const, where: "start" as const, offset: 0, ok: true, bytes: 65536, ms: 2, error: null },
+        { method: "stream" as const, where: "end" as const, offset: 9, ok: false, bytes: 0, ms: 1, error: "NotReadableError: could not be read" },
+      ]),
+    });
+    render(<MontageLabScreen deps={d} />);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Match video for montage test"), { target: { files: [matchFile()] } });
+    });
+    expect(await screen.findByText(/Audio track 1: aac 2ch 48000 Hz — SILENT \(-120 dB at 20\/50\/80% of the video\)/)).toBeTruthy();
+    expect(screen.getByText(/File read problems: stream at end: NotReadableError/)).toBeTruthy();
+    expect(screen.getByTestId("lab-report").textContent).toMatch(/audio tracks: #1 aac 2ch -120 dB \(used\) · read checks 1\/2 ok — FAILED: stream@end NotReadableError/);
+  });
+
+  it("names clips whose sound was lost in the montage, separately from clips silent in the source", async () => {
+    const clipAudio = [
+      { clip: 1, sourceDb: -19, outputDb: -19, verdict: "ok" as const },
+      { clip: 2, sourceDb: -120, outputDb: -120, verdict: "source-silent" as const },
+      { clip: 3, sourceDb: -20, outputDb: -120, verdict: "LOST-IN-MONTAGE" as const },
+    ];
+    await pickAndRun(deps({ runMontage: vi.fn(async () => okResult({ clipAudio })) }));
+    expect((await screen.findByTestId("clip-audio")).textContent).toMatch(/1 ok, 1 silent in the source, 1 LOST in montage \(clips 3\), 0 unmeasured/);
+  });
+
+  it("share-size ladder: shares montage slices within the tap and records allowed vs refused", async () => {
+    // Fake browser with Chromium Android's documented rule: refuse any file over 50 MiB. (jsdom builds the File from
+    // the slice's real bytes, so the requested size is read from the name the ladder gives each test file.)
+    const requestedMB = (f: File) => Number(/share-test-(\d+)MB/.exec(f.name)?.[1] ?? 0);
+    const share = vi.fn(async (data: ShareData) => {
+      if ((data.files ?? []).some((f) => requestedMB(f) * 1e6 > 50 * 1024 * 1024)) throw new DOMException("Permission denied", "NotAllowedError");
+      throw new DOMException("Share canceled", "AbortError");
+    });
+    Object.defineProperty(navigator, "share", { configurable: true, writable: true, value: share });
+    Object.defineProperty(navigator, "canShare", { configurable: true, writable: true, value: () => true });
+    const big = new Blob([new Uint8Array(1)]);
+    const file = Object.assign(big, { name: "m.mp4", lastModified: 0 }) as File;
+    Object.defineProperty(file, "size", { value: 112.9e6 });
+    (file as unknown as { slice: (a: number, b: number) => Blob }).slice = (a: number, b: number) => {
+      const part = new Blob([new Uint8Array(1)]);
+      Object.defineProperty(part, "size", { value: b - a });
+      return part;
+    };
+    await pickAndRun(deps({ runMontage: vi.fn(async () => okResult({ file, bytes: 112.9e6 })) }));
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Share 45 MB" }));
+    });
+    const status = () => screen.getAllByRole("status").map((e) => e.textContent).join(" | ");
+    await waitFor(() => expect(status()).toMatch(/45 MB: ALLOWED — the share sheet opened/));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Share 55 MB" }));
+    });
+    await waitFor(() => expect(status()).toMatch(/55 MB: REFUSED — NotAllowedError: Permission denied/));
+    expect(share).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("button", { name: "Share 100 MB" })).toBeTruthy();
+    Object.defineProperty(navigator, "share", { configurable: true, writable: true, value: undefined });
+  });
+});
 
 describe("Montage Lab screen", () => {
   it("shows browser capabilities, including Brave detection", async () => {

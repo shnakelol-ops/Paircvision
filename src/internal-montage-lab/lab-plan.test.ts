@@ -98,3 +98,12 @@ describe("FrameSequencer", () => {
     expect(held).toHaveLength(1);
   });
 });
+
+import { clipAudioVerdicts } from "./lab-montage";
+describe("clipAudioVerdicts", () => {
+  it("separates a silent source from sound lost by the montage", () => {
+    expect(clipAudioVerdicts([-19, -120, -20, null], [-19, -120, -120, -19]).map((c) => c.verdict)).toEqual([
+      "ok", "source-silent", "LOST-IN-MONTAGE", "unmeasured",
+    ]);
+  });
+});
