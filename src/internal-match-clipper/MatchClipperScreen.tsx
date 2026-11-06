@@ -202,7 +202,10 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
         (audioContradiction
           ? "Playback found sound in this video, but the export check found no audio track. Export is turned off rather than making silent clips — copy the diagnostics below and send them to the team."
           : null);
-  const busy = job?.state === "running";
+  const clipJobRunning = job?.state === "running";
+  /** A montage MP4 is being created in Montage mode (one encoder at a time). */
+  const [montageExporting, setMontageExporting] = useState(false);
+  const busy = clipJobRunning || montageExporting;
 
   // ── Persistence ────────────────────────────────────────────────────────
   /** Every change is written to storage immediately and read back. */
@@ -701,11 +704,11 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   const montageCurrent = project
     ? { key: project.key, fileName: project.fileName, fileSize: project.fileSize, duration: duration ?? project.duration }
     : null;
-  const montageLoaded = montageCurrent && fileReady && videoUrl ? { ...montageCurrent, url: videoUrl } : null;
+  const montageLoaded = montageCurrent && fileReady && videoUrl && file ? { ...montageCurrent, url: videoUrl, file, audioTrackId } : null;
   const savedClipsFor = (key: string): ClipSelection[] =>
     project?.key === key ? project.clips : (store.projects.find((p) => p.key === key)?.clips ?? []);
   const pickVideoFromMontage = (picked: File): string | null => {
-    if (busy) return "Wait for the clip export in Match Clipper to finish before changing the video.";
+    if (busy) return "Wait for the export to finish before changing the video.";
     onPickFile(picked);
     return null;
   };
@@ -733,7 +736,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
             Montage
           </button>
         </div>
-        {view.mode === "montage" && busy && <p className="mc-banner" role="status">A clip export is still running in Match Clipper.</p>}
+        {view.mode === "montage" && clipJobRunning && <p className="mc-banner" role="status">A clip export is still running in Match Clipper.</p>}
+        {view.mode === "clip" && montageExporting && <p className="mc-banner" role="status">A montage MP4 is being created in Montage mode. Clip exports and changing the video wait until it finishes.</p>}
 
         <div className="mc-mode-panel" role="tabpanel" id="mc-panel-clip" aria-labelledby="mc-tab-clip" hidden={view.mode !== "clip"}>
 
@@ -1162,6 +1166,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                 current={montageCurrent}
                 savedClips={savedClipsFor}
                 onPickVideo={pickVideoFromMontage}
+                clipExportBusy={clipJobRunning}
+                onExportBusyChange={setMontageExporting}
               />
             </Suspense>
           </div>

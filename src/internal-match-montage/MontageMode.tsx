@@ -26,12 +26,17 @@ import {
   type MontageSource,
 } from "./montage-ops";
 import { PreviewController, type PreviewState } from "./montage-preview";
+import MontageExportPanel, { useExportSession } from "./MontageExportPanel";
 import { MONTAGE_STORAGE_KEY, loadMontages, saveMontages, type MontageSave } from "./montage-storage";
 import { LONG_MONTAGE_SECONDS, MAX_MONTAGE_ITEMS, type MontageItem, type MontageProject, type MontageStoreV1 } from "./montage-types";
 
 /** The match video Match Clipper currently has open and playable. */
 export interface LoadedVideo extends MontageSource {
   url: string;
+  /** The File itself, for Create MP4. */
+  file: File;
+  /** Commentary track chosen in Match Clipper (null = the primary track). */
+  audioTrackId: number | null;
 }
 
 export interface MontageModeProps {
@@ -47,6 +52,10 @@ export interface MontageModeProps {
   savedClips: (sourceKey: string) => ClipSelection[];
   /** Opens a video in Match Clipper. Returns a message if it can't right now. */
   onPickVideo: (file: File) => string | null;
+  /** A clip export is running in Clip mode (only one encoder at a time). */
+  clipExportBusy?: boolean;
+  /** Tells Match Clipper when a montage export starts and stops. */
+  onExportBusyChange?: (busy: boolean) => void;
 }
 
 function fmtLength(seconds: number): string {
@@ -57,7 +66,12 @@ function fmtBytes(n: number): string {
 }
 const clipsWord = (n: number) => `${n} clip${n === 1 ? "" : "s"}`;
 
-export default function MontageMode({ active, openId, onOpen, loaded, current, savedClips, onPickVideo }: MontageModeProps) {
+export default function MontageMode({ active, openId, onOpen, loaded, current, savedClips, onPickVideo, clipExportBusy = false, onExportBusyChange }: MontageModeProps) {
+  const exportSession = useExportSession();
+  const exporting = exportSession.phase === "running";
+  useEffect(() => {
+    onExportBusyChange?.(exporting);
+  }, [exporting, onExportBusyChange]);
   const initial = useMemo(() => loadMontages(), []);
   const [store, setStore] = useState<MontageStoreV1>(initial.store);
   const storeRef = useRef(initial.store);
@@ -250,6 +264,8 @@ export default function MontageMode({ active, openId, onOpen, loaded, current, s
           loaded={loaded}
           savedClips={savedClips(project.sourceKey)}
           onPickVideo={onPickVideo}
+          clipExportBusy={clipExportBusy}
+          exporting={exporting}
           onBack={() => onOpen(null)}
           onEdit={(change) => edit(project.id, change)}
         />
@@ -264,6 +280,8 @@ function MontageDetail({
   loaded,
   savedClips,
   onPickVideo,
+  clipExportBusy,
+  exporting,
   onBack,
   onEdit,
 }: {
@@ -272,6 +290,9 @@ function MontageDetail({
   loaded: LoadedVideo | null;
   savedClips: ClipSelection[];
   onPickVideo: (file: File) => string | null;
+  clipExportBusy: boolean;
+  /** An MP4 export is running: the preview player is released meanwhile. */
+  exporting: boolean;
   onBack: () => void;
   /** Applies a change to the latest saved copy of this montage and saves it. */
   onEdit: (change: (p: MontageProject) => MontageProject) => MontageSave;
@@ -289,7 +310,7 @@ function MontageDetail({
 
   // Same video as Match Clipper has open: preview straight from it.
   const video = loaded && loaded.key === project.sourceKey ? loaded : null;
-  const playerUrl = active && video ? video.url : null;
+  const playerUrl = active && video && !exporting ? video.url : null;
 
   useEffect(() => setName(project.name), [project.name]);
 
@@ -391,6 +412,7 @@ function MontageDetail({
           </>
         )}
 
+        {video && exporting && <p className="mw-muted">The preview is paused while an MP4 is being created.</p>}
         {playerUrl && (
           <div className="mw-player">
             <video
@@ -440,6 +462,14 @@ function MontageDetail({
           </div>
         )}
       </div>
+
+      <MontageExportPanel
+        project={project}
+        source={video?.file ?? null}
+        audioTrackId={video?.audioTrackId ?? null}
+        clipExportBusy={clipExportBusy}
+        onPickVideo={onPickVideo}
+      />
 
       <div className="mw-card">
         <div className="mw-head">
@@ -703,4 +733,6 @@ const CSS = `
 .mw-trim-label { min-width:36px; }
 .mw-time { width:110px; font-variant-numeric:tabular-nums; }
 .mw-error { margin:0; color:#fca5a5; font-size:13px; }
+.mw-progress { width:100%; height:12px; accent-color:var(--primary); }
+.mw-root details summary { cursor:pointer; }
 `;
