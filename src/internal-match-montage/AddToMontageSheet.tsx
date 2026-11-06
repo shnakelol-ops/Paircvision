@@ -7,8 +7,6 @@ import type { ClipSelection } from "../internal-match-clipper/clip-types";
 import { addClips, createMontage, defaultMontageName, montagesForSource, totals, upsertMontage, type MontageSource } from "./montage-ops";
 import { loadMontages, saveMontages } from "./montage-storage";
 
-export const MONTAGES_PATH = "/internal/match-clipper/montages";
-
 function fmt(seconds: number): string {
   const s = Math.round(seconds);
   return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s}s`;
