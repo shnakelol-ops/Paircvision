@@ -48,6 +48,7 @@ import {
   type ReadCheck,
 } from "./diagnostics";
 import { clipFilename, safeFilename } from "./clip-files";
+import AddToMontageSheet, { MONTAGES_PATH } from "../internal-match-montage/AddToMontageSheet";
 
 /** Batches estimated above this get an explicit "export anyway" step (ZIPs are built in memory). */
 const LARGE_BATCH_BYTES = 300 * 1024 * 1024;
@@ -117,6 +118,8 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
   const [probe, setProbe] = useState<SourceProbe | null>(null);
   const [probing, setProbing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Clips being added to a montage (Montage V2). Montage data lives in its own store. */
+  const [montageClips, setMontageClips] = useState<ClipSelection[] | null>(null);
   const [mismatch, setMismatch] = useState<string | null>(null);
   /** Playback decoded audio although the file check found none — never export silently then. */
   const [audioContradiction, setAudioContradiction] = useState(false);
@@ -655,6 +658,9 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
             ← Internal
           </button>
           <h1 className="mc-title">Match Clipper</h1>
+          <button type="button" className="mc-ghost mc-push-right" onClick={() => window.location.assign(MONTAGES_PATH)}>
+            My Montages
+          </button>
         </div>
 
         {storeUnreadable && (
@@ -877,6 +883,7 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
                 <button type="button" className="mc-mini" onClick={() => moveClip(clip.id, -1)} disabled={i === 0} aria-label={`Move ${clip.name} up`}>↑</button>
                 <button type="button" className="mc-mini" onClick={() => moveClip(clip.id, 1)} disabled={i === clips.length - 1} aria-label={`Move ${clip.name} down`}>↓</button>
                 <button type="button" className="mc-mini" onClick={() => void runExport("single", [clip.id])} disabled={!!exportBlocker || busy} aria-label={`Export ${clip.name}`}>Export</button>
+                <button type="button" className="mc-mini" onClick={() => setMontageClips([clip])} disabled={busy} aria-label={`Add ${clip.name} to montage`}>＋ Montage</button>
               </div>
               {editingId === clip.id && (
                 <ClipEditor
@@ -907,7 +914,27 @@ export default function MatchClipperScreen({ engine = DEFAULT_ENGINE }: { engine
               {largeBatchConfirm ? "Export anyway" : selectedCount ? `Export ${selectedCount} selected as ZIP` : "Select clips to export as ZIP"}
             </button>
             {exportBlocker && fileReady === false && <p className="mc-muted">{exportBlocker}</p>}
+            <button
+              type="button"
+              className="mc-secondary"
+              onClick={() => setMontageClips(clips.filter((c) => selected.has(c.id)))}
+              disabled={!selectedCount || busy}
+            >
+              {selectedCount ? `Add ${selectedCount} selected to montage` : "Select clips to add to a montage"}
+            </button>
           </div>
+        )}
+
+        {montageClips && project && (
+          <AddToMontageSheet
+            clips={montageClips}
+            source={{ key: project.key, fileName: project.fileName, fileSize: project.fileSize, duration: project.duration ?? duration }}
+            onClose={() => setMontageClips(null)}
+            onDone={(message) => {
+              setMontageClips(null);
+              setNotice(`${message} Open My Montages to arrange and preview it.`);
+            }}
+          />
         )}
 
         {job && (
@@ -1226,6 +1253,7 @@ const CSS = `
 .mc-mark { display: flex; align-items: center; gap: 4px; }
 .mc-mark-label { font-size: 12px; color: var(--mc-muted); min-width: 34px; }
 .mc-mark-value { flex: 1; min-height: 36px; background: transparent; border: 1px solid var(--mc-border); color: var(--mc-text); border-radius: 8px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.mc-push-right { margin-left: auto; }
 .mc-mini { min-height: 36px; min-width: 40px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--mc-border); background: #10291B; color: var(--mc-text); font-size: 13px; font-weight: 700; }
 .mc-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .mc-chip { flex: none; min-height: 34px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--mc-border); background: transparent; color: var(--mc-muted); font-size: 12px; font-weight: 700; }
