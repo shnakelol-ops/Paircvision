@@ -1,6 +1,6 @@
 # Event Stats: release checklist
 
-**Code baseline:** main `81d2347` (PR #387 merged) + PR #388 (R-1 label, awaiting approval).
+**Code baseline:** release candidate main `c96d232` (PRs #387 and #388 merged). See `RELEASE-CANDIDATE.md`; the short phone run-sheet is `PHONE-TEST.md`.
 
 **Already verified** by automated suites and the three-match release audit:
 - statistics;
@@ -12,7 +12,7 @@
 This checklist is the final **human acceptance pass on a real Android phone**, against the production URL, before announcing release. Tick each item; any failure blocks release.
 
 ## 0. Before testing
-- [ ] PR #388 approved and merged. The Vercel **production** deployment for the merge commit shows Ready.
+- [x] PR #388 merged (`c96d232`). Its GitHub Production deployment shows success (18:49 UTC).
 - [ ] The phone uses Chrome on Android (current version), with the app opened from the production URL. Repeat once as an installed home-screen app, if offered.
 - [ ] Settings → Backup: create a backup first, so existing saved matches are safe.
 
