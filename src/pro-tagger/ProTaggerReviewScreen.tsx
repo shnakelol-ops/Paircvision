@@ -14,6 +14,7 @@ import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
 import { applyReviewKindEdit, editableKindsFor } from "./pro-tagger-review-edit";
+import { findNearbyMapEvents } from "./pro-tagger-map-nearby";
 import { NotesQuickPanel, getMatchNotes } from "../features/notes";
 import { selectReviewEvents } from "../stats/review-selectors";
 import { resolveEventMapOutcomeFill } from "./pro-tagger-event-map-outcome-color";
@@ -283,6 +284,10 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
 
   // ── Event Map marker tap state ─────────────────────────────────────────────
   const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
+  // The marker the coach tapped: the "at this spot" list is built around it,
+  // so switching between the events listed there keeps the same list.
+  const [mapTapAnchorId,       setMapTapAnchorId]       = useState<string | null>(null);
+  const pitchAreaRef = useRef<HTMLDivElement>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
   const [proEditMode,          setProEditMode]          = useState(false);
   const [proEditKind,          setProEditKind]          = useState<MatchEventKind>("GOAL");
@@ -359,15 +364,40 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     ? null
     : match.events.find((e) => e.id === selectedMapEventId) ?? null;
 
-  const selectedMapTeamLabel = selectedMapEvent == null
-    ? null
-    : selectedMapEvent.team === "HOME"
+  const mapEventTeamLabel = (e: LoggedMatchEvent) =>
+    e.team === "HOME"
       ? match.homeTeamName
-      : selectedMapEvent.team === "AWAY"
+      : e.team === "AWAY"
         ? match.awayTeamName
-        : selectedMapEvent.teamSide === "FOR"
+        : e.teamSide === "FOR"
           ? match.homeTeamName
           : match.awayTeamName;
+  const selectedMapTeamLabel = selectedMapEvent == null ? null : mapEventTeamLabel(selectedMapEvent);
+
+  // Other events at the tapped spot, from the current filtered view. A later
+  // marker can cover an earlier one (or two share coordinates); listing them
+  // here keeps every event reachable. Empty for an isolated marker.
+  const mapTapAnchor = mapTapAnchorId == null ? null : match.events.find((e) => e.id === mapTapAnchorId) ?? null;
+  const mapSpotEvents = (() => {
+    if (!mapTapAnchor || !selectedMapEvent) return [];
+    const host = pitchAreaRef.current;
+    const nearby = findNearbyMapEvents(mapTapAnchor, filteredEvents, { width: host?.clientWidth ?? 0, height: host?.clientHeight ?? 0 });
+    if (!nearby.some((e) => e.id === selectedMapEvent.id)) nearby.unshift(selectedMapEvent);
+    return nearby.length > 1 ? nearby : [];
+  })();
+  const mapSpotShowHalf = new Set(mapSpotEvents.map((e) => e.period)).size > 1;
+  const mapSpotShowTeam = new Set(mapSpotEvents.map(mapEventTeamLabel)).size > 1;
+
+  // Opening a marker or picking an event at its spot changes only which event
+  // the panel shows; any pending delete confirmation or open edit form is
+  // cleared in the same update so it can never apply to the newly shown event.
+  const showMapEvent = (id: string, fromMarker: boolean) => {
+    setDeleteConfirmPending(false);
+    setProEditMode(false);
+    setProEditError(null);
+    if (fromMarker) setMapTapAnchorId(id);
+    setSelectedMapEventId(id);
+  };
 
   const selectedMapPlayerLabel = selectedMapEvent == null
     ? null
@@ -738,11 +768,11 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
               ZONES
             </button>
           </div>
-          <div style={B.pitchArea}>
+          <div style={B.pitchArea} ref={pitchAreaRef}>
             <PitchCanvas
               events={mapMarkerEvents}
               sport={pitchSport}
-              onMarkerTap={(id) => setSelectedMapEventId(id)}
+              onMarkerTap={(id) => showMapEvent(id, true)}
               zoneOverlayModel={showEventMapZones ? eventMapZoneOverlayModel : null}
               onHandleReady={(h) => { pitchHandleRef.current = h; }}
             />
@@ -779,6 +809,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
                         setProEditMode(false);
                       } else {
                         setSelectedMapEventId(null);
+                        setMapTapAnchorId(null);
                       }
                     }}
                     aria-label="Close"
@@ -835,6 +866,33 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
                   </div>
                 ) : (
                   <>
+                    {mapSpotEvents.length > 0 && (
+                      <div style={B.spotBox}>
+                        <span style={B.spotTitle}>{mapSpotEvents.length} events here</span>
+                        <div style={B.spotList} role="list" aria-label="Events at this spot">
+                          {mapSpotEvents.map((e) => {
+                            const current = e.id === selectedMapEvent.id;
+                            const extra = [mapSpotShowTeam ? mapEventTeamLabel(e) : null, mapSpotShowHalf ? e.period : null].filter(Boolean).join(" · ");
+                            return (
+                              <button
+                                key={e.id}
+                                type="button"
+                                role="listitem"
+                                style={current ? { ...B.spotItem, ...B.spotItemCurrent } : B.spotItem}
+                                aria-current={current ? "true" : undefined}
+                                aria-label={`Show ${getProEventTypeLabel(e.type)} ${formatMatchClock(e.matchClockSeconds)}${extra ? ` ${extra}` : ""}`}
+                                onClick={() => { if (!current) showMapEvent(e.id, false); }}
+                              >
+                                <span style={B.spotItemType}>{getProEventTypeLabel(e.type)}</span>
+                                <span style={B.spotItemMeta}>
+                                  {formatMatchClock(e.matchClockSeconds)}{extra ? ` · ${extra}` : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div style={B.sheetRow}>
                       <span style={B.sheetRowLabel}>Type</span>
                       <span style={B.sheetRowValue}>{getProEventTypeLabel(selectedMapEvent.type)}</span>
@@ -1376,6 +1434,63 @@ const B: Record<string, CSSProperties> = {
   sheetHandle: {
     display: "none",
   },
+  // "N events here" list (events at the tapped spot) — kept above the event
+  // rows, away from Edit / Delete.
+  spotBox: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           4,
+    paddingBottom: 6,
+    marginBottom:  2,
+    borderBottom:  "1px solid rgba(148, 163, 184, 0.22)",
+  } as CSSProperties,
+  spotTitle: {
+    color:         "#94a3b8",
+    fontSize:      10,
+    fontWeight:    600,
+  },
+  spotList: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           4,
+    maxHeight:     148,
+    overflowY:     "auto",
+    WebkitOverflowScrolling: "touch",
+  } as CSSProperties,
+  spotItem: {
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    gap:            8,
+    minHeight:      32,
+    padding:        "4px 8px",
+    borderRadius:   8,
+    border:         "1px solid rgba(148, 163, 184, 0.22)",
+    background:     "rgba(15, 23, 42, 0.6)",
+    color:          "#cbd5e1",
+    fontSize:       11,
+    textAlign:      "left",
+    cursor:         "pointer",
+    touchAction:    "manipulation",
+    flexShrink:     0,
+  } as CSSProperties,
+  spotItemCurrent: {
+    border:     "1px solid #38bdf8",
+    background: "rgba(56, 189, 248, 0.16)",
+    color:      "#f1f5f9",
+    fontWeight: 700,
+    cursor:     "default",
+  } as CSSProperties,
+  spotItemType: {
+    overflow:     "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace:   "nowrap",
+  } as CSSProperties,
+  spotItemMeta: {
+    color:      "#94a3b8",
+    flexShrink: 0,
+    fontVariantNumeric: "tabular-nums",
+  } as CSSProperties,
   sheetInner: {
     padding:       "10px 12px 14px",
     display:       "flex",
