@@ -7432,6 +7432,7 @@
    "op": "edit",
    "targetId": "B-176",
    "newKind": "KICKOUT_CONCEDED",
+   "clearPlayer": true,
    "truthAfter": {
     "action": "restart",
     "winner": "OPP"

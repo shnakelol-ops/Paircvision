@@ -71,7 +71,10 @@ function applyReviewOp(facts, op) {
     const source = f.type === "wide" ? f.source : null;
     facts[i] = { ...f, type: "score", team: f.team, value: 1, goal: false, source, placed: source != null && PLACED_SOURCES.has(source), editedFrom: f.type };
   } else if (t.action === "restart") {
-    facts[i] = { ...f, winner: t.winner, editedFrom: "restart-outcome" };
+    // A player tagged on a restart was on the side that won it. When the
+    // winner is corrected the edit clears that player (op.clearPlayer), as the
+    // Review Edit form requires; capture could never attach them otherwise.
+    facts[i] = { ...f, winner: t.winner, player: op.clearPlayer ? null : f.player, editedFrom: "restart-outcome" };
   } else if (t.action === "turnover") {
     facts[i] = { ...f, winner: t.winner, loser: other(t.winner), editedFrom: "turnover-direction" };
   } else throw new Error(`unsupported edit ${t.action}`);

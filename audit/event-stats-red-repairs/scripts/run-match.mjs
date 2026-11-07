@@ -332,6 +332,11 @@ async function applyReviewOp(op, target) {
   } else {
     await page.getByRole("button", { name: "Edit event" }).click();
     await page.locator("select").first().selectOption(op.newKind);
+    if (op.clearPlayer) {
+      // Clear the player number and name before saving (required for a restart winner change).
+      await page.getByPlaceholder("—").first().fill("");
+      await page.getByPlaceholder("—").nth(1).fill("");
+    }
     await shot(`41-review-edit-form-${op.targetId}`);
     await clickByText("Save");
   }

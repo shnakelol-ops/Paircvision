@@ -364,7 +364,9 @@ function matchB() {
     { op: "edit", targetId: firstOf((e) => e.family === "WIDE" && e.row === "FOR" && e.tile === "Play" && e.half === 2).id, newKind: "POINT",
       truthAfter: { action: "score", source: "Play" } },
     // A kickout logged as retained that the opposition actually broke: KICKOUT WON → KICKOUT LOST.
-    { op: "edit", targetId: firstOf((e) => e.family === "RESTART" && e.owner === "FOR" && e.row === "FOR" && e.half === 2).id, newKind: "KICKOUT_CONCEDED",
+    // The player tagged was our winner; once the opposition won it nothing records
+    // them as involved, so the edit clears the player (PR #382 Review Edit rule).
+    { op: "edit", targetId: firstOf((e) => e.family === "RESTART" && e.owner === "FOR" && e.row === "FOR" && e.half === 2).id, newKind: "KICKOUT_CONCEDED", clearPlayer: true,
       truthAfter: { action: "restart", winner: "OPP" } },
     // A blocked shot that actually went over: SHOT (Block/Save) → POINT. Stale tag check (regression #9).
     { op: "edit", targetId: firstOf((e) => e.family === "SHOT" && e.tile === "Block/Save" && e.row === "OPP").id, newKind: "POINT",

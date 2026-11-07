@@ -105,7 +105,7 @@ An equivalent live capture is: Restart tile **Clean**, our kickout (OUR K/O, the
   - With it, a number later typed for this restart resolves against Na Fianna, the winning side, exactly as the live picker would.
   - Without it, the legacy fallback would use Ballyboden's roster.
 
-### Proposed corrected fixture (not applied)
+### Corrected fixture (proposed; applied 7 Nov, see below)
 
 The ledger expectation is invalid for this edit, not the app. Proposed separately, for owner approval:
 - In fixture B, the B-176 review op becomes "kickout won → lost, **player cleared**", and the reference's `applyReviewOp` drops the player when it flips a restart winner.
@@ -124,3 +124,50 @@ The ledger expectation is invalid for this edit, not the app. Proposed separatel
 - Event type labels in the edit form are still the raw names (e.g. TWO_POINTER). That is F-12, out of scope.
 - A legacy event that already holds an inconsistent combination (e.g. a POINT with BLOCK/SAVE from an earlier edit) is left as it is until it is edited again.
 - No undo for a saved edit (unchanged).
+
+## Fixture correction and merge verification (7 November 2026, owner-approved)
+
+**Fixture correction.** Details and the original files are in `expected-history/pre-pr382/`.
+- The B-176 review op now clears the player before changing the restart winner. This is applied in the fixture, the generator, the reference and the UI harness.
+- The regenerated ledgers differ in exactly three fields:
+  - the B-176 fact's player: FOR #8 → none;
+  - FOR #8 KO lost: 1 → 0;
+  - FOR #8 actions: 17 → 16.
+- Nothing else in any ledger changed.
+
+**Equivalence with live capture** (`persistence/b176-equivalence.test.ts.txt`, run against the corrected UI run). 7/7 identical:
+
+| Surface | Result |
+|---|---|
+| Stored event | identical except `squadId` (explained above: never read by statistics) |
+| Match report FULL / 1H / 2H, including restart ownership and retention (`restarts`, `restartTeams`), chains, possessions, placed balls, score ledger | identical |
+| Possession outcome summary, Match Intelligence, review prompts (coaching insights), HT and FT intelligence summary | identical |
+| Quick Review segment breakdown, both halves and both directions | identical |
+| Player statistics (FOR #8: KO 8–0, 16 actions) and influence analysis | identical |
+
+**636-event regression, corrected harness and ledgers:**
+
+| Match | PASS / FAIL on PR head `f48e6d5` | Changed checks vs main | Merged tree (main `cf6ae28` + `f48e6d5`) |
+|---|---|---|---|
+| A | 583 / 9 | 0 | 583 / 9, 0 changed |
+| B | 977 / 12 | 0 | 977 / 12, 0 changed |
+| C | 556 / 28 | 0 | 556 / 28, 0 changed |
+
+- The two FOR #8 checks (Player Breakdown and Player Contributions, KO W-L 8–0) now PASS.
+- The remaining FAILs are the same pre-existing, already-classified checks as on main.
+- Legacy import: 28/28. Cross-page: 27/27, on both trees.
+
+**Main moved before merge.** `c06dd79` → `cf6ae28` (PRs #383, #385, #386: Match Clipper and Montage).
+- Those commits add 56 files and delete none. They touch no file in this PR, Event Stats, statistics or storage.
+- One new dependency: `mediabunny`.
+- The merge has no conflicts.
+
+**Gate:**
+
+| Tree | Tests | Type check | Build |
+|---|---|---|---|
+| PR head `f48e6d5` | 3076 / 3076 | same 14 error files as main `c06dd79` | passes |
+| main `cf6ae28` | 3238 / 3238 | 16 error files (2 new Montage files on main) | passes |
+| merged tree | 3255 / 3255 | identical to main `cf6ae28` | passes |
+
+**Unresolved observation.** One earlier gate run on `f48e6d5` reported 2 failed tests in 1 file. They could not be identified and their cause is not established. Every later full run has passed: 15 on `f48e6d5`, plus one each on `cf6ae28` and the merged tree.

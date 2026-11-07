@@ -2,7 +2,7 @@
 
 These are the expected results under the **authoritative kickout-origin definition** (`../KICKOUT-ORIGIN-DEFINITION.md`). They are supplementary, not a replacement.
 
-- **`../expected/` is unchanged.** It is byte-identical to the audit commit `a8581a5` and still encodes the previous restart rule. Every PR #374 comparison uses it.
+- **`../expected/` encodes the previous restart rule.** Every PR #374 comparison uses it. It is byte-identical to the audit commit `a8581a5`, except for the owner-approved PR #382 correction to `ledger-B.json` described below.
 - **How these files were generated:** `../scripts/reference-kickout-phase.mjs`. It imports the unchanged `reference.mjs` (no `src/` code), first checks that `reference.mjs` still reproduces `../expected/` exactly, and then recomputes **only** the fields that depend on the kickout-origin rule:
   - `chains.{FOR,OPP}.restart*`, `avgSecsToScoreWon` and `origins`;
   - `origins` (the ledger partition);
@@ -14,3 +14,12 @@ These are the expected results under the **authoritative kickout-origin definiti
   - **A:** 1 miss, a scripted fixture artifact (A-130).
   - **B after review edits:** 1 credit is explained by review edit B-266 (a wide edited to a score). The simulator truth predates the edit.
 - **Use:** `EXPECTED_DIR=expected-authoritative RESULTS_SUFFIX=-intel-vs-authoritative node scripts/compare.mjs <A|B|C>`
+
+## PR #382 correction (match B, B-176)
+
+The B-176 review edit now clears the player before changing the restart winner (`clearPlayer: true`). In `ledger-B.json`, here and in `../expected/`, exactly three fields change:
+- the B-176 fact's player: FOR #8 → none;
+- FOR #8 `koLost`: 1 → 0;
+- FOR #8 `actions`: 17 → 16.
+
+The previous files and the reason for the change are kept in `../expected-history/pre-pr382/`.

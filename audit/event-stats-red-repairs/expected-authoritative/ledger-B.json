@@ -4197,7 +4197,7 @@
   {
    "team": "FOR",
    "number": 8,
-   "actions": 17,
+   "actions": 16,
    "goals": 0,
    "pointsValue": 1,
    "totalValue": 1,
@@ -4206,7 +4206,7 @@
    "toWon": 2,
    "toLost": 4,
    "koWon": 8,
-   "koLost": 1,
+   "koLost": 0,
    "freesWon": 1,
    "freesConceded": 0,
    "yellow": 0,
@@ -7298,10 +7298,7 @@
    "clock": 274,
    "nx": 0.398,
    "ny": 0.457,
-   "player": {
-    "team": "FOR",
-    "number": 8
-   },
+   "player": null,
    "type": "restart",
    "owner": "FOR",
    "winner": "OPP",
