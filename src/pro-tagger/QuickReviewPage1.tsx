@@ -21,6 +21,8 @@ export interface QuickReviewPage1Props {
   model: QuickReviewMatchOverview;
   homeColour: string;
   awayColour: string;
+  /** Hurling / camogie restarts are puckouts. Default: kickouts. */
+  restartNoun?: "kickout" | "puckout";
 }
 
 /**
@@ -45,7 +47,7 @@ const CLR = {
   panel:  "#0d1117",
 } as const;
 
-export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewPage1Props) {
+export function QuickReviewPage1({ model, homeColour, awayColour, restartNoun = "kickout" }: QuickReviewPage1Props) {
   return (
     <div style={S.page}>
 
@@ -74,23 +76,23 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
       <section style={S.block}>
         <div style={{ ...S.blockTitle, color: CLR.text }}>RESTARTS</div>
 
-        <div style={S.subTitle}>{model.homeTeam} own kickouts</div>
+        <div style={S.subTitle}>{model.homeTeam} own {restartNoun}s</div>
         <div style={S.bigValue}>{model.restarts.ours.text}</div>
 
-        <div style={S.subTitle}>{model.awayTeam} own kickouts</div>
+        <div style={S.subTitle}>{model.awayTeam} own {restartNoun}s</div>
         <div style={S.bigValue}>{model.restarts.theirs.text}</div>
 
         {/* Every kickout each team won (own kept + the other team's won) and
             what those possessions produced. */}
         <ConsequenceRow
-          label={`${model.homeTeam} won ${model.restarts.won.count} ${pluralize(model.restarts.won.count, "kickout")}`}
+          label={`${model.homeTeam} won ${model.restarts.won.count} ${pluralize(model.restarts.won.count, restartNoun)}`}
           detail={kickoutsWonDetail(model.restarts.won, model.awayTeam)}
           accent={CLR.cyan}
           shots={model.restarts.won.shots}
           scores={model.restarts.won.scores}
         />
         <ConsequenceRow
-          label={`${model.awayTeam} won ${model.restarts.lost.count} ${pluralize(model.restarts.lost.count, "kickout")}`}
+          label={`${model.awayTeam} won ${model.restarts.lost.count} ${pluralize(model.restarts.lost.count, restartNoun)}`}
           detail={kickoutsWonDetail(model.restarts.lost, model.homeTeam)}
           accent={CLR.pink}
           shots={model.restarts.lost.shots}

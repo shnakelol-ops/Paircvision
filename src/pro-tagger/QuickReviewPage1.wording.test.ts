@@ -34,8 +34,8 @@ describe("QuickReviewPage1 — Restarts/Turnovers labels name a team (P1-B)", ()
   });
 
   it("names the team on every restart row: own kickouts, and every kickout each team won (Samsung acceptance F1)", () => {
-    expect(source).toContain("{model.homeTeam} own kickouts");
-    expect(source).toContain("{model.awayTeam} own kickouts");
+    expect(source).toContain("{model.homeTeam} own {restartNoun}s");
+    expect(source).toContain("{model.awayTeam} own {restartNoun}s");
     expect(source).toContain("`${model.homeTeam} won ${model.restarts.won.count} ");
     expect(source).toContain("`${model.awayTeam} won ${model.restarts.lost.count} ");
     // The ambiguous "Our restart won/lost" (read as own kickouts, meant all kickouts won) is gone.
