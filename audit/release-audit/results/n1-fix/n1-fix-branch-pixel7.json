@@ -1,0 +1,748 @@
+{
+ "label": "branch-pixel7",
+ "device": "Pixel 7",
+ "targets": [
+  {
+   "half": "1H",
+   "time": "00:51",
+   "kind": "TURNOVER_WON",
+   "view": "H1/FOR/TURNOVERS",
+   "opened": "TURNOVER LOST 30:28",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 8,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 1H 00:51",
+   "currentMarked": "Show TURNOVER WON 00:51",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "01:19",
+   "kind": "POINT",
+   "view": "H1/OPP/SCORES",
+   "opened": "POINT 22:08",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 4,
+   "viaList": true,
+   "shownAfterPick": "POINT 1H 01:19",
+   "currentMarked": "Show POINT 01:19",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "01:34",
+   "kind": "KICKOUT_WON",
+   "view": "H1/FOR/KICKOUTS",
+   "opened": "KICKOUT WON 32:28",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 6,
+   "viaList": true,
+   "shownAfterPick": "KICKOUT WON 1H 01:34",
+   "currentMarked": "Show KICKOUT WON 01:34",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "01:38",
+   "kind": "POINT",
+   "view": "H1/FOR/SCORES",
+   "opened": "POINT 16:08",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "POINT 1H 01:38",
+   "currentMarked": "Show POINT 01:38",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "03:38",
+   "kind": "KICKOUT_CONCEDED",
+   "view": "H1/OPP/KICKOUTS",
+   "opened": "KICKOUT LOST 31:12",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 8,
+   "viaList": true,
+   "shownAfterPick": "KICKOUT LOST 1H 03:38",
+   "currentMarked": "Show KICKOUT LOST 03:38",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "04:31",
+   "kind": "TURNOVER_WON",
+   "view": "H1/FOR/TURNOVERS",
+   "opened": "TURNOVER LOST 11:16",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 1H 04:31",
+   "currentMarked": "Show TURNOVER WON 04:31",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "05:24",
+   "kind": "FORTY_FIVE_WON",
+   "view": "H1/OPP/ALL",
+   "opened": "FREE_CONCEDED 31:41",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 8,
+   "viaList": true,
+   "shownAfterPick": "45/65 WON 1H 05:24",
+   "currentMarked": "Show 45/65 WON 05:24 Moycullen",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "06:14",
+   "kind": "KICKOUT_WON",
+   "view": "H1/FOR/KICKOUTS",
+   "opened": "KICKOUT WON 24:29",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 5,
+   "viaList": true,
+   "shownAfterPick": "KICKOUT WON 1H 06:14",
+   "currentMarked": "Show KICKOUT WON 06:14",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "10:33",
+   "kind": "SIDELINE_WON",
+   "view": "H1/OPP/ALL",
+   "opened": "SIDELINE WON 22:37",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 2,
+   "viaList": true,
+   "shownAfterPick": "SIDELINE WON 1H 10:33",
+   "currentMarked": "Show SIDELINE WON 10:33",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "11:20",
+   "kind": "TURNOVER_WON",
+   "view": "H1/FOR/TURNOVERS",
+   "opened": "TURNOVER LOST 12:32",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 1H 11:20",
+   "currentMarked": "Show TURNOVER WON 11:20",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "11:52",
+   "kind": "YELLOW_CARD",
+   "view": "H1/FOR/ALL",
+   "opened": "FREE_WON 33:18",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 16,
+   "viaList": true,
+   "shownAfterPick": "YELLOW CARD 1H 11:52",
+   "currentMarked": "Show YELLOW CARD 11:52",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "14:00",
+   "kind": "TURNOVER_WON",
+   "view": "H1/FOR/TURNOVERS",
+   "opened": "TURNOVER WON 28:43",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 9,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 1H 14:00",
+   "currentMarked": "Show TURNOVER WON 14:00",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "14:05",
+   "kind": "TURNOVER_LOST",
+   "view": "H1/OPP/TURNOVERS",
+   "opened": "TURNOVER LOST 16:59",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 6,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER LOST 1H 14:05",
+   "currentMarked": "Show TURNOVER LOST 14:05",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "14:09",
+   "kind": "TURNOVER_WON",
+   "view": "H1/FOR/TURNOVERS",
+   "opened": "TURNOVER LOST 33:52",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 9,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 1H 14:09",
+   "currentMarked": "Show TURNOVER WON 14:09",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "14:26",
+   "kind": "FORTY_FIVE_WON",
+   "view": "H1/FOR/ALL",
+   "opened": "TURNOVER LOST 33:52",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 14,
+   "viaList": true,
+   "shownAfterPick": "45/65 WON 1H 14:26",
+   "currentMarked": "Show 45/65 WON 14:26 Corofin",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "17:05",
+   "kind": "SIDELINE_WON",
+   "view": "H1/FOR/ALL",
+   "opened": "SIDELINE WON 22:48",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 2,
+   "viaList": true,
+   "shownAfterPick": "SIDELINE WON 1H 17:05",
+   "currentMarked": "Show SIDELINE WON 17:05",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "18:37",
+   "kind": "TURNOVER_WON",
+   "view": "H1/FOR/TURNOVERS",
+   "opened": "TURNOVER LOST 28:33",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 10,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 1H 18:37",
+   "currentMarked": "Show TURNOVER WON 18:37",
+   "reachable": true
+  },
+  {
+   "half": "1H",
+   "time": "25:34",
+   "kind": "KICKOUT_WON",
+   "view": "H1/FOR/KICKOUTS",
+   "opened": "KICKOUT WON 34:31",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 2,
+   "viaList": true,
+   "shownAfterPick": "KICKOUT WON 1H 25:34",
+   "currentMarked": "Show KICKOUT WON 25:34",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "02:00",
+   "kind": "WIDE",
+   "view": "H2/OPP/WIDES",
+   "opened": "WIDE 03:07",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "WIDE 2H 02:00",
+   "currentMarked": "Show WIDE 02:00",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "02:29",
+   "kind": "TURNOVER_WON",
+   "view": "H2/FOR/TURNOVERS",
+   "opened": "TURNOVER WON 32:41",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 9,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 2H 02:29",
+   "currentMarked": "Show TURNOVER WON 02:29",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "04:07",
+   "kind": "TURNOVER_WON",
+   "view": "H2/FOR/TURNOVERS",
+   "opened": "TURNOVER LOST 26:45",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 2H 04:07",
+   "currentMarked": "Show TURNOVER WON 04:07",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "04:23",
+   "kind": "KICKOUT_WON",
+   "view": "H2/OPP/KICKOUTS",
+   "opened": "KICKOUT LOST 34:17",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "KICKOUT WON 2H 04:23",
+   "currentMarked": "Show KICKOUT WON 04:23",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "07:22",
+   "kind": "TURNOVER_LOST",
+   "view": "H2/OPP/TURNOVERS",
+   "opened": "TURNOVER LOST 26:58",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 5,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER LOST 2H 07:22",
+   "currentMarked": "Show TURNOVER LOST 07:22",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "17:32",
+   "kind": "TURNOVER_WON",
+   "view": "H2/FOR/TURNOVERS",
+   "opened": "TURNOVER WON 31:49",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 5,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 2H 17:32",
+   "currentMarked": "Show TURNOVER WON 17:32",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "28:45",
+   "kind": "TURNOVER_WON",
+   "view": "H2/FOR/TURNOVERS",
+   "opened": "TURNOVER WON 29:58",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 8,
+   "viaList": true,
+   "shownAfterPick": "TURNOVER WON 2H 28:45",
+   "currentMarked": "Show TURNOVER WON 28:45",
+   "reachable": true
+  },
+  {
+   "half": "2H",
+   "time": "29:51",
+   "kind": "KICKOUT_WON",
+   "view": "H2/OPP/KICKOUTS",
+   "opened": "KICKOUT WON 31:28",
+   "directlyOpened": false,
+   "listedAt": 1,
+   "listSize": 3,
+   "viaList": true,
+   "shownAfterPick": "KICKOUT WON 2H 29:51",
+   "currentMarked": "Show KICKOUT WON 29:51",
+   "reachable": true
+  }
+ ],
+ "filters": [
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 16,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 16,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/SCORES",
+   "items": 6,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/OPP/SCORES",
+   "items": 4,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/KICKOUTS",
+   "items": 9,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/KICKOUTS",
+   "items": 7,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/SCORES",
+   "items": 8,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/SCORES",
+   "items": 3,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/KICKOUTS",
+   "items": 11,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/KICKOUTS",
+   "items": 8,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 7,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 7,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/KICKOUTS",
+   "items": 8,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/KICKOUTS",
+   "items": 6,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 5,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 5,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 12,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 12,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 12,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 12,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 11,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 11,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 12,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 12,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/KICKOUTS",
+   "items": 4,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/KICKOUTS",
+   "items": 2,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/WIDES",
+   "items": 3,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/FREES",
+   "items": 4,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 14,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 14,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 5,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 5,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/KICKOUTS",
+   "items": 4,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/OPP/KICKOUTS",
+   "items": 4,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 7,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 7,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 16,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 16,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/TURNOVERS",
+   "items": 13,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/FOR/TURNOVERS",
+   "items": 13,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/ALL/KICKOUTS",
+   "items": 5,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  },
+  {
+   "view": "ALL/OPP/KICKOUTS",
+   "items": 3,
+   "halfMismatch": 0,
+   "allItemsInCategory": true
+  }
+ ],
+ "checks": {
+  "deleteConfirmResetsOnSwitch": {
+   "armedBefore": true,
+   "confirmPendingAfterSwitch": false,
+   "pass": true
+  },
+  "deleteIdenticalCoordinates": {
+   "identicalTwin": {
+    "kind": "FREE_CONCEDED",
+    "time": "11:49"
+   },
+   "shown": "YELLOW CARD 11:52",
+   "cardGone": true,
+   "twinKept": true,
+   "countAfter": 330,
+   "countBefore": 331,
+   "pass": true
+  },
+  "editCoveredEvent": {
+   "firstOpened": "TURNOVER WON 28:43",
+   "changedIds": [
+    {
+     "id": "TARGET",
+     "kind": "TURNOVER_LOST",
+     "time": "14:00"
+    }
+   ],
+   "pass": true
+  },
+  "isolatedMarkers": {
+   "iso": [
+    {
+     "kind": "SHOT",
+     "time": "01:09",
+     "opened": true,
+     "list": 2
+    },
+    {
+     "kind": "SHOT",
+     "time": "05:15",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "FORTY_FIVE_WON",
+     "time": "05:24",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "SHOT",
+     "time": "14:20",
+     "opened": true,
+     "list": 2
+    }
+   ],
+   "pass": false
+  }
+ },
+ "footerCounts": {
+  "ALL/ALL/ALL": "331",
+  "ALL/ALL/SCORES": "331",
+  "ALL/ALL/SHOTS": "331",
+  "ALL/ALL/WIDES": "331",
+  "ALL/ALL/TURNOVERS": "331",
+  "ALL/ALL/KICKOUTS": "331",
+  "ALL/ALL/FREES": "331",
+  "ALL/FOR/ALL": "331",
+  "ALL/FOR/SCORES": "331",
+  "ALL/FOR/SHOTS": "331",
+  "ALL/FOR/WIDES": "331",
+  "ALL/FOR/TURNOVERS": "331",
+  "ALL/FOR/KICKOUTS": "331",
+  "ALL/FOR/FREES": "331",
+  "ALL/OPP/ALL": "331",
+  "ALL/OPP/SCORES": "331",
+  "ALL/OPP/SHOTS": "331",
+  "ALL/OPP/WIDES": "331",
+  "ALL/OPP/TURNOVERS": "331",
+  "ALL/OPP/KICKOUTS": "331",
+  "ALL/OPP/FREES": "331",
+  "H1/ALL/ALL": "331",
+  "H1/ALL/SCORES": "331",
+  "H1/ALL/SHOTS": "331",
+  "H1/ALL/WIDES": "331",
+  "H1/ALL/TURNOVERS": "331",
+  "H1/ALL/KICKOUTS": "331",
+  "H1/ALL/FREES": "331",
+  "H1/FOR/ALL": "331",
+  "H1/FOR/SCORES": "331",
+  "H1/FOR/SHOTS": "331",
+  "H1/FOR/WIDES": "331",
+  "H1/FOR/TURNOVERS": "331",
+  "H1/FOR/KICKOUTS": "331",
+  "H1/FOR/FREES": "331",
+  "H1/OPP/ALL": "331",
+  "H1/OPP/SCORES": "331",
+  "H1/OPP/SHOTS": "331",
+  "H1/OPP/WIDES": "331",
+  "H1/OPP/TURNOVERS": "331",
+  "H1/OPP/KICKOUTS": "331",
+  "H1/OPP/FREES": "331",
+  "H2/ALL/ALL": "331",
+  "H2/ALL/SCORES": "331",
+  "H2/ALL/SHOTS": "331",
+  "H2/ALL/WIDES": "331",
+  "H2/ALL/TURNOVERS": "331",
+  "H2/ALL/KICKOUTS": "331",
+  "H2/ALL/FREES": "331",
+  "H2/FOR/ALL": "331",
+  "H2/FOR/SCORES": "331",
+  "H2/FOR/SHOTS": "331",
+  "H2/FOR/WIDES": "331",
+  "H2/FOR/TURNOVERS": "331",
+  "H2/FOR/KICKOUTS": "331",
+  "H2/FOR/FREES": "331",
+  "H2/OPP/ALL": "331",
+  "H2/OPP/SCORES": "331",
+  "H2/OPP/SHOTS": "331",
+  "H2/OPP/WIDES": "331",
+  "H2/OPP/TURNOVERS": "331",
+  "H2/OPP/KICKOUTS": "331",
+  "H2/OPP/FREES": "331"
+ }
+}

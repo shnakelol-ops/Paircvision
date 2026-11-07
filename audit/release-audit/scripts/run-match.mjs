@@ -411,8 +411,19 @@ async function applyReviewOp(op, target) {
       await page.mouse.click(x + dx, y + dy);
       await page.waitForTimeout(200);
       if (!(await page.getByText("Event detail").count())) continue;
-      const time = await page.evaluate(() => document.body.innerText);
-      if (time.includes(`${mm}:${ss}`)) { opened = true; openedView = { half: h, team: t, category: c, dx, dy }; break; }
+      // Read the detail panel's own Time row (a list of nearby events may also show times).
+      const shownTime = await page.evaluate(() => { const t = document.body.innerText; const i = t.search(/EVENT DETAIL/i); return i < 0 ? null : ((t.slice(i).match(/\nTime\s*\n\s*(\d{2}:\d{2})/i) || [])[1] ?? null); });
+      if (shownTime === `${mm}:${ss}`) { opened = true; openedView = { half: h, team: t, category: c, dx, dy }; break; }
+      // USE_SPOT_LIST=1: the marker that took the tap lists the events at its spot (N-1 repair) — pick the target there.
+      if (process.env.USE_SPOT_LIST) {
+        const items = page.locator('[aria-label="Events at this spot"] button').filter({ hasText: `${mm}:${ss}` });
+        if (await items.count()) {
+          await items.first().click();
+          await page.waitForTimeout(200);
+          const t2 = await page.evaluate(() => { const t = document.body.innerText; const i = t.search(/EVENT DETAIL/i); return i < 0 ? null : ((t.slice(i).match(/\nTime\s*\n\s*(\d{2}:\d{2})/i) || [])[1] ?? null); });
+          if (t2 === `${mm}:${ss}`) { opened = true; openedView = { half: h, team: t, category: c, dx, dy, viaSpotList: true }; break; }
+        }
+      }
       await page.getByRole("button", { name: "Close" }).first().click();
     }
     if (opened) break;
