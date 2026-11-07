@@ -2,6 +2,7 @@ import type {
   PossessionFamilySummary,
   PossessionOutcomeSummary,
 } from "./chains/chain-types";
+import { producedScore, producedScoreText } from "./possessionScoreText";
 
 const W = 1080;
 const H = 1920;
@@ -187,7 +188,7 @@ function drawKickoutBranch(
   const hasScore = sm.goals > 0 || sm.points > 0;
   ctx.fillStyle = hasScore ? (cfg.isOurs ? CLR.green : CLR.red) : CLR.dim;
   ctx.font = "700 26px Inter,system-ui,sans-serif";
-  ctx.fillText(`${fmtGaelic(sm.goals, sm.points)} scored`, ix, startY + yScore);
+  ctx.fillText(producedScoreText(producedScore(sm)), ix, startY + yScore);
 
   // Wides
   ctx.fillStyle = sm.wides > 0 ? CLR.amber : CLR.dim;
@@ -323,7 +324,7 @@ function drawLegacyKickoutSection(
     const hasScore = sm.goals > 0 || sm.points > 0;
     ctx.fillStyle = hasScore ? (b.isOurs ? CLR.green : CLR.red) : CLR.dim;
     ctx.font = "700 26px Inter,system-ui,sans-serif";
-    ctx.textAlign = ta; ctx.fillText(`${fmtGaelic(sm.goals, sm.points)} scored`, ex, startY + yScore);
+    ctx.textAlign = ta; ctx.fillText(producedScoreText(producedScore(sm)), ex, startY + yScore);
 
     ctx.fillStyle = sm.wides > 0 ? CLR.amber : CLR.dim;
     ctx.font = "500 19px Inter,system-ui,sans-serif";

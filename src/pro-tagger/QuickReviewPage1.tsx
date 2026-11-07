@@ -8,7 +8,8 @@ import type { QuickReviewMatchOverview } from "../stats/reporting/quickReviewMat
 // performs no percentage/score/shot/consequence calculation of its own. It
 // only decides layout, labelling, and colour.
 //
-// "Our"/"Their" labels are used for the Restarts/Turnovers sections per the
+// Restarts rows name the team ("Ballylanders own kickouts", "Galbally won 6
+// kickouts"); "Our"/"Their" labels are used for the Turnovers section per the
 // product spec — safe under the CLAUDE.md pronoun rule because the score
 // line at the top of this same page already names both teams explicitly.
 //
@@ -73,24 +74,27 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
       <section style={S.block}>
         <div style={{ ...S.blockTitle, color: CLR.text }}>RESTARTS</div>
 
-        <div style={S.subTitle}>Our kickouts</div>
+        <div style={S.subTitle}>{model.homeTeam} own kickouts</div>
         <div style={S.bigValue}>{model.restarts.ours.text}</div>
 
-        <div style={S.subTitle}>Their kickouts</div>
+        <div style={S.subTitle}>{model.awayTeam} own kickouts</div>
         <div style={S.bigValue}>{model.restarts.theirs.text}</div>
 
+        {/* Every kickout each team won (own kept + the other team's won) and
+            what those possessions produced. */}
         <ConsequenceRow
-          label="Our restart won"
+          label={`${model.homeTeam} won ${model.restarts.won.count} ${pluralize(model.restarts.won.count, "kickout")}`}
+          detail={kickoutsWonDetail(model.restarts.won, model.awayTeam)}
           accent={CLR.cyan}
           shots={model.restarts.won.shots}
           scores={model.restarts.won.scores}
         />
         <ConsequenceRow
-          label="Our restart lost"
+          label={`${model.awayTeam} won ${model.restarts.lost.count} ${pluralize(model.restarts.lost.count, "kickout")}`}
+          detail={kickoutsWonDetail(model.restarts.lost, model.homeTeam)}
           accent={CLR.pink}
           shots={model.restarts.lost.shots}
           scores={model.restarts.lost.scores}
-          against
         />
       </section>
 
@@ -154,8 +158,15 @@ function Row({
   );
 }
 
+/** "4 own kept · 1 won from Galbally" (+ "· 1 taker not recorded" when any). */
+function kickoutsWonDetail(k: { count: number; ownKept: number; fromOpposition: number }, opposition: string): string {
+  const unknown = k.count - k.ownKept - k.fromOpposition;
+  return [`${k.ownKept} own kept`, `${k.fromOpposition} won from ${opposition}`, ...(unknown > 0 ? [`${unknown} taker not recorded`] : [])].join(" · ");
+}
+
 function ConsequenceRow({
   label,
+  detail,
   accent,
   shots,
   scores,
@@ -163,6 +174,8 @@ function ConsequenceRow({
   compact,
 }: {
   label: string;
+  /** Optional dim line under the row (e.g. how a kickouts-won count splits). */
+  detail?: string;
   accent: string;
   shots: number;
   scores: number;
@@ -173,13 +186,20 @@ function ConsequenceRow({
   const suffix = against ? " against" : "";
   const shotsText = `${shots} ${pluralize(shots, "shot")}${suffix}`;
   const scoresText = `${scores} ${pluralize(scores, "score")}${suffix}`;
-  return (
+  const row = (
     <div style={compact ? S.consequenceRowCompact : S.consequenceRow}>
       {label && <span style={{ ...S.consequenceLabel, color: accent }}>{label}</span>}
       <span style={S.consequenceArrow}>→</span>
       <span style={S.consequenceValue}>{shotsText}</span>
       <span style={S.consequenceSep}>|</span>
       <span style={S.consequenceValue}>{scoresText}</span>
+    </div>
+  );
+  if (!detail) return row;
+  return (
+    <div>
+      {row}
+      <div style={S.consequenceDetail}>{detail}</div>
     </div>
   );
 }
@@ -285,6 +305,11 @@ const S: Record<string, CSSProperties> = {
     fontSize: 11,
     fontWeight: 700,
     flexShrink: 0,
+  },
+  consequenceDetail: {
+    fontSize: 10,
+    color: CLR.dim,
+    marginTop: 1,
   },
   consequenceArrow: {
     fontSize: 11,

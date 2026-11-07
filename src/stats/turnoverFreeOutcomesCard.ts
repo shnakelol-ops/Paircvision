@@ -2,6 +2,7 @@ import type {
   PossessionFamilySummary,
   PossessionOutcomeSummary,
 } from "./chains/chain-types";
+import { producedScore, producedScoreText } from "./possessionScoreText";
 
 const W = 1080;
 const H = 1920;
@@ -44,10 +45,6 @@ function netClr(net: number): string {
   if (net > 0) return CLR.green;
   if (net < 0) return CLR.red;
   return CLR.dim;
-}
-
-function fmtGaelic(goals: number, points: number): string {
-  return `${goals}-${points.toString().padStart(2, "0")}`;
 }
 
 function hDivider(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
@@ -150,7 +147,7 @@ function drawSingleBranchSection(
   const hasScore = sm.goals > 0 || sm.points > 0;
   ctx.fillStyle = hasScore ? (cfg.isOurs ? CLR.green : CLR.red) : CLR.dim;
   ctx.font = "700 26px Inter,system-ui,sans-serif";
-  ctx.textAlign = "left"; ctx.fillText(`${fmtGaelic(sm.goals, sm.points)} scored`, ix, startY + yScore);
+  ctx.textAlign = "left"; ctx.fillText(producedScoreText(producedScore(sm)), ix, startY + yScore);
 
   ctx.fillStyle = sm.wides > 0 ? CLR.amber : CLR.dim;
   ctx.font = "500 19px Inter,system-ui,sans-serif";
