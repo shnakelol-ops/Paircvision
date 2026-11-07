@@ -588,7 +588,13 @@ function intelligencePages(pages, surf) {
     const v = (lab) => val(ci, lab, { maxDx: 600 });
     check(surf, pg, "FULL", hurling ? "total puckouts" : "total kickouts", null, S.FOR.restartsWon + S.FOR.restartsLost, v(hurling ? "Total puckouts" : "Total kickouts"));
     check(surf, pg, "FULL", "Won → Origin score", "FOR", `${f.restartWonToScore.num} (${pctS(f.restartWonToScore)})`, val(ci, "Won → Origin score", { maxDx: 600 }));
-    check(surf, pg, "FULL", "turnovers: Won → Shot (label) vs shot-without-score value", "FOR", `${f.turnoverWonToAttempt.num} (${pctS(f.turnoverWonToAttempt)})`, val(ci, "Won → Shot", { maxDx: 600 }), "label says 'Won → Shot'");
+    // R-1: a row labelled "Won → Shot" must carry every turnover won → shot; once the
+    // app labels it "Won → Shot, no score" it must carry the shot-without-score count.
+    if (ci.texts.some((t) => t.t === "Won → Shot, no score")) {
+      check(surf, pg, "FULL", "turnovers: Won → Shot, no score", "FOR", `${f.turnoverWonAttemptNoScore.num} (${pctS(f.turnoverWonAttemptNoScore)})`, val(ci, "Won → Shot, no score", { maxDx: 600 }));
+    } else {
+      check(surf, pg, "FULL", "turnovers: Won → Shot (label) vs shot-without-score value", "FOR", `${f.turnoverWonToAttempt.num} (${pctS(f.turnoverWonToAttempt)})`, val(ci, "Won → Shot", { maxDx: 600 }), "label says 'Won → Shot'");
+    }
     // R1: the run label is drawn with double spaces ("Team  ×4  2H S6"), which
     // the original single-space pattern never matched, so these rows went
     // unchecked. Run length is the number of scoring events (approved unit:
