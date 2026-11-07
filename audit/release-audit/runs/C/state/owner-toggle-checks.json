@@ -1,0 +1,467 @@
+[
+ {
+  "afterEvent": "C-003",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-006",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-015",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-023",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-030",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-039",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-041",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-044",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-053",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-055",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-060",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-062",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-065",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-069",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-074",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-081",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-083",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-089",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-093",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-096",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-103",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-108",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-115",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-119",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-135",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-137",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-142",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-147",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-151",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-155",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "C-161",
+  "toggle": [
+   {
+    "label": "OUR P/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR P/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ }
+]

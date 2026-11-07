@@ -1,0 +1,104 @@
+{
+ "counts": [
+  [
+   "Castlehaven",
+   "",
+   "Nemo Rangers"
+  ],
+  [
+   "1",
+   "Goals",
+   "4"
+  ],
+  [
+   "14",
+   "Points",
+   "11"
+  ],
+  [
+   "5",
+   "2PT",
+   "5"
+  ],
+  [
+   "22",
+   "Shots",
+   "25"
+  ],
+  [
+   "2",
+   "Wides",
+   "2"
+  ],
+  [
+   "9",
+   "Turnover Won",
+   "11"
+  ],
+  [
+   "11",
+   "Turnover Lost",
+   "9"
+  ],
+  [
+   "21",
+   "Kickout Won",
+   "21"
+  ],
+  [
+   "21",
+   "Kickout Lost",
+   "21"
+  ],
+  [
+   "12",
+   "Free Won",
+   "7"
+  ],
+  [
+   "7",
+   "Free Conceded",
+   "12"
+  ],
+  [
+   "0",
+   "45 Won",
+   "1"
+  ],
+  [
+   "1",
+   "45 Lost",
+   "0"
+  ],
+  [
+   "2",
+   "Sideline Won",
+   "0"
+  ],
+  [
+   "0",
+   "Sideline Lost",
+   "2"
+  ],
+  [
+   "1",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "1"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "0"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nCastlehaven\n1-24\n—\n4-21\nNemo Rangers\nSHOOTING\nCastlehaven\n20/22 (91%)\nNemo Rangers\n20/25 (80%)\nLONGEST SCORING RUN\nCastlehaven\n6\nNemo Rangers\n6\nRESTARTS\nOUR KICKOUTS\n14/21 retained (67%)\nTHEIR KICKOUTS\n14/21 retained (67%)\nOur restart won\n→\n8 shots\n|\n7 scores\nOur restart lost\n→\n12 shots against\n|\n9 scores against\nTURNOVERS\nOUR TURNOVERS WON\n9\n→\n4 shots\n|\n4 scores\nOUR TURNOVERS LOST\n11\n→\n6 shots against\n|\n5 scores against\nFREES / PLACED BALLS\nFrees won\n12\nPlaced balls\n5/6 scored\nFrees conceded\n7",
+  "Counts Sheet\nCastlehaven\nNemo Rangers\n1\nGoals\n4\n14\nPoints\n11\n5\n2PT\n5\n22\nShots\n25\n2\nWides\n2\n9\nTurnover Won\n11\n11\nTurnover Lost\n9\n21\nKickout Won\n21\n21\nKickout Lost\n21\n12\nFree Won\n7\n7\nFree Conceded\n12\n0\n45 Won\n1\n1\n45 Lost\n0\n2\nSideline Won\n0\n0\nSideline Lost\n2\n1\nYellow Cards\n1\n0\nSin Bins\n1\n0\nRed Cards\n0",
+  "Segment Comparison — Full Time\nEarly 0–10 · Mid 10–20 · Late 20+\nFIRST HALF\nCASTLEHAVEN\nEARLY\nMID\nLATE\nScore\n0-00\n0-03\n0-09\nShots\n1\n4\n6\nWides\n1\n1\n0\nTurnovers Won\n0\n0\n1\n↳ Own Half\n0\n0\n0\n↳ Opposition Half\n0\n0\n1\nTurnovers Lost\n2\n1\n1\n↳ Own Half\n1\n0\n0\n↳ Opposition Half\n1\n1\n1\nOwn KO Retained\n2/5 (40%)\n4/6 (67%)\n2/2 (100%)\nOpposition KO Retained\n1/1 (100%)\n2/3 (67%)\n4/6 (67%)\nNEMO RANGERS\nEARLY\nMID\nLATE\nScore\n1-07\n1-04\n0-02\nShots\n7\n5\n3\nWides\n0\n1\n0\nTurnovers Won\n2\n1\n1\n↳ Own Half\n1\n1\n1\n↳ Opposition Half\n1\n0\n0\nTurnovers Lost\n0\n0\n1\n↳ Own Half\n0\n0\n1\n↳ Opposition Half\n0\n0\n0\nOwn KO Retained\n1/1 (100%)\n2/3 (67%)\n4/6 (67%)\nOpposition KO Retained\n2/5 (40%)\n4/6 (67%)\n2/2 (100%)\nSECOND HALF\nCASTLEHAVEN\nEARLY\nMID\nLATE\nScore\n0-05\n0-04\n1-03\nShots\n4\n3\n4\nWides\n0\n0\n0\nTurnovers Won\n2\n2\n4\n↳ Own Half\n2\n0\n2\n↳ Opposition Half\n0\n2\n2\nTurnovers Lost\n0\n5\n2\n↳ Own Half\n0\n3\n1\n↳ Opposition Half\n0\n2\n1\nOwn KO Retained\n3/3 (100%)\n2/3 (67%)\n1/2 (50%)\nOpposition KO Retained\n4/4 (100%)\n0/3 (0%)\n3/4 (75%)\nNEMO RANGERS\nEARLY\nMID\nLATE\nScore\n0-02\n0-04\n2-02\nShots\n3\n4\n3\nWides\n1\n0\n0\nTurnovers Won\n0\n5\n2\n↳ Own Half\n0\n2\n1\n↳ Opposition Half\n0\n3\n1\nTurnovers Lost\n2\n2\n4\n↳ Own Half\n0\n2\n2\n↳ Opposition Half\n2\n0\n2\nOwn KO Retained\n4/4 (100%)\n0/3 (0%)\n3/4 (75%)\nOpposition KO Retained\n3/3 (100%)\n2/3 (67%)\n1/2 (50%)"
+ ]
+}
