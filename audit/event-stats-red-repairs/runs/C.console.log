@@ -1,0 +1,16 @@
+[C] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[C] match started 
+[C] captured Quick Review HT {"countsRows":18,"panes":3}
+[C] exported HT-snapshot-live {"file":"runs/C/pdf/C-HT-snapshot-live.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_ht_snapshot.pdf","pages":5}
+[C] second half started 
+[C] captured Quick Review FT {"countsRows":18,"panes":3}
+[C] exported FT-snapshot-live {"file":"runs/C/pdf/C-FT-snapshot-live.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_ft_snapshot.pdf","pages":8}
+[C] exported FullReview-live {"file":"runs/C/pdf/C-FullReview-live.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_review.pdf","pages":30}
+[C] full time + saved 
+[C] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[C] exported HT-snapshot-reopened {"file":"runs/C/pdf/C-HT-snapshot-reopened.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_ht_snapshot.pdf","pages":5}
+[C] exported FT-snapshot-reopened {"file":"runs/C/pdf/C-FT-snapshot-reopened.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_ft_snapshot.pdf","pages":8}
+[C] exported FullReview-reopened {"file":"runs/C/pdf/C-FullReview-reopened.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_review.pdf","pages":30}
+[C] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[C] exported FT-snapshot-reopened2 {"file":"runs/C/pdf/C-FT-snapshot-reopened2.pdf","suggested":"Ballyhale_Shamrocks_v_Na_Piarsaigh_ft_snapshot.pdf","pages":8}
+[C] done 

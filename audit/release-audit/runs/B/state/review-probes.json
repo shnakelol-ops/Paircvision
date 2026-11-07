@@ -1,0 +1,223 @@
+{
+ "probes": [
+  {
+   "op": "probe",
+   "targetId": "B-002",
+   "kind": "TURNOVER_LOST",
+   "expect": "notOffered",
+   "optionsOffered": [
+    "TURNOVER_WON",
+    "TURNOVER_LOST"
+   ],
+   "offeredButShouldNotBe": [],
+   "pass": true,
+   "storedUnchanged": true
+  }
+ ],
+ "edits": [
+  {
+   "targetId": "B-170",
+   "newKind": "POINT",
+   "formError": null,
+   "applied": true
+  },
+  {
+   "targetId": "B-183",
+   "newKind": "KICKOUT_CONCEDED",
+   "formError": null,
+   "applied": true
+  },
+  {
+   "targetId": "B-026",
+   "newKind": "POINT",
+   "formError": null,
+   "applied": true
+  },
+  {
+   "targetId": "B-001",
+   "newKind": "TURNOVER_LOST",
+   "formError": null,
+   "applied": true
+  },
+  {
+   "targetId": "B-194",
+   "newKind": "FREE_CONCEDED",
+   "formError": null,
+   "applied": true
+  },
+  {
+   "targetId": "B-022",
+   "newKind": "KICKOUT_CONCEDED",
+   "formError": null,
+   "applied": true
+  }
+ ],
+ "reachability": [
+  {
+   "targetId": "B-170",
+   "op": "edit",
+   "kind": "WIDE",
+   "opened": true,
+   "view": {
+    "half": "H2",
+    "team": "FOR",
+    "category": "WIDES",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-183",
+   "op": "edit",
+   "kind": "KICKOUT_WON",
+   "opened": true,
+   "view": {
+    "half": "H2",
+    "team": "FOR",
+    "category": "K/O",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-026",
+   "op": "edit",
+   "kind": "SHOT",
+   "opened": true,
+   "view": {
+    "half": "H1",
+    "team": "OPP",
+    "category": "SHOTS",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-001",
+   "op": "edit",
+   "kind": "TURNOVER_WON",
+   "opened": true,
+   "view": {
+    "half": "H1",
+    "team": "FOR",
+    "category": "T/O",
+    "dx": -3,
+    "dy": -3
+   },
+   "taps": 28
+  },
+  {
+   "targetId": "B-194",
+   "op": "edit",
+   "kind": "FREE_WON",
+   "opened": true,
+   "view": {
+    "half": "H2",
+    "team": "FOR",
+    "category": "FREES",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-059",
+   "op": "edit",
+   "kind": "YELLOW_CARD",
+   "opened": false,
+   "view": null,
+   "taps": 324
+  },
+  {
+   "targetId": "B-007",
+   "op": "edit",
+   "kind": "POINT",
+   "opened": false,
+   "view": null,
+   "taps": 324
+  },
+  {
+   "targetId": "B-022",
+   "op": "edit",
+   "kind": "KICKOUT_WON",
+   "opened": true,
+   "view": {
+    "half": "H1",
+    "team": "OPP",
+    "category": "K/O",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-006",
+   "op": "delete",
+   "kind": "SIDELINE_WON",
+   "opened": true,
+   "view": {
+    "half": "H1",
+    "team": "OPP",
+    "category": "ALL",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-203",
+   "op": "delete",
+   "kind": "POINT",
+   "opened": true,
+   "view": {
+    "half": "H2",
+    "team": "OPP",
+    "category": "SCORES",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-002",
+   "op": "probe",
+   "kind": "TURNOVER_LOST",
+   "opened": true,
+   "view": {
+    "half": "H1",
+    "team": "FOR",
+    "category": "T/O",
+    "dx": 0,
+    "dy": 0
+   },
+   "taps": 1
+  },
+  {
+   "targetId": "B-009",
+   "op": "probe",
+   "kind": "POINT",
+   "opened": false,
+   "view": null,
+   "taps": 324
+  },
+  {
+   "targetId": "B-027",
+   "op": "probe",
+   "kind": "FORTY_FIVE_WON",
+   "opened": false,
+   "view": null,
+   "taps": 324
+  },
+  {
+   "targetId": "B-008",
+   "op": "probe",
+   "kind": "KICKOUT_WON",
+   "opened": false,
+   "view": null,
+   "taps": 324
+  }
+ ]
+}

@@ -1,0 +1,274 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Full-Time Dashboard
+ 1896    38  1 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+  496   118  Castlehaven
+ 1424   118  Nemo Rangers
+  960   150  v
+  496   190  1-24 (27)
+ 1424   190  4-21 (33)
+  960   244  Nemo Rangers lead by 6
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Castlehaven
+  540   394  14/21
+  994   394  14/21
+ 1448   402  9
+   86   416  20/22
+  540   446  67%
+  994   446  67%
+   86   452  91%
+ 1448   470  Lost
+  540   490  Lost 7/21
+  994   490  Lost 7/21
+ 1448   514  11
+   86   534  Nemo Rangers
+   86   576  20/25
+   86   612  80%
+   46   928  Castlehaven placed balls
+  992   928  Nemo Rangers placed balls
+   46   956  5/6 scored
+  992   956  4/4 scored
+ 1896  1060  134 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+   54   125  20 scores from 22 shots · 91% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+   46   972  Castlehaven shots: 20 scored from 22 attempts …
+  676   972  Castlehaven: 5 placed-ball scores · 1 placed-bal…
+ 1306   972  Castlehaven best zone: Attacking Centre (8)
+ 1896  1060  22 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+   54   125  20 scores from 25 shots · 80% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+  479   627  ↓
+  480   628  ↓
+   46   972  Nemo Rangers shots: 20 scored from 25 attemp…
+  676   972  Nemo Rangers: 4 placed-ball scores
+ 1306   972  Nemo Rangers best scoring zone: Attacking Ce…
+ 1896  1060  25 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Castlehaven Kickouts
+ 1434   118  Nemo Rangers Kickouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Castlehaven Kickouts
+  992   928  Nemo Rangers Kickouts
+   46   956  Castlehaven retained 8/13 (62%)
+  992   956  Nemo Rangers retained 7/10 (70%)
+ 1896  1060  23 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Restart Battle – Second Half
+ 1896    38  5 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+  486    95  2nd Half
+ 1434    95  2nd Half
+  486   118  Castlehaven Kickouts
+ 1434   118  Nemo Rangers Kickouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Castlehaven Kickouts
+  992   928  Nemo Rangers Kickouts
+   46   956  Castlehaven retained 6/8 (75%)
+  992   956  Nemo Rangers retained 7/11 (64%)
+ 1896  1060  19 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Turnover & Territory – First Half
+ 1896    38  6 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers · Castlehaven attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 1 · Lost 4 (20% won)
+  676   972  Attacking Centre
+ 1306   972  Attacking Centre
+ 1896  1060  5 events
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Turnover & Territory – Second Half
+ 1896    38  7 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers · Castlehaven attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 8 · Lost 7 (53% won)
+  676   972  Middle Centre
+ 1306   972  Middle Right
+ 1896  1060  15 events
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  8 / 8
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+   38   104  FOR — CASTLEHAVEN
+  982   104  OPP — NEMO RANGERS
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  22
+  982   172  Attempts
+ 1884   172  25
+   38   204  Scores
+  940   204  20
+  982   204  Scores
+ 1884   204  20
+   38   236  Conversion
+  940   236  91%
+  982   236  Conversion
+ 1884   236  80%
+   38   268  Wides
+  940   268  2
+  982   268  Wides
+ 1884   268  2
+   38   300  Blocked / Saved
+  940   300  0
+  982   300  Blocked / Saved
+ 1884   300  1
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  16
+  664   400  15
+  780   400  1
+  940   400  94%
+  982   400  Open Play
+ 1488   400  18
+ 1608   400  16
+ 1724   400  2
+ 1884   400  89%
+   38   432  Free
+  544   432  5
+  664   432  4
+  780   432  1
+  940   432  80%
+  982   432  Free
+ 1488   432  2
+ 1608   432  2
+ 1724   432  0
+ 1884   432  100%
+   38   464  Mark
+  544   464  1
+  664   464  1
+  780   464  0
+  940   464  100%
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  —
+  664   496  —
+  780   496  —
+  940   496  —
+  982   496  45
+ 1488   496  1
+ 1608   496  1
+ 1724   496  0
+ 1884   496  100%
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  1
+ 1608   528  1
+ 1724   528  0
+ 1884   528  100%
+  982   560  Unclassified
+ 1488   560  3
+ 1608   560  —
+ 1724   560  3
+ 1884   560  0%
+   38   577  2-POINT PROFILE
+  982   587  3 shots logged without a source
+   38   606  TWO_POINTER Scores
+  940   606  5
+  982   631  2-POINT PROFILE
+   38   638  45+2 Scores
+  940   638  0
+  982   660  TWO_POINTER Scores
+ 1884   660  4
+   38   670  Total 2PT Scores
+  940   670  5
+  982   692  45+2 Scores
+ 1884   692  1
+   38   702  Total 2PT Pts Value
+  940   702  10
+  982   724  Total 2PT Scores
+ 1884   724  5
+   38   751  FREE CONVERSION
+  982   756  Total 2PT Pts Value
+ 1884   756  10
+   38   780  Placed Scored
+  940   780  5
+  982   805  FREE CONVERSION
+   38   812  Placed Missed
+  940   812  1
+  982   834  Placed Scored
+ 1884   834  4
+   38   844  Placed Conv %
+  940   844  83%
+  982   866  Placed Missed
+ 1884   866  0
+  982   898  Placed Conv %
+ 1884   898  100%
+ 1896  1060  134 events

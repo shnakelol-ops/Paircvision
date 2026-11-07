@@ -1,0 +1,107 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Half-Time Dashboard
+ 1896    38  1 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  496   118  Kilmacud Crokes
+ 1424   118  St Brigid's
+  960   150  v
+  496   190  1-06 (9)
+ 1424   190  1-10 (13)
+  960   244  St Brigid's lead by 4
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Kilmacud Crokes
+  540   394  14/18
+  994   394  10/16
+ 1448   402  29
+   86   416  7/18
+  540   446  78%
+  994   446  63%
+   86   452  39%
+ 1448   470  Lost
+  540   490  Lost 4/18
+  994   490  Lost 6/16
+ 1448   514  31
+   86   534  St Brigid's
+   86   576  11/21
+   86   612  52%
+   46   928  Kilmacud Crokes placed balls
+  992   928  St Brigid's placed balls
+   46   956  2/3 scored
+  992   956  2/5 scored
+ 1896  1060  154 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   54   125  7 scores from 18 shots · 39% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+   46   972  Kilmacud… shots: 7 scored from 18 attempts · 1…
+  676   972  Kilmacud…: 2 placed-ball scores · 1 placed-ball …
+ 1306   972  Kilmacud… best zone: Attacking Centre (4)
+ 1896  1060  18 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   54   125  11 scores from 21 shots · 52% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+ 1562   409  ↓
+ 1563   411  ↓
+   46   972  St Brigid's shots: 11 scored from 21 attempts · 1…
+  676   972  St Brigid's: 2 placed-ball scores · 3 placed-ball …
+ 1306   972  St Brigid's best scoring zone: Attacking Centre (9)
+ 1896  1060  21 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Kilmacud Crokes Kickouts
+ 1434   118  St Brigid's Kickouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Kilmacud Crokes Kickouts
+  992   928  St Brigid's Kickouts
+   46   956  Kilmacud… retained 14/18 (78%)
+  992   956  St Brigid's retained 10/16 (63%)
+ 1896  1060  34 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Turnover & Territory
+ 1896    38  5 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's · Kilmacud Crokes attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 29 · Lost 31 (48% won)
+  676   972  Attacking Centre
+ 1306   972  Middle Centre
+ 1896  1060  60 events

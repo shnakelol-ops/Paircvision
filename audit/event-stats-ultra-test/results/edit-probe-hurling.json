@@ -1,0 +1,44 @@
+{
+ "target": {
+  "id": "abe14df2-8c46-4ddd-9d15-8f8166eac906",
+  "kind": "POINT",
+  "tags": [
+   "PLAY"
+  ],
+  "clock": 143
+ },
+ "typeOptionsOffered": [
+  "GOAL",
+  "POINT",
+  "WIDE",
+  "TURNOVER WON",
+  "TURNOVER LOST",
+  "TWO_POINTER",
+  "FORTY_FIVE_TWO_POINT",
+  "SHOT",
+  "FREE_WON",
+  "FREE_CONCEDED",
+  "FREE_SCORED",
+  "FREE_MISSED",
+  "KICKOUT WON",
+  "KICKOUT LOST",
+  "POSSESSION_WON",
+  "POSSESSION_LOST",
+  "45/65 WON",
+  "45/65 LOST",
+  "SIDELINE WON",
+  "SIDELINE LOST",
+  "YELLOW CARD",
+  "SIN BIN",
+  "RED CARD"
+ ],
+ "scorelineBefore": "Ballyhale Shamrocks 1-19 (22) v Na Piarsaigh 2-21 (27)",
+ "scorelineAfterEditToTwoPointer": "Ballyhale Shamrocks 1-20 (23) v Na Piarsaigh 2-21 (27)",
+ "storedAfterEdit": {
+  "kind": "TWO_POINTER",
+  "tags": [
+   "PLAY"
+  ],
+  "teamSide": "FOR"
+ }
+}

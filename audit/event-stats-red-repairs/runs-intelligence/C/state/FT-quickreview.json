@@ -1,0 +1,99 @@
+{
+ "counts": [
+  [
+   "Ballyhale Shamrocks",
+   "",
+   "Na Piarsaigh"
+  ],
+  [
+   "1",
+   "Goals",
+   "2"
+  ],
+  [
+   "19",
+   "Points",
+   "21"
+  ],
+  [
+   "30",
+   "Shots",
+   "36"
+  ],
+  [
+   "7",
+   "Wides",
+   "5"
+  ],
+  [
+   "14",
+   "Turnover Won",
+   "15"
+  ],
+  [
+   "15",
+   "Turnover Lost",
+   "14"
+  ],
+  [
+   "24",
+   "Kickout Won",
+   "30"
+  ],
+  [
+   "30",
+   "Kickout Lost",
+   "24"
+  ],
+  [
+   "4",
+   "Free Won",
+   "10"
+  ],
+  [
+   "10",
+   "Free Conceded",
+   "4"
+  ],
+  [
+   "1",
+   "65 Won",
+   "3"
+  ],
+  [
+   "3",
+   "65 Lost",
+   "1"
+  ],
+  [
+   "2",
+   "Sideline Won",
+   "4"
+  ],
+  [
+   "4",
+   "Sideline Lost",
+   "2"
+  ],
+  [
+   "1",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "1"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nBallyhale Shamrocks\n1-19\n—\n2-21\nNa Piarsaigh\nSHOOTING\nBallyhale Shamrocks\n20/30 (67%)\nNa Piarsaigh\n23/36 (64%)\nLONGEST SCORING RUN\nBallyhale Shamrocks\n2\nNa Piarsaigh\n3\nRESTARTS\nOUR KICKOUTS\n12/28 retained (43%)\nTHEIR KICKOUTS\n14/26 retained (54%)\nOur restart won\n→\n9 shots\n|\n5 scores\nOur restart lost\n→\n15 shots against\n|\n9 scores against\nTURNOVERS\nOUR TURNOVERS WON\n14\n→\n9 shots\n|\n7 scores\nOUR TURNOVERS LOST\n15\n→\n9 shots against\n|\n4 scores against\nFREES / PLACED BALLS\nFrees won\n4\nPlaced balls\n4/5 scored\nFrees conceded\n10",
+  "Counts Sheet\nBallyhale Shamrocks\nNa Piarsaigh\n1\nGoals\n2\n19\nPoints\n21\n30\nShots\n36\n7\nWides\n5\n14\nTurnover Won\n15\n15\nTurnover Lost\n14\n24\nKickout Won\n30\n30\nKickout Lost\n24\n4\nFree Won\n10\n10\nFree Conceded\n4\n1\n65 Won\n3\n3\n65 Lost\n1\n2\nSideline Won\n4\n4\nSideline Lost\n2\n1\nYellow Cards\n1\n0\nSin Bins\n0\n0\nRed Cards\n1",
+  "Segment Comparison — Full Time\nEarly 0–10 · Mid 10–20 · Late 20+\nFIRST HALF\nBALLYHALE SHAMROCKS\nEARLY\nMID\nLATE\nScore\n0-02\n0-03\n0-04\nShots\n4\n4\n7\nWides\n1\n1\n2\nTurnovers Won\n1\n1\n2\n↳ Own Half\n0\n0\n2\n↳ Opposition Half\n1\n1\n0\nTurnovers Lost\n1\n2\n4\n↳ Own Half\n1\n2\n3\n↳ Opposition Half\n0\n0\n1\nOwn KO Retained\n0/3 (0%)\n3/5 (60%)\n4/6 (67%)\nOpposition KO Retained\n1/3 (33%)\n4/4 (100%)\n4/6 (67%)\nNA PIARSAIGH\nEARLY\nMID\nLATE\nScore\n0-03\n0-05\n0-02\nShots\n5\n8\n7\nWides\n0\n0\n4\nTurnovers Won\n1\n2\n4\n↳ Own Half\n0\n0\n1\n↳ Opposition Half\n1\n2\n3\nTurnovers Lost\n1\n1\n2\n↳ Own Half\n1\n1\n0\n↳ Opposition Half\n0\n0\n2\nOwn KO Retained\n1/3 (33%)\n4/4 (100%)\n4/6 (67%)\nOpposition KO Retained\n0/3 (0%)\n3/5 (60%)\n4/6 (67%)\nSECOND HALF\nBALLYHALE SHAMROCKS\nEARLY\nMID\nLATE\nScore\n0-03\n0-04\n1-03\nShots\n4\n5\n6\nWides\n1\n1\n1\nTurnovers Won\n1\n2\n7\n↳ Own Half\n0\n1\n3\n↳ Opposition Half\n1\n1\n4\nTurnovers Lost\n1\n2\n5\n↳ Own Half\n0\n2\n4\n↳ Opposition Half\n1\n0\n1\nOwn KO Retained\n1/5 (20%)\n2/4 (50%)\n2/5 (40%)\nOpposition KO Retained\n1/4 (25%)\n2/4 (50%)\n2/5 (40%)\nNA PIARSAIGH\nEARLY\nMID\nLATE\nScore\n0-05\n0-04\n2-02\nShots\n6\n4\n6\nWides\n0\n0\n1\nTurnovers Won\n1\n2\n5\n↳ Own Half\n1\n0\n1\n↳ Opposition Half\n0\n2\n4\nTurnovers Lost\n1\n2\n7\n↳ Own Half\n1\n1\n4\n↳ Opposition Half\n0\n1\n3\nOwn KO Retained\n1/4 (25%)\n2/4 (50%)\n2/5 (40%)\nOpposition KO Retained\n1/5 (20%)\n2/4 (50%)\n2/5 (40%)"
+ ]
+}

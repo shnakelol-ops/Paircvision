@@ -1,0 +1,104 @@
+{
+ "counts": [
+  [
+   "Corofin",
+   "",
+   "Moycullen"
+  ],
+  [
+   "3",
+   "Goals",
+   "1"
+  ],
+  [
+   "18",
+   "Points",
+   "16"
+  ],
+  [
+   "4",
+   "2PT",
+   "3"
+  ],
+  [
+   "48",
+   "Shots",
+   "42"
+  ],
+  [
+   "15",
+   "Wides",
+   "17"
+  ],
+  [
+   "56",
+   "Turnover Won",
+   "59"
+  ],
+  [
+   "59",
+   "Turnover Lost",
+   "56"
+  ],
+  [
+   "41",
+   "Kickout Won",
+   "36"
+  ],
+  [
+   "36",
+   "Kickout Lost",
+   "41"
+  ],
+  [
+   "14",
+   "Free Won",
+   "15"
+  ],
+  [
+   "15",
+   "Free Conceded",
+   "14"
+  ],
+  [
+   "1",
+   "45 Won",
+   "1"
+  ],
+  [
+   "1",
+   "45 Lost",
+   "1"
+  ],
+  [
+   "8",
+   "Sideline Won",
+   "6"
+  ],
+  [
+   "6",
+   "Sideline Lost",
+   "8"
+  ],
+  [
+   "1",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "1",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "1"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nCorofin\n3-26\n—\n1-22\nMoycullen\nSHOOTING\nCorofin\n25/48 (52%)\nMoycullen\n20/42 (48%)\nLONGEST SCORING RUN\nCorofin\n5\nMoycullen\n5\nRESTARTS\nOUR KICKOUTS\n23/37 retained (62%)\nTHEIR KICKOUTS\n22/40 retained (55%)\nOur restart won\n→\n13 shots\n|\n9 scores\nOur restart lost\n→\n9 shots against\n|\n5 scores against\nTURNOVERS\nOUR TURNOVERS WON\n56\n→\n17 shots\n|\n8 scores\nOUR TURNOVERS LOST\n59\n→\n19 shots against\n|\n10 scores against\nFREES / PLACED BALLS\nFrees won\n14\nPlaced balls\n5/9 scored\nFrees conceded\n15",
+  "Counts Sheet\nCorofin\nMoycullen\n3\nGoals\n1\n18\nPoints\n16\n4\n2PT\n3\n48\nShots\n42\n15\nWides\n17\n56\nTurnover Won\n59\n59\nTurnover Lost\n56\n41\nKickout Won\n36\n36\nKickout Lost\n41\n14\nFree Won\n15\n15\nFree Conceded\n14\n1\n45 Won\n1\n1\n45 Lost\n1\n8\nSideline Won\n6\n6\nSideline Lost\n8\n1\nYellow Cards\n1\n1\nSin Bins\n0\n0\nRed Cards\n1",
+  "Segment Comparison — Full Time\nEarly 0–10 · Mid 10–20 · Late 20+\nFIRST HALF\nCOROFIN\nEARLY\nMID\nLATE\nScore\n0-06\n0-02\n0-06\nShots\n8\n4\n9\nWides\n2\n1\n3\nTurnovers Won\n7\n12\n7\n↳ Own Half\n5\n7\n4\n↳ Opposition Half\n2\n5\n3\nTurnovers Lost\n8\n14\n13\n↳ Own Half\n5\n9\n6\n↳ Opposition Half\n3\n5\n7\nOwn KO Retained\n3/5 (60%)\n4/6 (67%)\n9/10 (90%)\nOpposition KO Retained\n2/7 (29%)\n2/3 (67%)\n4/7 (57%)\nMOYCULLEN\nEARLY\nMID\nLATE\nScore\n0-02\n0-03\n0-06\nShots\n6\n6\n11\nWides\n3\n3\n5\nTurnovers Won\n8\n14\n13\n↳ Own Half\n3\n5\n7\n↳ Opposition Half\n5\n9\n6\nTurnovers Lost\n7\n12\n7\n↳ Own Half\n2\n5\n3\n↳ Opposition Half\n5\n7\n4\nOwn KO Retained\n2/7 (29%)\n2/3 (67%)\n4/7 (57%)\nOpposition KO Retained\n3/5 (60%)\n4/6 (67%)\n9/10 (90%)\nSECOND HALF\nCOROFIN\nEARLY\nMID\nLATE\nScore\n0-00\n0-04\n3-08\nShots\n7\n7\n13\nWides\n5\n2\n2\nTurnovers Won\n9\n8\n13\n↳ Own Half\n3\n4\n10\n↳ Opposition Half\n6\n4\n3\nTurnovers Lost\n6\n7\n11\n↳ Own Half\n4\n4\n6\n↳ Opposition Half\n2\n3\n5\nOwn KO Retained\n2/5 (40%)\n2/5 (40%)\n3/6 (50%)\nOpposition KO Retained\n4/5 (80%)\n3/5 (60%)\n7/13 (54%)\nMOYCULLEN\nEARLY\nMID\nLATE\nScore\n0-01\n1-04\n0-06\nShots\n6\n5\n8\nWides\n5\n0\n1\nTurnovers Won\n6\n7\n11\n↳ Own Half\n2\n3\n5\n↳ Opposition Half\n4\n4\n6\nTurnovers Lost\n9\n8\n13\n↳ Own Half\n6\n4\n3\n↳ Opposition Half\n3\n4\n10\nOwn KO Retained\n4/5 (80%)\n3/5 (60%)\n7/13 (54%)\nOpposition KO Retained\n2/5 (40%)\n2/5 (40%)\n3/6 (50%)"
+ ]
+}

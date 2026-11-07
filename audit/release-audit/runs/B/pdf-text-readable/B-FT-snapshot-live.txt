@@ -1,0 +1,288 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Full-Time Dashboard
+ 1896    38  1 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  496   118  Corofin
+ 1424   118  Moycullen
+  960   150  v
+  496   190  3-26 (35)
+ 1424   190  1-22 (25)
+  960   244  Corofin lead by 10
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Corofin
+  540   394  23/37
+  994   394  22/40
+ 1448   402  56
+   86   416  25/48
+  540   446  62%
+  994   446  55%
+   86   452  52%
+ 1448   470  Lost
+  540   490  Lost 14/37
+  994   490  Lost 18/40
+ 1448   514  59
+   86   534  Moycullen
+   86   576  20/42
+   86   612  48%
+   46   928  Corofin placed balls
+  992   928  Moycullen placed balls
+   46   956  5/9 scored
+  992   956  5/10 scored
+ 1896  1060  331 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   54   125  25 scores from 48 shots · 52% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+ 1240   376  ↓
+ 1242   377  ↓
+ 1542   448  ↓
+ 1543   450  ↓
+ 1645   521  ↓
+ 1646   523  ↓
+   46   972  Corofin shots: 25 scored from 48 attempts · 23 …
+  676   972  Corofin: 5 placed-ball scores · 4 placed-ball wides
+ 1306   972  Corofin best zone: Attacking Centre (15)
+ 1896  1060  48 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   54   125  20 scores from 42 shots · 48% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+ 1535   437  ↓
+ 1537   439  ↓
+  533   721  ↓
+  534   722  ↓
+   46   972  Moycullen shots: 20 scored from 42 attempts · 2…
+  676   972  Moycullen: 5 placed-ball scores · 5 placed-ball …
+ 1306   972  Moycullen best scoring zone: Attacking Centre (…
+ 1896  1060  42 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Corofin Kickouts
+ 1434   118  Moycullen Kickouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Corofin Kickouts
+  992   928  Moycullen Kickouts
+   46   956  Corofin retained 16/21 (76%)
+  992   956  Moycullen retained 8/17 (47%)
+ 1896  1060  38 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Restart Battle – Second Half
+ 1896    38  5 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  486    95  2nd Half
+ 1434    95  2nd Half
+  486   118  Corofin Kickouts
+ 1434   118  Moycullen Kickouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Corofin Kickouts
+  992   928  Moycullen Kickouts
+   46   956  Corofin retained 7/16 (44%)
+  992   956  Moycullen retained 14/23 (61%)
+ 1896  1060  39 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Turnover & Territory – First Half
+ 1896    38  6 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen · Corofin attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 26 · Lost 35 (43% won)
+  676   972  Middle Centre
+ 1306   972  Middle Centre
+ 1896  1060  61 events
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Turnover & Territory – Second Half
+ 1896    38  7 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen · Corofin attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 30 · Lost 24 (56% won)
+  676   972  Middle Centre
+ 1306   972  Defensive Left
+ 1896  1060  54 events
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  8 / 8
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   38   104  FOR — COROFIN
+  982   104  OPP — MOYCULLEN
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  48
+  982   172  Attempts
+ 1884   172  42
+   38   204  Scores
+  940   204  25
+  982   204  Scores
+ 1884   204  20
+   38   236  Conversion
+  940   236  52%
+  982   236  Conversion
+ 1884   236  48%
+   38   268  Wides
+  940   268  15
+  982   268  Wides
+ 1884   268  17
+   38   300  Blocked / Saved
+  940   300  1
+  982   300  Blocked / Saved
+ 1884   300  2
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  31
+  664   400  20
+  780   400  11
+  940   400  65%
+  982   400  Open Play
+ 1488   400  27
+ 1608   400  15
+ 1724   400  12
+ 1884   400  56%
+   38   432  Free
+  544   432  8
+  664   432  5
+  780   432  3
+  940   432  63%
+  982   432  Free
+ 1488   432  9
+ 1608   432  5
+ 1724   432  4
+ 1884   432  56%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  1
+  664   496  —
+  780   496  1
+  940   496  0%
+  982   496  45
+ 1488   496  1
+ 1608   496  —
+ 1724   496  1
+ 1884   496  0%
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  8
+  664   560  —
+  780   560  8
+  940   560  0%
+  982   560  Unclassified
+ 1488   560  5
+ 1608   560  —
+ 1724   560  5
+ 1884   560  0%
+   38   587  8 shots logged without a source
+  982   587  5 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  4
+  982   660  TWO_POINTER Scores
+ 1884   660  3
+   38   692  45+2 Scores
+  940   692  0
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  4
+  982   724  Total 2PT Scores
+ 1884   724  3
+   38   756  Total 2PT Pts Value
+  940   756  8
+  982   756  Total 2PT Pts Value
+ 1884   756  6
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  5
+  982   834  Placed Scored
+ 1884   834  5
+   38   866  Placed Missed
+  940   866  4
+  982   866  Placed Missed
+ 1884   866  5
+   38   898  Placed Conv %
+  940   898  56%
+  982   898  Placed Conv %
+ 1884   898  50%
+ 1896  1060  331 events

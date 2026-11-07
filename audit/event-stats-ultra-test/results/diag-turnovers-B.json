@@ -1,0 +1,300 @@
+[
+ {
+  "turnover": "B-004",
+  "wonBy": "OPP",
+  "refNext": "B-006",
+  "refScore": false,
+  "prodNext": "B-008",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-005:FREE/FOR/Conceded@69",
+   "B-006:TURNOVER/FOR/HP Error@83",
+   "B-007:TURNOVER/OPP/KP Error@98",
+   "B-008:POINT/OPP/Play@109"
+  ]
+ },
+ {
+  "turnover": "B-012",
+  "wonBy": "OPP",
+  "refNext": "B-013",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-013:TURNOVER/FOR/Interception@193",
+   "B-014:TURNOVER/OPP/Tackle@203",
+   "B-015:TURNOVER/FOR/HP Error@214",
+   "B-016:WIDE/FOR/Play@228"
+  ]
+ },
+ {
+  "turnover": "B-014",
+  "wonBy": "OPP",
+  "refNext": "B-015",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-015:TURNOVER/FOR/HP Error@214",
+   "B-016:WIDE/FOR/Play@228",
+   "B-017:RESTART/FOR/Break@246",
+   "B-018:FREE/FOR/Won@255",
+   "B-019:SHOT/FOR/Post@261"
+  ]
+ },
+ {
+  "turnover": "B-028",
+  "wonBy": "OPP",
+  "refNext": "B-029",
+  "refScore": false,
+  "prodNext": "B-031",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-029:TURNOVER/FOR/Tackle@384",
+   "B-030:TURNOVER/OPP/Overcarried@393",
+   "B-031:POINT/OPP/Play@403"
+  ]
+ },
+ {
+  "turnover": "B-050",
+  "wonBy": "OPP",
+  "refNext": "B-051",
+  "refScore": false,
+  "prodNext": "B-054",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-051:TURNOVER/FOR/Tackle@685",
+   "B-052:TURNOVER/OPP/HP Error@689",
+   "B-053:FREE/FOR/Conceded@694",
+   "B-054:POINT/OPP/Free@727"
+  ]
+ },
+ {
+  "turnover": "B-064",
+  "wonBy": "OPP",
+  "refNext": "B-066",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-065:FREE/FOR/Conceded@896",
+   "B-066:TURNOVER/FOR/Overcarried@908",
+   "B-067:WIDE/FOR/Play@921",
+   "B-068:RESTART/FOR/Break@938",
+   "B-069:TURNOVER/OPP/KP Error@942"
+  ]
+ },
+ {
+  "turnover": "B-069",
+  "wonBy": "OPP",
+  "refNext": "B-070",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-070:TURNOVER/FOR/Overcarried@957",
+   "B-071:SHOT/FOR/Block/Save@967",
+   "B-072:TURNOVER/FOR/Tackle@981",
+   "B-073:POINT/FOR/Play@995"
+  ]
+ },
+ {
+  "turnover": "B-086",
+  "wonBy": "OPP",
+  "refNext": "B-087",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-087:TURNOVER/FOR/HP Error@1161",
+   "B-088:TURNOVER/OPP/Tackle@1172",
+   "B-089:FREE/FOR/Conceded@1181",
+   "B-090:TURNOVER/FOR/Tackle@1195",
+   "B-091:TURNOVER/OPP/Tackle@1200"
+  ]
+ },
+ {
+  "turnover": "B-088",
+  "wonBy": "OPP",
+  "refNext": "B-090",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-089:FREE/FOR/Conceded@1181",
+   "B-090:TURNOVER/FOR/Tackle@1195",
+   "B-091:TURNOVER/OPP/Tackle@1200",
+   "B-092:TURNOVER/FOR/KP Error@1215",
+   "B-093:SIDELINE/FOR/Won@1229"
+  ]
+ },
+ {
+  "turnover": "B-091",
+  "wonBy": "OPP",
+  "refNext": "B-092",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-092:TURNOVER/FOR/KP Error@1215",
+   "B-093:SIDELINE/FOR/Won@1229",
+   "B-094:WIDE/FOR/Play@1237",
+   "B-095:RESTART/OPP/Break@1258"
+  ]
+ },
+ {
+  "turnover": "B-105",
+  "wonBy": "OPP",
+  "refNext": "B-106",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-106:TURNOVER/FOR/HP Error@1397",
+   "B-107:WIDE/FOR/Play@1405",
+   "B-108:RESTART/OPP/Break@1420",
+   "B-109:TURNOVER/FOR/Interception@1430"
+  ]
+ },
+ {
+  "turnover": "B-110",
+  "wonBy": "OPP",
+  "refNext": "B-111",
+  "refScore": false,
+  "prodNext": "B-114",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-111:TURNOVER/FOR/Interception@1451",
+   "B-112:TURNOVER/OPP/Overcarried@1456",
+   "B-113:FREE/FOR/Conceded@1470",
+   "B-114:POINT/OPP/Play@1474"
+  ]
+ },
+ {
+  "turnover": "B-116",
+  "wonBy": "OPP",
+  "refNext": "B-117",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-117:TURNOVER/FOR/Tackle@1510",
+   "B-118:TURNOVER/OPP/Overcarried@1520",
+   "B-119:TURNOVER/FOR/Tackle@1527",
+   "B-120:WIDE/FOR/Play@1541",
+   "B-121:RESTART/OPP/Break@1558"
+  ]
+ },
+ {
+  "turnover": "B-118",
+  "wonBy": "OPP",
+  "refNext": "B-119",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-119:TURNOVER/FOR/Tackle@1527",
+   "B-120:WIDE/FOR/Play@1541",
+   "B-121:RESTART/OPP/Break@1558",
+   "B-122:FREE/FOR/Conceded@1572"
+  ]
+ },
+ {
+  "turnover": "B-130",
+  "wonBy": "OPP",
+  "refNext": "B-131",
+  "refScore": false,
+  "prodNext": "B-133",
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-131:TURNOVER/FOR/Tackle@1683",
+   "B-132:TURNOVER/OPP/KP Error@1698",
+   "B-133:WIDE/OPP/Play@1712"
+  ]
+ },
+ {
+  "turnover": "B-155",
+  "wonBy": "OPP",
+  "refNext": "B-156",
+  "refScore": false,
+  "prodNext": "B-159",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-156:TURNOVER/FOR/Interception@47",
+   "B-157:SHOT/FOR/Short@56",
+   "B-158:FREE/FOR/Conceded@65",
+   "B-159:TWO_POINT/OPP/Free@87"
+  ]
+ },
+ {
+  "turnover": "B-230",
+  "wonBy": "OPP",
+  "refNext": "B-231",
+  "refScore": false,
+  "prodNext": "B-233",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-231:TURNOVER/FOR/Tackle@1067",
+   "B-232:SIDELINE/OPP/Won@1074",
+   "B-233:POINT/OPP/Play@1086"
+  ]
+ },
+ {
+  "turnover": "B-251",
+  "wonBy": "OPP",
+  "refNext": "B-252",
+  "refScore": false,
+  "prodNext": "B-255",
+  "prodScore": true,
+  "eventsInWindow": [
+   "B-252:TURNOVER/FOR/KP Error@1302",
+   "B-253:POINT/FOR/Play@1314",
+   "B-254:RESTART/OPP/Clean@1334",
+   "B-255:POINT/OPP/Play@1341"
+  ]
+ },
+ {
+  "turnover": "B-268",
+  "wonBy": "OPP",
+  "refNext": "B-269",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-269:TURNOVER/FOR/Overcarried@1511",
+   "B-270:WIDE/FOR/Play@1518",
+   "B-271:RESTART/FOR/Foul@1543",
+   "B-272:GOAL/FOR/Play@1557"
+  ]
+ },
+ {
+  "turnover": "B-274",
+  "wonBy": "OPP",
+  "refNext": "B-275",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-275:TURNOVER/FOR/HP Error@1583",
+   "B-276:POINT/FOR/Play@1591",
+   "B-277:RESTART/FOR/Clean@1604",
+   "B-278:WIDE/FOR/Play@1611",
+   "B-279:RESTART/FOR/Break@1626",
+   "B-280:POINT/FOR/Play@1631"
+  ]
+ },
+ {
+  "turnover": "B-297",
+  "wonBy": "OPP",
+  "refNext": "B-298",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "B-298:TURNOVER/FOR/Tackle@1916",
+   "B-299:FREE/FOR/Won@1927",
+   "B-300:SHOT/FOR/Block/Save@1942",
+   "B-301:FORTY_FIVE/FOR/Won@1952"
+  ]
+ }
+]

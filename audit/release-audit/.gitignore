@@ -1,0 +1,11 @@
+node_modules
+runs/*/pdf-images/
+runs/*/screens/*
+!runs/*/screens/storage-fail-leave-dialog.png
+!runs/*/screens/close-reopen-*.png
+!runs/*/screens/20-fulltime.png
+runs/*/pdf-text/
+# Keep the live PDFs (and B's post-edit Full Review); the reopened copies are byte-identical or reproducible.
+runs/*/pdf/*-reopened*.pdf
+!runs/B/pdf/B-FullReview-reopened.pdf
+runs/A-legacy/pdf/

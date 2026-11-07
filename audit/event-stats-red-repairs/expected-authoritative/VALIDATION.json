@@ -1,0 +1,40 @@
+{
+ "ledger-A": {
+  "credited": 21,
+  "correct": 21,
+  "wrong": [],
+  "truthKickoutOriginScores": 22,
+  "missed": [
+   {
+    "score": "A-130",
+    "restart": "A-127"
+   }
+  ]
+ },
+ "ledger-B": {
+  "credited": 18,
+  "correct": 17,
+  "wrong": [
+   {
+    "restart": "B-265",
+    "score": "B-266"
+   }
+  ],
+  "truthKickoutOriginScores": 17,
+  "missed": []
+ },
+ "ledger-B-live": {
+  "credited": 17,
+  "correct": 17,
+  "wrong": [],
+  "truthKickoutOriginScores": 17,
+  "missed": []
+ },
+ "ledger-C": {
+  "credited": 21,
+  "correct": 21,
+  "wrong": [],
+  "truthKickoutOriginScores": 21,
+  "missed": []
+ }
+}
