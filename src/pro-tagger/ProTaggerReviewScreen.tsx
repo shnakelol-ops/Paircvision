@@ -13,6 +13,7 @@ import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
+import { applyReviewKindEdit, editableKindsFor } from "./pro-tagger-review-edit";
 import { NotesQuickPanel, getMatchNotes } from "../features/notes";
 import { selectReviewEvents } from "../stats/review-selectors";
 import { resolveEventMapOutcomeFill } from "./pro-tagger-event-map-outcome-color";
@@ -26,7 +27,7 @@ import { selectZoneOverlayModel } from "../stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "../stats/zones/zone-types";
 import type { ZoneOverlayStyle } from "../core/stats/draw-stats-zone-overlay";
 import { ShareSheet } from "../features/shared/ShareSheet";
-import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
+import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
 import { computeScoreSide, computeScorelineSnapshot } from "./pro-tagger-score";
 
@@ -287,6 +288,8 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const [proEditKind,          setProEditKind]          = useState<MatchEventKind>("GOAL");
   const [proEditPlayerName,    setProEditPlayerName]    = useState("");
   const [proEditPlayerNumber,  setProEditPlayerNumber]  = useState("");
+  // Why the last Save was refused (pro-tagger-review-edit.ts); null when none.
+  const [proEditError,         setProEditError]         = useState<string | null>(null);
   // localMatch holds a mutated copy of the match after in-session edits/deletes.
   // It shadows _match so every export path sees the same data.
   const [localMatch,           setLocalMatch]           = useState<ProTaggerSavedMatch | null>(null);
@@ -305,6 +308,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   useEffect(() => {
     setDeleteConfirmPending(false);
     setProEditMode(false);
+    setProEditError(null);
   }, [selectedMapEventId]);
 
   // Clear selection when the Event Map board is closed.
@@ -401,27 +405,40 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     setProEditKind(selectedMapEvent.type);
     setProEditPlayerName(selectedMapEvent.playerName ?? "");
     setProEditPlayerNumber(selectedMapEvent.playerNumber != null ? String(selectedMapEvent.playerNumber) : "");
+    setProEditError(null);
     setProEditMode(true);
   };
 
   const saveProEdit = () => {
     if (!selectedMapEventId) return;
+    const target = match.events.find((e) => e.id === selectedMapEventId);
+    if (!target) return;
     const num = parseInt(proEditPlayerNumber, 10);
     const resolvedNumber = Number.isFinite(num) && num > 0 ? num : undefined;
+    const editedName = proEditPlayerName.trim() || undefined;
+    // Type changes are limited to what the event already determines; an
+    // unsafe change is refused with its reason and nothing is saved.
+    const outcome = applyReviewKindEdit(
+      target, proEditKind, match.sport, resolvedNumber != null || editedName != null,
+      { home: match.homeSquad.id, away: match.awaySquad.id },
+    );
+    if (!outcome.ok || !outcome.event) {
+      setProEditError(outcome.reason);
+      return;
+    }
+    const edited = outcome.event;
     const updatedEvents = match.events.map((e) =>
       e.id === selectedMapEventId
         ? {
-            ...e,
-            kind:         proEditKind,
-            type:         proEditKind,
-            playerName:   proEditPlayerName.trim() || undefined,
+            ...edited,
+            playerName:   editedName,
             playerNumber: resolvedNumber,
             // Resolve against the roster rather than carrying over the
             // pre-edit id — see resolveRosterPlayerId. Cleared (not stale)
             // when the edited number matches no roster entry. Roster choice
             // is squadId-first (falls back to raw teamSide only when
             // squadId is unusable) — see resolveEventRoster.
-            playerId:     resolveRosterPlayerId(match, e, resolvedNumber),
+            playerId:     resolveRosterPlayerId(match, edited, resolvedNumber),
           }
         : e,
     );
@@ -778,7 +795,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
                         value={proEditKind}
                         onChange={(e) => setProEditKind(e.target.value as MatchEventKind)}
                       >
-                        {MATCH_EVENT_KINDS.map((k) => (
+                        {editableKindsFor(selectedMapEvent, match.sport).map((k) => (
                           <option key={k} value={k}>{getProEventTypeLabel(k)}</option>
                         ))}
                       </select>
@@ -806,6 +823,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
                         onChange={(e) => setProEditPlayerName(e.target.value)}
                       />
                     </div>
+                    {proEditError && <span style={B.editError}>{proEditError}</span>}
                     <div style={B.editActions}>
                       <button style={B.editCancel} onClick={() => setProEditMode(false)}>
                         Cancel
@@ -1500,6 +1518,12 @@ const B: Record<string, CSSProperties> = {
     display:   "flex",
     gap:       8,
     marginTop: 4,
+  },
+  editError: {
+    fontSize:   11,
+    fontWeight: 600,
+    color:      "#f87171",
+    lineHeight: "1.4",
   },
   editCancel: {
     flex:         1,
