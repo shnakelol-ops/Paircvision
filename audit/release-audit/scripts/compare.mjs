@@ -148,15 +148,40 @@ function quickReview(label, S) {
   P("longest scoring run (scores)", "FOR", S.longestRun.FOR, after(HOME, 1, runIdx));
   P("longest scoring run (scores)", "OPP", S.longestRun.OPP, after(AWAY, 1, runIdx));
   const ko = hurling ? "PUCKOUTS" : "KICKOUTS";
-  P(`OUR ${ko} retained`, "FOR", `${S.FOR.ownRestarts.retained}/${S.FOR.ownRestarts.taken} retained (${pctS(S.FOR.ownRestarts.retention)})`, after(`OUR ${ko}`) ?? after("OUR KICKOUTS"));
-  P(`THEIR ${ko} retained`, "OPP", `${S.OPP.ownRestarts.retained}/${S.OPP.ownRestarts.taken} retained (${pctS(S.OPP.ownRestarts.retention)})`, after(`THEIR ${ko}`) ?? after("THEIR KICKOUTS"));
+  // Restart subtitles: "OUR KICKOUTS" / "THEIR KICKOUTS" (before the Samsung-acceptance fix) or
+  // "<TEAM> OWN KICKOUTS" (after). Both carry the same own-kickout retention figure.
+  const teamOwn = (team) => p1.findIndex((x) => x.toUpperCase() === `${team} OWN ${hurling ? "PUCKOUTS" : "KICKOUTS"}`.toUpperCase());
+  const ownFor = teamOwn(HOME) >= 0 ? p1[teamOwn(HOME) + 1] : after(`OUR ${ko}`) ?? after("OUR KICKOUTS");
+  const ownOpp = teamOwn(AWAY) >= 0 ? p1[teamOwn(AWAY) + 1] : after(`THEIR ${ko}`) ?? after("THEIR KICKOUTS");
+  P(`OUR ${ko} retained`, "FOR", `${S.FOR.ownRestarts.retained}/${S.FOR.ownRestarts.taken} retained (${pctS(S.FOR.ownRestarts.retention)})`, ownFor);
+  P(`THEIR ${ko} retained`, "OPP", `${S.OPP.ownRestarts.retained}/${S.OPP.ownRestarts.taken} retained (${pctS(S.OPP.ownRestarts.retention)})`, ownOpp);
   if (hurling) P("terminology: hurling overview never says KICKOUTS", null, 0, p1.filter((x) => /KICKOUT/i.test(x)).length);
   const po = S.possession;
   const pick = (lab, n) => { const i = p1.indexOf(lab); return i < 0 ? undefined : p1.slice(i, i + 8).filter((x) => /\bshots?\b|\bscores?\b/.test(x))[n]; };
-  P("restarts won → shots (possession)", "FOR", `${po.restartWon.shots} shots`, pick("Our restart won", 0));
-  P("restarts won → scores (possession)", "FOR", `${po.restartWon.scores} scores`, pick("Our restart won", 1));
-  P("restarts lost → shots against", "FOR", `${po.restartLost.shots} shots against`, pick("Our restart lost", 0));
-  P("restarts lost → scores against", "FOR", `${po.restartLost.scores} scores against`, pick("Our restart lost", 1));
+  const wonRow = (team) => p1.findIndex((x) => new RegExp(`^${team.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} won \\d+ ${hurling ? "puckout" : "kickout"}s?$`).test(x));
+  if (wonRow(HOME) >= 0) {
+    // Samsung-acceptance layout: "<TEAM> won N kickouts → s shots | x scores", then "a own kept · b won from <OTHER>".
+    const n = (k, w) => `${k} ${w}${k === 1 ? "" : "s"}`;
+    const row = (team) => p1.slice(wonRow(team), wonRow(team) + 8);
+    const vals = (team) => row(team).filter((x) => /^\d+ (shots?|scores?)$/.test(x));
+    const detail = (team) => row(team).find((x) => / own kept · /.test(x));
+    const forWon = S.FOR.ownRestarts.retained + (S.OPP.ownRestarts.taken - S.OPP.ownRestarts.retained);
+    const oppWon = S.OPP.ownRestarts.retained + (S.FOR.ownRestarts.taken - S.FOR.ownRestarts.retained);
+    const rn = hurling ? "puckout" : "kickout";
+    P("kickouts won by FOR (own kept + opposition won)", "FOR", `${HOME} won ${n(forWon, rn)}`, p1[wonRow(HOME)]);
+    P("kickouts won by OPP (own kept + ours won)", "OPP", `${AWAY} won ${n(oppWon, rn)}`, p1[wonRow(AWAY)]);
+    P("kickouts won split (FOR)", "FOR", `${S.FOR.ownRestarts.retained} own kept · ${S.OPP.ownRestarts.taken - S.OPP.ownRestarts.retained} won from ${AWAY}`, detail(HOME));
+    P("kickouts won split (OPP)", "OPP", `${S.OPP.ownRestarts.retained} own kept · ${S.FOR.ownRestarts.taken - S.FOR.ownRestarts.retained} won from ${HOME}`, detail(AWAY));
+    P("restarts won → shots (possession)", "FOR", n(po.restartWon.shots, "shot"), vals(HOME)[0]);
+    P("restarts won → scores (possession)", "FOR", n(po.restartWon.scores, "score"), vals(HOME)[1]);
+    P("restarts lost → shots against", "FOR", n(po.restartLost.shots, "shot"), vals(AWAY)[0]);
+    P("restarts lost → scores against", "FOR", n(po.restartLost.scores, "score"), vals(AWAY)[1]);
+  } else {
+    P("restarts won → shots (possession)", "FOR", `${po.restartWon.shots} shots`, pick("Our restart won", 0));
+    P("restarts won → scores (possession)", "FOR", `${po.restartWon.scores} scores`, pick("Our restart won", 1));
+    P("restarts lost → shots against", "FOR", `${po.restartLost.shots} shots against`, pick("Our restart lost", 0));
+    P("restarts lost → scores against", "FOR", `${po.restartLost.scores} scores against`, pick("Our restart lost", 1));
+  }
   P("turnovers won (count)", "FOR", S.FOR.turnoversWon, after("OUR TURNOVERS WON"));
   P("turnovers won → shots", "FOR", `${po.turnoverWon.shots} shots`, pick("OUR TURNOVERS WON", 0));
   P("turnovers won → scores", "FOR", `${po.turnoverWon.scores} score${po.turnoverWon.scores === 1 ? "" : "s"}`, pick("OUR TURNOVERS WON", 1));

@@ -1,0 +1,26 @@
+{
+ "match": "A",
+ "stages": [
+  {
+   "stage": "HT (stored at half-time, first-half events)",
+   "events": 66,
+   "stored": 66,
+   "fieldsChecked": 420,
+   "mismatches": []
+  },
+  {
+   "stage": "FT (stored at full time)",
+   "events": 134,
+   "stored": 134,
+   "fieldsChecked": 839,
+   "mismatches": []
+  },
+  {
+   "stage": "Final (after Review edits/deletes, reopened)",
+   "events": 134,
+   "stored": 134,
+   "fieldsChecked": 839,
+   "mismatches": []
+  }
+ ]
+}
