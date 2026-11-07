@@ -2671,7 +2671,8 @@ export function makeChainSummaryPage(
     cy = drawStatRow(COL2_X, cy, COL_W, "Lost",               val(to.lost),  "#fb7185", false);
     cy += 6;
     cy = drawStatRow(COL2_X, cy, COL_W, "Won → Origin score",        `${val(turnoverToScore.num)} (${pctLabel(turnoverToScore)})`,  "#4ade80", true);
-    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Shot",         `${val(turnoverToShot.num)} (${pctLabel(turnoverToShot)})`,    "#a78bfa", false);
+    // turnoverWonToShotOnly: turnovers won that led to a shot WITHOUT a score.
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Shot, no score", `${val(turnoverToShot.num)} (${pctLabel(turnoverToShot)})`,    "#a78bfa", false);
     cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Origin score against", val(to.lostAllowedScore),                                "#f97316", true);
   }
 
