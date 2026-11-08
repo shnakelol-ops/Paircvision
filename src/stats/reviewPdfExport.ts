@@ -8435,13 +8435,19 @@ function shotMarkerType(event: PdfExportEvent): ShotMarkerType | null {
 }
 
 /**
- * Right-side legend for the Snapshot Shot Profile pages. Lists only the marker
- * types actually drawn on that page, each with the same symbol and colour
- * renderHtMarkers() uses for it.
+ * Legend row for the Snapshot Shot Profile pages, drawn in one horizontal line
+ * between the headline and the pitch. Lists only the marker types actually
+ * drawn on that page, each with the same symbol and colour renderHtMarkers()
+ * uses for it. Labels are 22 px bold; the font steps down (to 18 px) only if a
+ * crowded row would not otherwise fit the row width.
  */
-function drawShotProfileLegend(ctx: CanvasRenderingContext2D, shotEvts: readonly PdfExportEvent[]): void {
+function drawShotProfileLegend(
+  ctx: CanvasRenderingContext2D,
+  shotEvts: readonly PdfExportEvent[],
+  row: { x: number; y: number; w: number; h: number },
+): void {
   const present = new Set(shotEvts.map(shotMarkerType).filter((t): t is ShotMarkerType => t !== null));
-  const rows: { type: ShotMarkerType; label: string }[] = [
+  const items: { type: ShotMarkerType; label: string }[] = [
     { type: "GOAL",      label: "Goal" },
     { type: "POINT",     label: "Point" },
     { type: "TWO_POINT", label: "Two-pointer" },
@@ -8450,42 +8456,58 @@ function drawShotProfileLegend(ctx: CanvasRenderingContext2D, shotEvts: readonly
     { type: "SHORT",     label: "Dropped short" },
     { type: "OTHER",     label: "Post / other" },
   ];
-  const shown = rows.filter((row) => present.has(row.type));
+  const shown = items.filter((item) => present.has(item.type));
   if (shown.length === 0) return;
 
-  const lx = CANVAS_W - 158;
-  let ly = 180;
-  const sx = lx + 8; // swatch centre
+  const SWATCH = 16;          // marker symbol size (px)
+  const LABEL_GAP = 10;       // symbol → label
+  const ITEM_GAP = 36;        // label → next symbol
+  const startX = row.x + 30;  // aligned with the headline text
+  const maxW = row.x + row.w - 12 - startX;
+  const cy = row.y + row.h / 2;
+
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "15px sans-serif";
-  ctx.fillStyle = "#64748b";
-  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  let fontPx = 22;
+  const rowWidth = (): number => shown.reduce(
+    (w, { label }) => w + SWATCH + LABEL_GAP + ctx.measureText(label).width, 0,
+  ) + ITEM_GAP * (shown.length - 1);
+  ctx.font = `bold ${fontPx}px sans-serif`;
+  while (fontPx > 18 && rowWidth() > maxW) {
+    fontPx -= 1;
+    ctx.font = `bold ${fontPx}px sans-serif`;
+  }
+
+  let x = startX;
   for (const { type, label } of shown) {
+    const sx = x + SWATCH / 2;
+    const half = SWATCH / 2;
     ctx.save();
     if (type === "WIDE") {
-      ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 3; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(sx - 6, ly - 6); ctx.lineTo(sx + 6, ly + 6); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(sx + 6, ly - 6); ctx.lineTo(sx - 6, ly + 6); ctx.stroke();
+      ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 3.5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sx - half + 1, cy - half + 1); ctx.lineTo(sx + half - 1, cy + half - 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx + half - 1, cy - half + 1); ctx.lineTo(sx - half + 1, cy + half - 1); ctx.stroke();
     } else if (type === "BLOCKED") {
-      ctx.beginPath(); ctx.arc(sx, ly, 7, 0, Math.PI * 2);
-      ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2.5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(sx, ly, 2.3, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(sx, cy, half - 1, 0, Math.PI * 2);
+      ctx.strokeStyle = "#64748b"; ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx, cy, 2.6, 0, Math.PI * 2);
       ctx.fillStyle = "#e2e8f0"; ctx.fill();
     } else if (type === "SHORT") {
-      ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center";
-      ctx.fillStyle = "#94a3b8"; ctx.fillText("↓", sx, ly);
+      ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = "#94a3b8"; ctx.fillText("↓", sx, cy);
     } else {
       const fill = type === "GOAL" ? "#16a34a" : type === "POINT" ? "#4ade80" : type === "TWO_POINT" ? "#fbbf24" : "#94a3b8";
-      ctx.beginPath(); ctx.arc(sx, ly, type === "GOAL" ? 8 : 7, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(sx, cy, half, 0, Math.PI * 2);
       ctx.fillStyle = fill; ctx.fill();
       ctx.strokeStyle = "rgba(0,0,0,0.70)"; ctx.lineWidth = 1.5; ctx.stroke();
     }
     ctx.restore();
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText(label, lx + 22, ly, 136);
-    ly += 26;
+    const labelX = x + SWATCH + LABEL_GAP;
+    const labelW = ctx.measureText(label).width;
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(label, labelX, cy, Math.max(0, startX + maxW - labelX));
+    x = labelX + labelW + ITEM_GAP;
   }
   ctx.restore();
 }
@@ -11511,7 +11533,8 @@ export function makeOurShotProfilePage(
   const scoreCounts = pdfZoneCounts(forScoreEvts, homeAttackingDirection);
   // ── Headline band — canonical shooting conversion (same figure as the
   // Shot Efficiency page and Match Summary Table) ───────────────────────────
-  const SHOT_HEADLINE_H = 90;
+  const SHOT_HEADLINE_H = 90;   // headline band + legend row; the pitch starts below it (unchanged)
+  const SHOT_HEADLINE_TEXT_H = 50; // headline text band; the legend row fills the remaining 40 px
   const topScoreZone = scoreCounts.reduce(
     (top, z) => z.count > (top?.count ?? 0) ? z : top,
     null as typeof scoreCounts[0] | null,
@@ -11525,14 +11548,14 @@ export function makeOurShotProfilePage(
     : "No shot data recorded for this match";
   ctx.save();
   ctx.fillStyle = "rgba(52,211,153,0.12)";
-  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_H);
+  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_TEXT_H);
   ctx.fillStyle = "#34d399";
-  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
+  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_TEXT_H);
   ctx.fillStyle = "#f1f5f9";
   ctx.font = "bold 24px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
+  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_TEXT_H / 2, HT_PITCH_AREA.w - 60);
   ctx.restore();
 
   // ── Pitch ─────────────────────────────────────────────────────────────────
@@ -11556,20 +11579,17 @@ export function makeOurShotProfilePage(
   // included). Free awards are not shots and are not drawn here.
   renderHtMarkers(ctx, forShotEvts, inner);
 
-  // ── Right-side legend — only the marker types drawn above ────────────────
-  drawShotProfileLegend(ctx, forShotEvts);
+  // ── Legend row between headline and pitch — only the marker types drawn ──
+  drawShotProfileLegend(ctx, forShotEvts, { x: 24, y: HT_PITCH_AREA.y + SHOT_HEADLINE_TEXT_H, w: HT_PITCH_AREA.w, h: SHOT_HEADLINE_H - SHOT_HEADLINE_TEXT_H });
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalMisses = totalShots - totalScores;
   const scoreHot    = pdfZoneHotspots(forScoreEvts, homeAttackingDirection)[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
 
-  if (totalShots > 0) {
-    facts.push(`${truncTeam(homeTeam, 12)} shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
-    colors.push("#34d399");
-  }
+  // Shots / conversion are in the headline above, so the strip carries only
+  // the facts the headline does not: placed balls and the best zone count.
   if (forFreeScored > 0 || forFreeMissed > 0) {
     const parts: string[] = [];
     if (forFreeScored > 0) parts.push(`${forFreeScored} placed-ball score${forFreeScored !== 1 ? "s" : ""}`);
@@ -11581,7 +11601,6 @@ export function makeOurShotProfilePage(
     facts.push(`${truncTeam(homeTeam, 12)} best zone: ${scoreHot.label} (${scoreHot.count})`);
     colors.push("#34d399");
   }
-  if (facts.length === 0) facts.push("No shot data recorded.");
 
   drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#34d399", "#818cf8", "#34d399"]);
   drawShotAttemptFooter(ctx, totalShots);
@@ -11634,7 +11653,8 @@ export function makeOppShotProfilePage(
 
   // ── Headline band — canonical shooting conversion (same figure as the
   // Shot Efficiency page and Match Summary Table) ───────────────────────────
-  const SHOT_HEADLINE_H = 90;
+  const SHOT_HEADLINE_H = 90;   // headline band + legend row; the pitch starts below it (unchanged)
+  const SHOT_HEADLINE_TEXT_H = 50; // headline text band; the legend row fills the remaining 40 px
   const topScoreZone = scoreCounts.reduce(
     (top, z) => z.count > (top?.count ?? 0) ? z : top,
     null as typeof scoreCounts[0] | null,
@@ -11648,14 +11668,14 @@ export function makeOppShotProfilePage(
     : "No opposition shot data recorded for this match";
   ctx.save();
   ctx.fillStyle = "rgba(239,68,68,0.12)";
-  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_H);
+  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_TEXT_H);
   ctx.fillStyle = "#ef4444";
-  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
+  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_TEXT_H);
   ctx.fillStyle = "#f1f5f9";
   ctx.font = "bold 24px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
+  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_TEXT_H / 2, HT_PITCH_AREA.w - 60);
   ctx.restore();
 
   // ── Pitch ─────────────────────────────────────────────────────────────────
@@ -11679,20 +11699,17 @@ export function makeOppShotProfilePage(
   // included). Free awards are not shots and are not drawn here.
   renderHtMarkers(ctx, oppShotEvts, inner);
 
-  // ── Right-side legend — only the marker types drawn above ────────────────
-  drawShotProfileLegend(ctx, oppShotEvts);
+  // ── Legend row between headline and pitch — only the marker types drawn ──
+  drawShotProfileLegend(ctx, oppShotEvts, { x: 24, y: HT_PITCH_AREA.y + SHOT_HEADLINE_TEXT_H, w: HT_PITCH_AREA.w, h: SHOT_HEADLINE_H - SHOT_HEADLINE_TEXT_H });
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalOppMisses = totalOppShots - totalOppScores;
   const oppScoreHot    = pdfZoneHotspots(oppScoreEvts, homeAttackingDirection, "OPP")[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
 
-  if (totalOppShots > 0) {
-    facts.push(`${truncTeam(awayTeam, 12)} shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
-    colors.push("#ef4444");
-  }
+  // Shots / conversion are in the headline above, so the strip carries only
+  // the facts the headline does not: placed balls and the best zone count.
   if (oppFreeScored > 0 || oppFreeMissed > 0) {
     const parts: string[] = [];
     if (oppFreeScored > 0) parts.push(`${oppFreeScored} placed-ball score${oppFreeScored !== 1 ? "s" : ""}`);
@@ -11704,7 +11721,6 @@ export function makeOppShotProfilePage(
     facts.push(`${truncTeam(awayTeam, 12)} best scoring zone: ${oppScoreHot.label} (${oppScoreHot.count})`);
     colors.push("#ef4444");
   }
-  if (facts.length === 0) facts.push("No opposition shot data recorded.");
 
   drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#ef4444", "#f472b6", "#ef4444"]);
   drawShotAttemptFooter(ctx, totalOppShots);
