@@ -5,6 +5,9 @@
  * genuine shot attempts only. Free awards (FREE_WON, FREE_CONCEDED) are not
  * shots and are not plotted, listed in the legend or used as callout facts.
  * Shooting totals, conversion and placed-ball figures are unchanged.
+ * Layout: the legend is one row between the headline and the pitch (canvas
+ * y 130–170); the right-hand column is empty; the bottom strip does not repeat
+ * the headline's shots / conversion figure.
  *
  * Real match: Ballylanders 0-06 v Galbally 0-05 (Samsung acceptance export,
  * half-time, anonymised). Expected markers come from the event list itself:
@@ -22,32 +25,37 @@ import type { PdfExportEvent } from "../reviewPdfExport";
 type Fixture = { homeTeamName: string; awayTeamName: string; halfDurationMinutes: number; events: PdfExportEvent[] };
 const fx = JSON.parse(readFileSync(new URL("./fixtures/ballylanders-galbally-2026-11-07-ht.json", import.meta.url), "utf8")) as Fixture;
 
-// The pitch spans x 24–1752 on the 1920-wide canvas; the legend sits at x ≥ 1762.
-const LEGEND_X = 1756;
+// Canvas 1920×1080. Headline text band y 80–130, legend row y 130–170, pitch
+// area y 170–890 (x 24–1752). The old right-hand legend column was x ≥ 1762.
+const LEGEND_ROW = { top: 130, bottom: 170 };
+const RIGHT_COLUMN_X = 1756;
 
 // ── Canvas capture: text, and each drawn marker shape by colour and side ──
 type Marks = Record<string, number>;
-type Page = { texts: string[]; pitch: Marks; legend: Marks };
+type Page = { texts: string[]; pitch: Marks; legend: Marks; rightColumn: number };
 const pages: Page[] = [];
 const bump = (m: Marks, k: string) => { m[k] = (m[k] ?? 0) + 1; };
 class Ctx {
   fillStyle = ""; strokeStyle = ""; font = ""; lineWidth = 1; textBaseline = "alphabetic"; textAlign = "left"; globalAlpha = 1; lineCap = "butt";
-  texts: string[] = []; pitch: Marks = {}; legend: Marks = {};
-  private arcX: number | null = null; private moves: number[] = [];
-  private side(x: number) { return x >= LEGEND_X ? this.legend : this.pitch; }
+  texts: string[] = []; pitch: Marks = {}; legend: Marks = {}; rightColumn = 0;
+  private arcAt: [number, number] | null = null; private moves: [number, number][] = [];
+  private side([x, y]: [number, number]) {
+    if (x >= RIGHT_COLUMN_X) this.rightColumn++;
+    return y >= LEGEND_ROW.top && y < LEGEND_ROW.bottom ? this.legend : this.pitch;
+  }
   save() {} restore() {} fillRect() {} strokeRect() {} clearRect() {}
-  fillText(t: string, x: number) { this.texts.push(String(t)); if (t === "↓" && this.fillStyle === "#94a3b8") bump(this.side(x), "short"); }
+  fillText(t: string, x: number, y: number) { this.texts.push(String(t)); if (t === "↓" && this.fillStyle === "#94a3b8") bump(this.side([x, y]), "short"); }
   strokeText() {}
-  beginPath() { this.arcX = null; this.moves = []; }
-  arc(x: number) { this.arcX = x; }
-  moveTo(x: number) { this.moves.push(x); }
+  beginPath() { this.arcAt = null; this.moves = []; }
+  arc(x: number, y: number) { this.arcAt = [x, y]; }
+  moveTo(x: number, y: number) { this.moves.push([x, y]); }
   arcTo() {} ellipse() {} lineTo() {} quadraticCurveTo() {} bezierCurveTo() {} closePath() {} rect() {} roundRect() {}
   // Pitch markings (centre and penalty spots) are white rgba; they are not event markers.
-  fill() { if (this.arcX !== null && !this.fillStyle.startsWith("rgba(255,255,255")) bump(this.side(this.arcX), `dot ${this.fillStyle}`); }
+  fill() { if (this.arcAt !== null && !this.fillStyle.startsWith("rgba(255,255,255")) bump(this.side(this.arcAt), `dot ${this.fillStyle}`); }
   stroke() {
-    if (this.arcX !== null && this.strokeStyle === "#64748b") bump(this.side(this.arcX), "ring");
+    if (this.arcAt !== null && this.strokeStyle === "#64748b") bump(this.side(this.arcAt), "ring");
     // A ✕ is two single-segment strokes; count the coloured diagonals only.
-    if (this.arcX === null && this.moves.length === 1 && this.strokeStyle === "#ef4444") bump(this.side(this.moves[0]), "x-stroke");
+    if (this.arcAt === null && this.moves.length === 1 && this.strokeStyle === "#ef4444") bump(this.side(this.moves[0]), "x-stroke");
   }
   measureText(t: string) { return { width: String(t).length * 8 }; }
   setLineDash() {} clip() {} drawImage() {} translate() {} rotate() {} scale() {} setTransform() {} resetTransform() {}
@@ -58,7 +66,7 @@ class Ctx {
 class Cnv {
   width = 0; height = 0; style = {}; ctx = new Ctx();
   getContext() { return this.ctx; }
-  toDataURL() { pages.push({ texts: this.ctx.texts, pitch: this.ctx.pitch, legend: this.ctx.legend }); return "data:image/jpeg;base64,AAAA"; }
+  toDataURL() { pages.push({ texts: this.ctx.texts, pitch: this.ctx.pitch, legend: this.ctx.legend, rightColumn: this.ctx.rightColumn }); return "data:image/jpeg;base64,AAAA"; }
   toBlob(cb: (b: Blob) => void) { this.toDataURL(); cb(new Blob(["x"])); }
 }
 vi.mock("jspdf", () => ({ default: class { addPage() {} addImage() {} save() {} output() { return new Blob(); } setProperties() {} } }));
@@ -83,8 +91,7 @@ async function snapshot(mode: (typeof MODES)[number], events: PdfExportEvent[] =
   const page = (title: string) => {
     const p = pages.find((x) => x.texts.includes(title));
     if (!p) throw new Error(`no page "${title}"`);
-    const i = p.texts.indexOf("LEGEND");
-    return { ...p, legendLabels: i < 0 ? [] : p.texts.slice(i + 1).filter((t) => LEGEND_LABELS.includes(t)) };
+    return { ...p, legendLabels: p.texts.filter((t) => LEGEND_LABELS.includes(t)) };
   };
   return { ours: page("Our Shot Profile"), theirs: page("Opposition Shot Profile") };
 }
@@ -122,16 +129,20 @@ describe.each(MODES)("%s Shot Profiles — Ballylanders v Galbally", (mode) => {
     expect(theirs.legendLabels).toEqual(["Point", "Two-pointer", "Wide / missed"]);
     expect(theirs.legend).toEqual({ "dot #4ade80": 1, "dot #fbbf24": 1, "x-stroke": 2 });
     for (const p of [ours, theirs]) expect(p.texts.filter((t) => FREE_TEXT.test(t))).toEqual([]);
+    // The legend is a row above the pitch: nothing is drawn in the old right-hand column.
+    for (const p of [ours, theirs]) expect(p.rightColumn).toBe(0);
   });
 
-  it("headlines, conversion and placed-ball callouts are unchanged", async () => {
+  it("headlines, conversion and placed-ball callouts are unchanged; the strip does not repeat the headline", async () => {
     const { ours, theirs } = await snapshot(mode);
     expect(ours.texts).toContain("5 scores from 8 shots · 63% efficiency · Best zone: Attacking Centre");
-    expect(ours.texts).toContain("Ballylanders shots: 5 scored from 8 attempts · 3 missed (63%)");
+    expect(ours.texts.filter((t) => / shots: \d+ scored from \d+ attempts/.test(t))).toEqual([]);
     expect(ours.texts).toContain("Ballylanders: 3 placed-ball scores");
     expect(theirs.texts).toContain("4 scores from 5 shots · 80% efficiency · Most scoring zone: Attacking Centre");
-    expect(theirs.texts).toContain("Galbally shots: 4 scored from 5 attempts · 1 missed (80%)");
+    expect(theirs.texts.filter((t) => / shots: \d+ scored from \d+ attempts/.test(t))).toEqual([]);
     expect(theirs.texts).toContain("Galbally: 1 placed-ball score");
+    expect(ours.texts).toContain("Ballylanders best zone: Attacking Centre (3)");
+    expect(theirs.texts).toContain("Galbally best scoring zone: Attacking Centre (3)");
   });
 
   it("with no placed-ball shots, no free-count fallback callout: the next shooting fact is used", async () => {
