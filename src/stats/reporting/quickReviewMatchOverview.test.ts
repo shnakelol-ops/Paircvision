@@ -152,7 +152,7 @@ describe("quickReviewMatchOverview — sparse and empty data safety", () => {
     expect(model.score.home).toEqual({ goals: 0, points: 0, total: 0, text: "0-00" });
     expect(model.shooting.for).toEqual({ scores: 0, attempts: 0, pct: 0, text: "0/0 (—)" });
     expect(model.restarts.ours).toEqual({ retained: 0, total: 0, pct: 0, text: "0/0 retained (—)" });
-    expect(model.restarts.won).toEqual({ shots: 0, scores: 0 });
+    expect(model.restarts.won).toEqual({ count: 0, ownKept: 0, fromOpposition: 0, shots: 0, scores: 0 });
     expect(model.turnovers.won).toEqual({ count: 0, shots: 0, scores: 0 });
     expect(model.frees).toEqual({
       won: 0,

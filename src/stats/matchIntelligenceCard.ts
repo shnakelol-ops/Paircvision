@@ -1,4 +1,5 @@
 import type { PossessionOutcomeSummary } from "./chains/chain-types";
+import { producedScore, producedScoreText, type ProducedScore } from "./possessionScoreText";
 
 const W = 1080;
 const H = 1920;
@@ -153,8 +154,8 @@ type ContributionRow = {
   accentColor: string;
   homeWon: number;
   awayWon: number;
-  homeScore: { goals: number; points: number };
-  awayScore: { goals: number; points: number };
+  homeScore: ProducedScore;
+  awayScore: ProducedScore;
   net: number;
 };
 
@@ -210,12 +211,12 @@ function drawContributionsPanel(
     ctx.fillStyle = hHasScore ? CLR.green : CLR.dim;
     ctx.font = "600 20px Inter,system-ui,sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(`${home}  ${fmtGaelic(r.homeScore.goals, r.homeScore.points)} scored`, ix, rowStart + 62);
+    ctx.fillText(`${home}  ${producedScoreText(r.homeScore)}`, ix, rowStart + 62);
 
     ctx.fillStyle = aHasScore ? CLR.red : CLR.dim;
     ctx.font = "600 20px Inter,system-ui,sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`${fmtGaelic(r.awayScore.goals, r.awayScore.points)} scored  ${away}`, ix + iw, rowStart + 62);
+    ctx.fillText(`${producedScoreText(r.awayScore)}  ${away}`, ix + iw, rowStart + 62);
 
     if (r.subLabel) {
       ctx.fillStyle = CLR.dim;
@@ -332,8 +333,8 @@ export async function buildMatchIntelligenceCardPng(
       accentColor: CLR.cyan,
       homeWon:     kickouts.retainedCount,
       awayWon:     kickouts.concededCount,
-      homeScore:   { goals: kickouts.retained.goals, points: kickouts.retained.points },
-      awayScore:   { goals: kickouts.conceded.goals, points: kickouts.conceded.points },
+      homeScore:   producedScore(kickouts.retained),
+      awayScore:   producedScore(kickouts.conceded),
       net:         kickouts.netOutcome,
     },
     {
@@ -341,8 +342,8 @@ export async function buildMatchIntelligenceCardPng(
       accentColor: CLR.amber,
       homeWon:     turnovers.retainedCount,
       awayWon:     turnovers.concededCount,
-      homeScore:   { goals: turnovers.retained.goals, points: turnovers.retained.points },
-      awayScore:   { goals: turnovers.conceded.goals, points: turnovers.conceded.points },
+      homeScore:   producedScore(turnovers.retained),
+      awayScore:   producedScore(turnovers.conceded),
       net:         turnovers.netOutcome,
     },
     {
@@ -355,8 +356,8 @@ export async function buildMatchIntelligenceCardPng(
       accentColor: CLR.green,
       homeWon:     frees.retainedCount,
       awayWon:     frees.concededCount,
-      homeScore:   { goals: frees.retained.goals, points: frees.retained.points },
-      awayScore:   { goals: frees.conceded.goals, points: frees.conceded.points },
+      homeScore:   producedScore(frees.retained),
+      awayScore:   producedScore(frees.conceded),
       net:         frees.netOutcome,
     },
   ];

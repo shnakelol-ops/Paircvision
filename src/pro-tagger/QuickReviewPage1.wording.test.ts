@@ -28,10 +28,18 @@ describe("QuickReviewPage1 — Restarts/Turnovers labels name a team (P1-B)", ()
     expect(source).not.toContain(">Lost<");
   });
 
-  it("uses the file's own established 'Our' shorthand instead — not invented terminology", () => {
-    expect(source).toContain('label="Our restart won"');
-    expect(source).toContain('label="Our restart lost"');
+  it("uses the file's own established 'Our' shorthand for turnovers — not invented terminology", () => {
     expect(source).toContain("Our turnovers won");
     expect(source).toContain("Our turnovers lost");
+  });
+
+  it("names the team on every restart row: own kickouts, and every kickout each team won (Samsung acceptance F1)", () => {
+    expect(source).toContain("{model.homeTeam} own {restartNoun}s");
+    expect(source).toContain("{model.awayTeam} own {restartNoun}s");
+    expect(source).toContain("`${model.homeTeam} won ${model.restarts.won.count} ");
+    expect(source).toContain("`${model.awayTeam} won ${model.restarts.lost.count} ");
+    // The ambiguous "Our restart won/lost" (read as own kickouts, meant all kickouts won) is gone.
+    expect(source).not.toContain("Our restart won");
+    expect(source).not.toContain("Our restart lost");
   });
 });

@@ -55,6 +55,17 @@ export type QuickReviewRestartSide = {
   text: string;
 };
 
+/** Every kickout a team won possession from (own kept + the opposition's won),
+ *  with how it splits. `count` also includes any kickout whose taker was not
+ *  recorded, so own + fromOpposition ≤ count. */
+export type QuickReviewKickoutsWon = QuickReviewPossessionConsequence & {
+  count: number;
+  /** Own kickouts kept. */
+  ownKept: number;
+  /** Opposition kickouts won. */
+  fromOpposition: number;
+};
+
 export type QuickReviewPossessionConsequence = {
   shots: number;
   scores: number;
@@ -99,10 +110,10 @@ export type QuickReviewMatchOverview = {
     ours: QuickReviewRestartSide;
     /** Opposition's own kickouts retained ÷ taken. */
     theirs: QuickReviewRestartSide;
-    /** Immediate possession outcome after ANY kickout we ended up with. */
-    won: QuickReviewPossessionConsequence;
-    /** Immediate possession outcome after ANY kickout the opposition ended up with. */
-    lost: QuickReviewPossessionConsequence;
+    /** Every kickout we won possession from (own kept + theirs won) and its immediate outcome. */
+    won: QuickReviewKickoutsWon;
+    /** Every kickout the opposition won possession from (their own kept + ours won) and its immediate outcome. */
+    lost: QuickReviewKickoutsWon;
   };
   turnovers: {
     won: QuickReviewTurnoverSide;
@@ -254,8 +265,18 @@ export function buildQuickReviewMatchOverview<T extends ChainableEvent>(
     restarts: {
       ours: buildRestartSide(report.restartTeams.for.ownRestartsRetained, report.restartTeams.for.ownRestartsTaken, report.restartTeams.for.unknownOwnerRestarts),
       theirs: buildRestartSide(report.restartTeams.opp.ownRestartsRetained, report.restartTeams.opp.ownRestartsTaken, report.restartTeams.opp.unknownOwnerRestarts),
-      won: shotsAndScores(kickouts.retained),
-      lost: shotsAndScores(kickouts.conceded),
+      won: {
+        count: kickouts.retainedCount,
+        ownKept: report.restartTeams.for.ownRestartsRetained,
+        fromOpposition: report.restartTeams.opp.ownRestartsLost,
+        ...shotsAndScores(kickouts.retained),
+      },
+      lost: {
+        count: kickouts.concededCount,
+        ownKept: report.restartTeams.opp.ownRestartsRetained,
+        fromOpposition: report.restartTeams.for.ownRestartsLost,
+        ...shotsAndScores(kickouts.conceded),
+      },
     },
     turnovers: {
       won: { count: mirroredFor.turnoversWon, ...shotsAndScores(turnovers.retained) },

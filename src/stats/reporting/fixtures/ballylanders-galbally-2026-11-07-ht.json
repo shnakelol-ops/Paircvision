@@ -1,0 +1,1169 @@
+{
+ "_provenance": "Real Event Stats export, Ballylanders v Galbally (friendly, 7 Nov 2026, saved at half-time), Samsung release-acceptance test of release candidate c96d232. Anonymised: event/player/squad UUIDs replaced with stable ids (e01\u2026, home-14, home-squad), capture timestamps removed. Every kind, tag, coordinate, clock, period, segment, side, restart owner, player number and squad is exactly as captured. Original SHA-256: 8c678e4a1f3fd01706010c1461d73dd7ab9d0843dcf7e909fc6c7f795e8cc738.",
+ "homeTeamName": "Ballylanders",
+ "awayTeamName": "Galbally",
+ "sport": "gaelic",
+ "halfDurationMinutes": 35,
+ "scorelineSnapshot": "0-06 \u2013 0-05",
+ "firstHalfAttackingDirection": "right",
+ "homeSquad": {
+  "id": "home-squad",
+  "players": [
+   {
+    "id": "home-1",
+    "number": 1
+   },
+   {
+    "id": "home-2",
+    "number": 2
+   },
+   {
+    "id": "home-3",
+    "number": 3
+   },
+   {
+    "id": "home-4",
+    "number": 4
+   },
+   {
+    "id": "home-5",
+    "number": 5
+   },
+   {
+    "id": "home-6",
+    "number": 6
+   },
+   {
+    "id": "home-7",
+    "number": 7
+   },
+   {
+    "id": "home-8",
+    "number": 8
+   },
+   {
+    "id": "home-9",
+    "number": 9
+   },
+   {
+    "id": "home-10",
+    "number": 10
+   },
+   {
+    "id": "home-11",
+    "number": 11
+   },
+   {
+    "id": "home-12",
+    "number": 12
+   },
+   {
+    "id": "home-13",
+    "number": 13
+   },
+   {
+    "id": "home-14",
+    "number": 14
+   },
+   {
+    "id": "home-15",
+    "number": 15
+   },
+   {
+    "id": "home-16",
+    "number": 16
+   },
+   {
+    "id": "home-17",
+    "number": 17
+   },
+   {
+    "id": "home-18",
+    "number": 18
+   },
+   {
+    "id": "home-19",
+    "number": 19
+   },
+   {
+    "id": "home-20",
+    "number": 20
+   }
+  ]
+ },
+ "awaySquad": {
+  "id": "away-squad",
+  "players": [
+   {
+    "id": "away-1",
+    "number": 1
+   },
+   {
+    "id": "away-2",
+    "number": 2
+   },
+   {
+    "id": "away-3",
+    "number": 3
+   },
+   {
+    "id": "away-4",
+    "number": 4
+   },
+   {
+    "id": "away-5",
+    "number": 5
+   },
+   {
+    "id": "away-6",
+    "number": 6
+   },
+   {
+    "id": "away-7",
+    "number": 7
+   },
+   {
+    "id": "away-8",
+    "number": 8
+   },
+   {
+    "id": "away-9",
+    "number": 9
+   },
+   {
+    "id": "away-10",
+    "number": 10
+   },
+   {
+    "id": "away-11",
+    "number": 11
+   },
+   {
+    "id": "away-12",
+    "number": 12
+   },
+   {
+    "id": "away-13",
+    "number": 13
+   },
+   {
+    "id": "away-14",
+    "number": 14
+   },
+   {
+    "id": "away-15",
+    "number": 15
+   },
+   {
+    "id": "away-16",
+    "number": 16
+   },
+   {
+    "id": "away-17",
+    "number": 17
+   },
+   {
+    "id": "away-18",
+    "number": 18
+   },
+   {
+    "id": "away-19",
+    "number": 19
+   },
+   {
+    "id": "away-20",
+    "number": 20
+   }
+  ]
+ },
+ "events": [
+  {
+   "id": "e01",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.933850072507916,
+   "ny": 0.5270549293825899,
+   "x": 0.933850072507916,
+   "y": 0.5270549293825899,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 19,
+   "matchClockSeconds": 19,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 19,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 14,
+   "squadId": "home-squad",
+   "playerId": "home-14",
+   "playerName": "#14"
+  },
+  {
+   "id": "e02",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.8637075196551871,
+   "ny": 0.07112880886947749,
+   "x": 0.8637075196551871,
+   "y": 0.07112880886947749,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 34,
+   "matchClockSeconds": 34,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 34,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 2,
+   "restartOwner": "OPP",
+   "squadId": "away-squad",
+   "playerId": "away-2",
+   "playerName": "#2"
+  },
+  {
+   "id": "e03",
+   "kind": "FREE_CONCEDED",
+   "type": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.32699235777638663,
+   "ny": 0.08515723343463691,
+   "x": 0.32699235777638663,
+   "y": 0.08515723343463691,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 50,
+   "matchClockSeconds": 50,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 50,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 7,
+   "squadId": "home-squad",
+   "playerId": "home-7",
+   "playerName": "#7"
+  },
+  {
+   "id": "e04",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.09276655192473067,
+   "ny": 0.5581180537884136,
+   "x": 0.09276655192473067,
+   "y": 0.5581180537884136,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 60,
+   "matchClockSeconds": 60,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 60,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 14,
+   "squadId": "away-squad",
+   "playerId": "away-14",
+   "playerName": "#14"
+  },
+  {
+   "id": "e05",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5104900635289537,
+   "ny": 0.6042116515152053,
+   "x": 0.5104900635289537,
+   "y": 0.6042116515152053,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 74,
+   "matchClockSeconds": 74,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 74,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 8,
+   "restartOwner": "FOR",
+   "squadId": "home-squad",
+   "playerId": "home-8",
+   "playerName": "#8"
+  },
+  {
+   "id": "e06",
+   "kind": "TURNOVER_LOST",
+   "type": "TURNOVER_LOST",
+   "tags": [
+    "KP ERROR"
+   ],
+   "nx": 0.38899326448817173,
+   "ny": 0.30460307277894044,
+   "x": 0.38899326448817173,
+   "y": 0.30460307277894044,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 88,
+   "matchClockSeconds": 88,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 88,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 9,
+   "squadId": "home-squad",
+   "playerId": "home-9",
+   "playerName": "#9"
+  },
+  {
+   "id": "e07",
+   "kind": "SIDELINE_WON",
+   "type": "SIDELINE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.5468138471467122,
+   "ny": 0.9819790172659039,
+   "x": 0.5468138471467122,
+   "y": 0.9819790172659039,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 113,
+   "matchClockSeconds": 113,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 113,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 10,
+   "restartOwner": "FOR",
+   "squadId": "home-squad",
+   "playerId": "home-10",
+   "playerName": "#10"
+  },
+  {
+   "id": "e08",
+   "kind": "SHOT",
+   "type": "SHOT",
+   "tags": [
+    "POST"
+   ],
+   "nx": 0.897526235136791,
+   "ny": 0.579160733638846,
+   "x": 0.897526235136791,
+   "y": 0.579160733638846,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 128,
+   "matchClockSeconds": 128,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 128,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 11,
+   "squadId": "home-squad",
+   "playerId": "home-11",
+   "playerName": "#11"
+  },
+  {
+   "id": "e09",
+   "kind": "FREE_WON",
+   "type": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.7979489838624868,
+   "ny": 0.5611241570531459,
+   "x": 0.7979489838624868,
+   "y": 0.5611241570531459,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 138,
+   "matchClockSeconds": 138,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 138,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 11,
+   "squadId": "home-squad",
+   "playerId": "home-11",
+   "playerName": "#11"
+  },
+  {
+   "id": "e10",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.7553624492742919,
+   "ny": 0.5501017067446391,
+   "x": 0.7553624492742919,
+   "y": 0.5501017067446391,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 150,
+   "matchClockSeconds": 150,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 150,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 12,
+   "squadId": "home-squad",
+   "playerId": "home-12",
+   "playerName": "#12"
+  },
+  {
+   "id": "e11",
+   "kind": "KICKOUT_CONCEDED",
+   "type": "KICKOUT_CONCEDED",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.6438860302848617,
+   "ny": 0.27353999137581,
+   "x": 0.6438860302848617,
+   "y": 0.27353999137581,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 171,
+   "matchClockSeconds": 171,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 171,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 9,
+   "restartOwner": "OPP",
+   "squadId": "home-squad",
+   "playerId": "home-9",
+   "playerName": "#9"
+  },
+  {
+   "id": "e12",
+   "kind": "TURNOVER_LOST",
+   "type": "TURNOVER_LOST",
+   "tags": [
+    "HP ERROR"
+   ],
+   "nx": 0.6639267366341985,
+   "ny": 0.32163768661421843,
+   "x": 0.6639267366341985,
+   "y": 0.32163768661421843,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 188,
+   "matchClockSeconds": 188,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 188,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 12,
+   "squadId": "home-squad",
+   "playerId": "home-12",
+   "playerName": "#12"
+  },
+  {
+   "id": "e13",
+   "kind": "FREE_WON",
+   "type": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.7340693432402937,
+   "ny": 0.20540153603469805,
+   "x": 0.7340693432402937,
+   "y": 0.20540153603469805,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 228,
+   "matchClockSeconds": 228,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 228,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 12,
+   "squadId": "home-squad",
+   "playerId": "home-12",
+   "playerName": "#12"
+  },
+  {
+   "id": "e14",
+   "kind": "TWO_POINTER",
+   "type": "TWO_POINTER",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.7741507559389675,
+   "ny": 0.20339752452846738,
+   "x": 0.7741507559389675,
+   "y": 0.20339752452846738,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 240,
+   "matchClockSeconds": 240,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 240,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 14,
+   "squadId": "home-squad",
+   "playerId": "home-14",
+   "playerName": "#14"
+  },
+  {
+   "id": "e15",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5273994212697556,
+   "ny": 0.6523093467536139,
+   "x": 0.5273994212697556,
+   "y": 0.6523093467536139,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 255,
+   "matchClockSeconds": 255,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 255,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 8,
+   "restartOwner": "OPP",
+   "squadId": "away-squad",
+   "playerId": "away-8",
+   "playerName": "#8"
+  },
+  {
+   "id": "e16",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.048301229672761334,
+   "ny": 0.5260529236294746,
+   "x": 0.048301229672761334,
+   "y": 0.5260529236294746,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 276,
+   "matchClockSeconds": 276,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 276,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 14,
+   "squadId": "away-squad",
+   "playerId": "away-14",
+   "playerName": "#14"
+  },
+  {
+   "id": "e17",
+   "kind": "KICKOUT_CONCEDED",
+   "type": "KICKOUT_CONCEDED",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.46351967314082965,
+   "ny": 0.364725224078971,
+   "x": 0.46351967314082965,
+   "y": 0.364725224078971,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 291,
+   "matchClockSeconds": 291,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 291,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 9,
+   "restartOwner": "FOR",
+   "squadId": "away-squad",
+   "playerId": "away-9",
+   "playerName": "#9"
+  },
+  {
+   "id": "e18",
+   "kind": "TWO_POINTER",
+   "type": "TWO_POINTER",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.26186004870270013,
+   "ny": 0.31762953459367776,
+   "x": 0.26186004870270013,
+   "y": 0.31762953459367776,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 307,
+   "matchClockSeconds": 307,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 307,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 9,
+   "squadId": "away-squad",
+   "playerId": "away-9",
+   "playerName": "#9"
+  },
+  {
+   "id": "e19",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.3883669840157914,
+   "ny": 0.36572722983208633,
+   "x": 0.3883669840157914,
+   "y": 0.36572722983208633,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 334,
+   "matchClockSeconds": 334,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 334,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 6,
+   "restartOwner": "FOR",
+   "squadId": "home-squad",
+   "playerId": "home-6",
+   "playerName": "#6"
+  },
+  {
+   "id": "e20",
+   "kind": "TURNOVER_LOST",
+   "type": "TURNOVER_LOST",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.5562079467256835,
+   "ny": 0.3937842509731779,
+   "x": 0.5562079467256835,
+   "y": 0.3937842509731779,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 350,
+   "matchClockSeconds": 350,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 350,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 9,
+   "squadId": "home-squad",
+   "playerId": "home-9",
+   "playerName": "#9"
+  },
+  {
+   "id": "e21",
+   "kind": "TURNOVER_WON",
+   "type": "TURNOVER_WON",
+   "tags": [
+    "KP ERROR"
+   ],
+   "nx": 0.2931736422947828,
+   "ny": 0.21642398634320473,
+   "x": 0.2931736422947828,
+   "y": 0.21642398634320473,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 362,
+   "matchClockSeconds": 362,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 362,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 4,
+   "squadId": "home-squad",
+   "playerId": "home-4",
+   "playerName": "#4"
+  },
+  {
+   "id": "e22",
+   "kind": "WIDE",
+   "type": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.9037889323538609,
+   "ny": 0.23947076370525394,
+   "x": 0.9037889323538609,
+   "y": 0.23947076370525394,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 401,
+   "matchClockSeconds": 401,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 401,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 15,
+   "squadId": "home-squad",
+   "playerId": "home-15",
+   "playerName": "#15"
+  },
+  {
+   "id": "e23",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.6232190434631445,
+   "ny": 0.7675434485773258,
+   "x": 0.6232190434631445,
+   "y": 0.7675434485773258,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 408,
+   "matchClockSeconds": 408,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 408,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 8,
+   "restartOwner": "OPP",
+   "squadId": "away-squad",
+   "playerId": "away-8",
+   "playerName": "#8"
+  },
+  {
+   "id": "e24",
+   "kind": "FREE_CONCEDED",
+   "type": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.16917174824116296,
+   "ny": 0.7555190140170503,
+   "x": 0.16917174824116296,
+   "y": 0.7555190140170503,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 417,
+   "matchClockSeconds": 417,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 417,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 2,
+   "squadId": "home-squad",
+   "playerId": "home-2",
+   "playerName": "#2"
+  },
+  {
+   "id": "e25",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.21614216550597024,
+   "ny": 0.6272584718799477,
+   "x": 0.21614216550597024,
+   "y": 0.6272584718799477,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 425,
+   "matchClockSeconds": 425,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 425,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 14,
+   "squadId": "away-squad",
+   "playerId": "away-14",
+   "playerName": "#14"
+  },
+  {
+   "id": "e26",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.31947704586118963,
+   "ny": 0.4949897992236509,
+   "x": 0.31947704586118963,
+   "y": 0.4949897992236509,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 438,
+   "matchClockSeconds": 438,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 438,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 11,
+   "restartOwner": "FOR",
+   "squadId": "home-squad",
+   "playerId": "home-11",
+   "playerName": "#11"
+  },
+  {
+   "id": "e27",
+   "kind": "TURNOVER_LOST",
+   "type": "TURNOVER_LOST",
+   "tags": [
+    "KP ERROR"
+   ],
+   "nx": 0.5493189152828669,
+   "ny": 0.9218568928425565,
+   "x": 0.5493189152828669,
+   "y": 0.9218568928425565,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 446,
+   "matchClockSeconds": 446,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 446,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 6,
+   "squadId": "home-squad",
+   "playerId": "home-6",
+   "playerName": "#6"
+  },
+  {
+   "id": "e28",
+   "kind": "TURNOVER_WON",
+   "type": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.6708157143236487,
+   "ny": 0.9188507895778243,
+   "x": 0.6708157143236487,
+   "y": 0.9188507895778243,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 456,
+   "matchClockSeconds": 456,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 456,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 10,
+   "squadId": "home-squad",
+   "playerId": "home-10",
+   "playerName": "#10"
+  },
+  {
+   "id": "e29",
+   "kind": "SHOT",
+   "type": "SHOT",
+   "tags": [
+    "BLOCK/SAVE"
+   ],
+   "nx": 0.9432442258402538,
+   "ny": 0.657319547529963,
+   "x": 0.9432442258402538,
+   "y": 0.657319547529963,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 477,
+   "matchClockSeconds": 477,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 477,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 15,
+   "squadId": "home-squad",
+   "playerId": "home-15",
+   "playerName": "#15"
+  },
+  {
+   "id": "e30",
+   "kind": "FORTY_FIVE_WON",
+   "type": "FORTY_FIVE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.8449194280039773,
+   "ny": 0.834679812159936,
+   "x": 0.8449194280039773,
+   "y": 0.834679812159936,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 483,
+   "matchClockSeconds": 483,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 483,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 13,
+   "restartOwner": "FOR",
+   "squadId": "home-squad",
+   "playerId": "home-13",
+   "playerName": "#13"
+  },
+  {
+   "id": "e31",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "45"
+   ],
+   "nx": 0.6701894338512685,
+   "ny": 0.6703460093447003,
+   "x": 0.6701894338512685,
+   "y": 0.6703460093447003,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 495,
+   "matchClockSeconds": 495,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 495,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 14,
+   "squadId": "home-squad",
+   "playerId": "home-14",
+   "playerName": "#14"
+  },
+  {
+   "id": "e32",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "FOUL"
+   ],
+   "nx": 0.595663078951977,
+   "ny": 0.25249713951460495,
+   "x": 0.595663078951977,
+   "y": 0.25249713951460495,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 509,
+   "matchClockSeconds": 509,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 509,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 12,
+   "restartOwner": "OPP",
+   "squadId": "away-squad",
+   "playerId": "away-12",
+   "playerName": "#12"
+  },
+  {
+   "id": "e33",
+   "kind": "WIDE",
+   "type": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.19610145915663332,
+   "ny": 0.37173939335885764,
+   "x": 0.19610145915663332,
+   "y": 0.37173939335885764,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 526,
+   "matchClockSeconds": 526,
+   "segment": 1,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 526,
+   "halfSegment": 1,
+   "team": "AWAY",
+   "playerNumber": 11,
+   "squadId": "away-squad",
+   "playerId": "away-11",
+   "playerName": "#11"
+  },
+  {
+   "id": "e34",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.15852514147079746,
+   "ny": 0.07313290638109436,
+   "x": 0.15852514147079746,
+   "y": 0.07313290638109436,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 535,
+   "matchClockSeconds": 535,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 535,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 4,
+   "restartOwner": "FOR",
+   "squadId": "home-squad",
+   "playerId": "home-4",
+   "playerName": "#4"
+  },
+  {
+   "id": "e35",
+   "kind": "TURNOVER_LOST",
+   "type": "TURNOVER_LOST",
+   "tags": [
+    "HP ERROR"
+   ],
+   "nx": 0.4866917280987015,
+   "ny": 0.24548297023471846,
+   "x": 0.4866917280987015,
+   "y": 0.24548297023471846,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 549,
+   "matchClockSeconds": 549,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 549,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 9,
+   "squadId": "home-squad",
+   "playerId": "home-9",
+   "playerName": "#9"
+  },
+  {
+   "id": "e36",
+   "kind": "TURNOVER_WON",
+   "type": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.5843901917092312,
+   "ny": 0.369735381852627,
+   "x": 0.5843901917092312,
+   "y": 0.369735381852627,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 558,
+   "matchClockSeconds": 558,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 558,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 11,
+   "squadId": "home-squad",
+   "playerId": "home-11",
+   "playerName": "#11"
+  },
+  {
+   "id": "e37",
+   "kind": "POINT",
+   "type": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.8229998802374995,
+   "ny": 0.33566619718476415,
+   "x": 0.8229998802374995,
+   "y": 0.33566619718476415,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 567,
+   "matchClockSeconds": 567,
+   "segment": 1,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 567,
+   "halfSegment": 1,
+   "team": "HOME",
+   "playerNumber": 12,
+   "squadId": "home-squad",
+   "playerId": "home-12",
+   "playerName": "#12"
+  },
+  {
+   "id": "e38",
+   "kind": "KICKOUT_WON",
+   "type": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.52927820893353,
+   "ny": 0.7204477805933791,
+   "x": 0.52927820893353,
+   "y": 0.7204477805933791,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 606,
+   "matchClockSeconds": 606,
+   "segment": 2,
+   "teamSide": "OPP",
+   "matchTimeSeconds": 606,
+   "halfSegment": 2,
+   "team": "AWAY",
+   "playerNumber": 8,
+   "restartOwner": "OPP",
+   "squadId": "away-squad",
+   "playerId": "away-8",
+   "playerName": "#8"
+  },
+  {
+   "id": "e39",
+   "kind": "FREE_CONCEDED",
+   "type": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.42531704810593024,
+   "ny": 0.8046187580112674,
+   "x": 0.42531704810593024,
+   "y": 0.8046187580112674,
+   "half": 1,
+   "period": "1H",
+   "timestamp": 617,
+   "matchClockSeconds": 617,
+   "segment": 2,
+   "teamSide": "FOR",
+   "matchTimeSeconds": 617,
+   "halfSegment": 2,
+   "team": "HOME",
+   "playerNumber": 8,
+   "squadId": "home-squad",
+   "playerId": "home-8",
+   "playerName": "#8"
+  }
+ ]
+}

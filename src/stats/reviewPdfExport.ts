@@ -108,6 +108,8 @@ import {
   fmtMarginLabel,
   fmtNet,
   fmtScoreLine,
+  isPlacedMiss,
+  isPlacedScore,
   restartOriginBridgeNote,
   type DirectScoringBreakdown,
 } from "./ledger/scoreLedger";
@@ -7526,11 +7528,16 @@ function makeFreeAnalysisPage(
   drawPageHeader(ctx, "Free Kick Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
+  // Frees won / conceded (by who benefited) plus every placed-ball ATTEMPT by
+  // the team taking it — frees, 45s/65s, penalties, marks — the same set the
+  // "Placed Scored / Placed Missed" totals on this page count (score ledger).
+  // 45/65 awards are not attempts and are not plotted here.
+  const isPlacedAttempt = (e: PdfExportEvent) => !e.id.includes("-instant-score-") && (isPlacedScore(e) || isPlacedMiss(e));
   const forFreeEvts = events.filter(
-    (e) => isFreeRelatedPdfEvent(e) && tacticalSide(e) === "FOR",
+    (e) => (isFreeRelatedPdfEvent(e) && tacticalSide(e) === "FOR" && !isPlacedAttempt(e)) || (isPlacedAttempt(e) && e.teamSide === "FOR"),
   );
   const oppFreeEvts = events.filter(
-    (e) => isFreeRelatedPdfEvent(e) && tacticalSide(e) === "OPP",
+    (e) => (isFreeRelatedPdfEvent(e) && tacticalSide(e) === "OPP" && !isPlacedAttempt(e)) || (isPlacedAttempt(e) && e.teamSide === "OPP"),
   );
 
   // ── Derived stats (hoisted before pitches for callout bullets) ───────────

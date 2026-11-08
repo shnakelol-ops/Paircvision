@@ -1685,6 +1685,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                       model={quickReviewModel}
                       homeColour={homeColour}
                       awayColour={awayColour}
+                      restartNoun={isHurlingOrCamogie ? "puckout" : "kickout"}
                     />
                   </div>
                 </div>
