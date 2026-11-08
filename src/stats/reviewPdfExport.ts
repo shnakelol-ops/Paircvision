@@ -8413,6 +8413,83 @@ function renderHtMarkers(
   }
 }
 
+/** Shot-marker types on the Snapshot Shot Profile pages, in legend order. */
+type ShotMarkerType = "GOAL" | "POINT" | "TWO_POINT" | "WIDE" | "BLOCKED" | "SHORT" | "OTHER";
+
+/** Which renderHtMarkers() symbol a shot event is drawn with (null = not plotted: no location). */
+function shotMarkerType(event: PdfExportEvent): ShotMarkerType | null {
+  const ex = typeof event.x === "number" ? event.x : event.nx;
+  const ey = typeof event.y === "number" ? event.y : event.ny;
+  if (ex == null || ey == null || !isFinite(ex) || !isFinite(ey)) return null;
+  switch (event.kind) {
+    case "GOAL": return "GOAL";
+    case "POINT": case "FREE_SCORED": return "POINT";
+    case "TWO_POINTER": case "FORTY_FIVE_TWO_POINT": return "TWO_POINT";
+    case "WIDE": case "FREE_MISSED": return "WIDE";
+    case "SHOT":
+      if (isBlockedOrSavedAttempt(event)) return "BLOCKED";
+      if ((event.tags ?? []).includes("SHORT")) return "SHORT";
+      return "OTHER";
+    default: return null;
+  }
+}
+
+/**
+ * Right-side legend for the Snapshot Shot Profile pages. Lists only the marker
+ * types actually drawn on that page, each with the same symbol and colour
+ * renderHtMarkers() uses for it.
+ */
+function drawShotProfileLegend(ctx: CanvasRenderingContext2D, shotEvts: readonly PdfExportEvent[]): void {
+  const present = new Set(shotEvts.map(shotMarkerType).filter((t): t is ShotMarkerType => t !== null));
+  const rows: { type: ShotMarkerType; label: string }[] = [
+    { type: "GOAL",      label: "Goal" },
+    { type: "POINT",     label: "Point" },
+    { type: "TWO_POINT", label: "Two-pointer" },
+    { type: "WIDE",      label: "Wide / missed" },
+    { type: "BLOCKED",   label: "Blocked / saved" },
+    { type: "SHORT",     label: "Dropped short" },
+    { type: "OTHER",     label: "Post / other" },
+  ];
+  const shown = rows.filter((row) => present.has(row.type));
+  if (shown.length === 0) return;
+
+  const lx = CANVAS_W - 158;
+  let ly = 180;
+  const sx = lx + 8; // swatch centre
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "15px sans-serif";
+  ctx.fillStyle = "#64748b";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  for (const { type, label } of shown) {
+    ctx.save();
+    if (type === "WIDE") {
+      ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sx - 6, ly - 6); ctx.lineTo(sx + 6, ly + 6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx + 6, ly - 6); ctx.lineTo(sx - 6, ly + 6); ctx.stroke();
+    } else if (type === "BLOCKED") {
+      ctx.beginPath(); ctx.arc(sx, ly, 7, 0, Math.PI * 2);
+      ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx, ly, 2.3, 0, Math.PI * 2);
+      ctx.fillStyle = "#e2e8f0"; ctx.fill();
+    } else if (type === "SHORT") {
+      ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = "#94a3b8"; ctx.fillText("↓", sx, ly);
+    } else {
+      const fill = type === "GOAL" ? "#16a34a" : type === "POINT" ? "#4ade80" : type === "TWO_POINT" ? "#fbbf24" : "#94a3b8";
+      ctx.beginPath(); ctx.arc(sx, ly, type === "GOAL" ? 8 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = fill; ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.70)"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText(label, lx + 22, ly, 136);
+    ly += 26;
+  }
+  ctx.restore();
+}
+
 /**
  * Renders the bottom tactical callout strip — shared across all HT vision pages.
  * Each fact gets its own panel with a coloured accent block at the left edge.
@@ -11425,10 +11502,6 @@ export function makeOurShotProfilePage(
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind) && !e.id.includes("-instant-score-"),
   );
-  // FREE_WON spatial markers — where we won frees on the pitch
-  const freeWonEvts = events.filter(
-    (e) => e.teamSide === "FOR" && e.kind === "FREE_WON",
-  );
   // Placed-ball counts — canonical ledger classification (free + 45/65 +
   // penalty + mark), the same figure the Snapshot Dashboard reports.
   const forFreeScored = report.placedBalls.for.scores;
@@ -11479,35 +11552,12 @@ export function makeOurShotProfilePage(
     ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
   }
 
-  // ── Event markers — dots tell the story ──────────────────────────────────
-  // Goal = dark green  ·  Point = light green  ·  Wide = red X
-  // Free won = indigo dot (spatial marker, shown when logged)
-  renderHtMarkers(ctx, [...forShotEvts, ...freeWonEvts], inner);
+  // ── Shot markers — genuine shot attempts only (placed-ball attempts
+  // included). Free awards are not shots and are not drawn here.
+  renderHtMarkers(ctx, forShotEvts, inner);
 
-  // ── Right-side legend ─────────────────────────────────────────────────────
-  const lx = CANVAS_W - 158;
-  let ly = 180;
-  ctx.save();
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "15px sans-serif";
-  ctx.fillStyle = "#64748b";
-  ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "rgba(52,211,153,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Our scores", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(239,68,68,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Our wides", lx + 22, ly); ly += 26;
-  if (freeWonEvts.length > 0) {
-    ctx.fillStyle = "#818cf8";
-    ctx.fillRect(lx, ly - 8, 16, 16);
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText("Free won", lx + 22, ly);
-  }
-  ctx.restore();
+  // ── Right-side legend — only the marker types drawn above ────────────────
+  drawShotProfileLegend(ctx, forShotEvts);
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalMisses = totalShots - totalScores;
@@ -11526,9 +11576,6 @@ export function makeOurShotProfilePage(
     if (forFreeMissed > 0) parts.push(`${forFreeMissed} placed-ball wide${forFreeMissed !== 1 ? "s" : ""}`);
     facts.push(`${truncTeam(homeTeam, 12)}: ${parts.join(" · ")}`);
     colors.push("#818cf8");
-  } else if (freeWonEvts.length > 0 && facts.length < 2) {
-    facts.push(`${truncTeam(homeTeam, 12)} won ${freeWonEvts.length} free${freeWonEvts.length !== 1 ? "s" : ""}`);
-    colors.push("#818cf8");
   }
   if (scoreHot && facts.length < 3) {
     facts.push(`${truncTeam(homeTeam, 12)} best zone: ${scoreHot.label} (${scoreHot.count})`);
@@ -11545,7 +11592,7 @@ export function makeOurShotProfilePage(
 /**
  * Opposition Shot Profile — "Where are they hurting us?"
  * OPP shots only (red = scores, amber = wides). STRICT: no FOR shots.
- * FREE_CONCEDED (FOR teamSide) = where we gave away frees to OPP — pink spatial markers.
+ * Genuine OPP shot attempts only — free awards are not drawn.
  * Callout: OPP placed-ball scores/wides when non-zero.
  */
 export function makeOppShotProfilePage(
@@ -11576,10 +11623,6 @@ export function makeOppShotProfilePage(
 
   const oppShotEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind) && !e.id.includes("-instant-score-"),
-  );
-  // FREE_CONCEDED (FOR) = positions where we gave away frees — pink danger markers
-  const freeConcededEvts = events.filter(
-    (e) => e.teamSide === "FOR" && e.kind === "FREE_CONCEDED",
   );
   // OPP placed-ball counts — canonical ledger classification (free + 45/65 +
   // penalty + mark), the same figure the Snapshot Dashboard reports.
@@ -11632,35 +11675,12 @@ export function makeOppShotProfilePage(
     ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
   }
 
-  // ── Event markers — dots tell the story ──────────────────────────────────
-  // Goal = dark green  ·  Point = light green  ·  Wide = red X
-  // Free conceded = pink dot (spatial marker, shown when logged)
-  renderHtMarkers(ctx, [...oppShotEvts, ...freeConcededEvts], inner);
+  // ── Shot markers — genuine shot attempts only (placed-ball attempts
+  // included). Free awards are not shots and are not drawn here.
+  renderHtMarkers(ctx, oppShotEvts, inner);
 
-  // ── Right-side legend ─────────────────────────────────────────────────────
-  const lx = CANVAS_W - 158;
-  let ly = 180;
-  ctx.save();
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "15px sans-serif";
-  ctx.fillStyle = "#64748b";
-  ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "rgba(52,211,153,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Their scores", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(239,68,68,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Their wides", lx + 22, ly); ly += 26;
-  if (freeConcededEvts.length > 0) {
-    ctx.fillStyle = "#f472b6";
-    ctx.fillRect(lx, ly - 8, 16, 16);
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText("Free conceded", lx + 22, ly);
-  }
-  ctx.restore();
+  // ── Right-side legend — only the marker types drawn above ────────────────
+  drawShotProfileLegend(ctx, oppShotEvts);
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalOppMisses = totalOppShots - totalOppScores;
@@ -11678,9 +11698,6 @@ export function makeOppShotProfilePage(
     if (oppFreeScored > 0) parts.push(`${oppFreeScored} placed-ball score${oppFreeScored !== 1 ? "s" : ""}`);
     if (oppFreeMissed > 0) parts.push(`${oppFreeMissed} placed-ball wide${oppFreeMissed !== 1 ? "s" : ""}`);
     facts.push(`${truncTeam(awayTeam, 12)}: ${parts.join(" · ")}`);
-    colors.push("#f472b6");
-  } else if (freeConcededEvts.length > 0 && facts.length < 2) {
-    facts.push(`${truncTeam(homeTeam, 12)} conceded ${freeConcededEvts.length} free${freeConcededEvts.length !== 1 ? "s" : ""}`);
     colors.push("#f472b6");
   }
   if (oppScoreHot && facts.length < 3) {

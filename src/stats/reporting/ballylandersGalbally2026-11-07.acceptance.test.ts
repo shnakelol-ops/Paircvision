@@ -157,7 +157,9 @@ describe("The point from a 45 (8:15) on pitch maps", () => {
     await exportSnapshotPdf({ ...input, snapshotMode: "HALF_TIME_SNAPSHOT" });
     const page = pageWith("Our Shot Profile")!;
     // Points 0:19, 2:30, 8:15 (45), 9:27 → 4 light green; 4:00 two-pointer → 1 gold.
-    expect(page.dots.get("#4ade80")).toBe(4);
-    expect(page.dots.get("#fbbf24")).toBe(1);
+    // Each count also includes that marker type's one legend swatch (+1); the
+    // pitch-only counts are asserted in snapshotShotProfile.test.ts.
+    expect(page.dots.get("#4ade80")).toBe(4 + 1);
+    expect(page.dots.get("#fbbf24")).toBe(1 + 1);
   });
 });
