@@ -86,19 +86,26 @@ export function loadSavedTeams(): SavedTeam[] {
   return (readAllRecords() ?? []).filter(isSavedTeam);
 }
 
-export function saveTeam(team: SavedTeam): boolean {
+/** "full" = the 50-team library limit; "unavailable" = the store is unreadable or the write failed. */
+export type SaveTeamResult = { ok: true } | { ok: false; reason: "full" | "unavailable" };
+
+export function saveTeamResult(team: SavedTeam): SaveTeamResult {
   const existing = readAllRecords();
-  if (existing === null) return false; // never overwrite an unreadable store
+  if (existing === null) return { ok: false, reason: "unavailable" }; // never overwrite an unreadable store
   const idx = existing.findIndex((t) => isSavedTeam(t) && t.id === team.id);
   let next: unknown[];
   if (idx !== -1) {
     next = [...existing];
     next[idx] = team;
   } else {
-    if (existing.filter(isSavedTeam).length >= MAX_SAVED_TEAMS) return false;
+    if (existing.filter(isSavedTeam).length >= MAX_SAVED_TEAMS) return { ok: false, reason: "full" };
     next = [team, ...existing];
   }
-  return safeWrite(JSON.stringify(next));
+  return safeWrite(JSON.stringify(next)) ? { ok: true } : { ok: false, reason: "unavailable" };
+}
+
+export function saveTeam(team: SavedTeam): boolean {
+  return saveTeamResult(team).ok;
 }
 
 export function deleteTeam(id: string): boolean {

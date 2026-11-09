@@ -8,7 +8,7 @@
 // Match Stats parsed only its own shape and wrote that list back on mount,
 // so merely opening Match Stats erased every Event Stats Saved Team.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 // The Pixi pitch canvas cannot initialise under jsdom and is irrelevant to
 // Saved Teams storage — stub it so the mount is clean.
@@ -52,6 +52,18 @@ const LEGACY_MATCH_STATS_SQUAD = {
   players: [{ id: "lp1", number: 1, name: "Keeper", isActive: true }],
   updatedAt: 1_700_000_000_000,
 };
+
+function eventStatsTeamFixture() {
+  return {
+    id: "es-1",
+    teamName: "Ballylanders",
+    primaryColour: "#16a34a",
+    secondaryColour: "#facc15",
+    players: [{ id: "p1", number: 1, name: "Declan", position: "GK" }],
+    createdAt: 1,
+    updatedAt: 1,
+  };
+}
 
 function rawStored(): Array<Record<string, unknown>> {
   return JSON.parse(window.localStorage.getItem(SAVED_SQUADS_STORAGE_KEY) ?? "[]") as Array<Record<string, unknown>>;
@@ -124,16 +136,65 @@ describe("opening Match Stats with Event Stats Saved Teams in shared storage", (
   });
 });
 
+describe("Match Stats' own Save Squad action", () => {
+  function saveSquadFromMatchStats() {
+    fireEvent.click(screen.getByRole("button", { name: "Open players panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save Squad" }));
+  }
+
+  it("keeps every Event Stats team and legacy squad when Match Stats saves a squad", () => {
+    const teams = seedEventStatsTeams();
+    window.localStorage.setItem(SAVED_SQUADS_STORAGE_KEY, JSON.stringify([LEGACY_MATCH_STATS_SQUAD, ...rawStored()]));
+    const before = rawStored();
+
+    render(<StatsModeSurface />);
+    saveSquadFromMatchStats();
+
+    const stored = rawStored();
+    // The Save Squad action really wrote: one more record than before.
+    expect(stored).toHaveLength(before.length + 1);
+    for (const team of teams) expect(stored.find((r) => r.id === team.id)).toEqual(team);
+    expect(stored.find((r) => r.id === LEGACY_MATCH_STATS_SQUAD.id)).toEqual(LEGACY_MATCH_STATS_SQUAD);
+    expect(loadSavedTeams()).toHaveLength(teams.length);
+  });
+
+  it("does not overwrite an unreadable store when Match Stats saves a squad", () => {
+    window.localStorage.setItem(SAVED_SQUADS_STORAGE_KEY, "{not json");
+
+    render(<StatsModeSurface />);
+    saveSquadFromMatchStats();
+
+    expect(window.localStorage.getItem(SAVED_SQUADS_STORAGE_KEY)).toBe("{not json");
+  });
+});
+
+describe("Event Stats team sharing an id with a Match Stats squad", () => {
+  it("survives Match Stats mounting — neither record is discarded", () => {
+    const [team] = seedEventStatsTeams();
+    const sameId = { ...LEGACY_MATCH_STATS_SQUAD, id: team.id };
+    window.localStorage.setItem(SAVED_SQUADS_STORAGE_KEY, JSON.stringify([sameId, ...rawStored()]));
+    const before = rawStored();
+
+    render(<StatsModeSurface />);
+
+    const stored = rawStored();
+    expect(stored).toHaveLength(before.length);
+    expect(stored.filter((r) => r.id === team.id)).toEqual(expect.arrayContaining([sameId, team]));
+    expect(loadSavedTeams().find((t) => t.id === team.id)).toEqual(team);
+  });
+});
+
 describe("buildSavedSquadsStorageValue", () => {
-  const eventStatsTeam = {
-    id: "es-1",
-    teamName: "Ballylanders",
-    primaryColour: "#16a34a",
-    secondaryColour: "#facc15",
-    players: [{ id: "p1", number: 1, name: "Declan", position: "GK" }],
-    createdAt: 1,
-    updatedAt: 1,
-  };
+  it("keeps a foreign record that shares an id with a Match Stats squad", () => {
+    const esSameId = { ...eventStatsTeamFixture(), id: LEGACY_MATCH_STATS_SQUAD.id };
+    const value = buildSavedSquadsStorageValue(
+      JSON.stringify([LEGACY_MATCH_STATS_SQUAD, esSameId]),
+      [LEGACY_MATCH_STATS_SQUAD],
+    );
+    expect(JSON.parse(value!)).toEqual([LEGACY_MATCH_STATS_SQUAD, esSameId]);
+  });
+
+  const eventStatsTeam = eventStatsTeamFixture();
 
   it("writes Match Stats' squads first and appends every record Match Stats does not own, unchanged", () => {
     const newSnapshot = { ...LEGACY_MATCH_STATS_SQUAD, id: "legacy-squad-2", name: "New Snapshot", updatedAt: 2 };

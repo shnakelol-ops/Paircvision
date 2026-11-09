@@ -1397,12 +1397,9 @@ export function buildSavedSquadsStorageValue(storedRaw: string | null, savedSqua
     try {
       const parsed: unknown = JSON.parse(storedRaw);
       if (!Array.isArray(parsed)) return null;
-      const ownIds = new Set(savedSquads.map((squad) => squad.id));
-      foreign = parsed.filter((entry) => {
-        if (parseStoredSavedSquad(entry) !== null) return false;
-        const id = entry && typeof entry === "object" && "id" in entry ? entry.id : null;
-        return !(typeof id === "string" && ownIds.has(id));
-      });
+      // Kept by shape only, never by id: an Event Stats record that happens
+      // to share an id with a Match Stats squad must still survive.
+      foreign = parsed.filter((entry) => parseStoredSavedSquad(entry) === null);
     } catch {
       return null;
     }
