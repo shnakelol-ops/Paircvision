@@ -1381,6 +1381,32 @@ function parseStoredSavedSquad(input: unknown): SavedSquad | null {
   };
 }
 
+/**
+ * SAVED_SQUADS_STORAGE_KEY is shared with Event Stats' Saved Teams
+ * (pro-tagger/pro-tagger-team-storage.ts), whose records use a different
+ * shape (`teamName`, colours, no `name`) and so never parse as Match Stats
+ * squads. Writing only Match Stats' own parsed list used to erase every
+ * Event Stats Saved Team the moment this screen mounted. Builds the value to
+ * store instead: Match Stats' squads first, then every stored entry Match
+ * Stats does not own, untouched. Returns null when the stored value is
+ * present but is not a readable JSON array — callers must not overwrite it.
+ */
+export function buildSavedSquadsStorageValue(storedRaw: string | null, savedSquads: readonly SavedSquad[]): string | null {
+  let foreign: unknown[] = [];
+  if (storedRaw) {
+    try {
+      const parsed: unknown = JSON.parse(storedRaw);
+      if (!Array.isArray(parsed)) return null;
+      // Kept by shape only, never by id: an Event Stats record that happens
+      // to share an id with a Match Stats squad must still survive.
+      foreign = parsed.filter((entry) => parseStoredSavedSquad(entry) === null);
+    } catch {
+      return null;
+    }
+  }
+  return JSON.stringify([...savedSquads, ...foreign]);
+}
+
 function parseStoredSavedSquads(input: string | null): SavedSquad[] {
   if (!input) return [];
   try {
@@ -4317,7 +4343,9 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    safeWriteLocalStorage(SAVED_SQUADS_STORAGE_KEY, JSON.stringify(savedSquads));
+    const value = buildSavedSquadsStorageValue(safeReadLocalStorage(SAVED_SQUADS_STORAGE_KEY), savedSquads);
+    if (value === null) return;
+    safeWriteLocalStorage(SAVED_SQUADS_STORAGE_KEY, value);
   }, [savedSquads]);
 
   useEffect(() => {

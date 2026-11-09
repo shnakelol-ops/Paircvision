@@ -9,7 +9,7 @@ import type {
 } from "./pro-tagger-session";
 import {
   loadSavedTeams,
-  saveTeam,
+  saveTeamResult,
   deleteTeam,
   exportTeamAsSquad,
   buildNewTeam,
@@ -24,7 +24,7 @@ interface Props {
 
 type TeamTab   = "home" | "away";
 type ColourSet = { primary: string; secondary: string };
-type SaveStatus = "idle" | "success" | "full";
+type SaveStatus = "idle" | "success" | "full" | "unavailable";
 
 function genId(): string {
   const c = globalThis.crypto;
@@ -162,12 +162,12 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         position: p.position,
       })),
     });
-    const ok = saveTeam(team);
-    if (ok) {
+    const result = saveTeamResult(team);
+    if (result.ok) {
       setSaveStatus("success");
       setTimeout(() => setSaveOpen(false), 900);
     } else {
-      setSaveStatus("full");
+      setSaveStatus(result.reason);
     }
   }
 
@@ -388,6 +388,9 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
             />
             {saveStatus === "full" && (
               <span style={S.saveError}>Library is full (50 / 50). Delete a team first.</span>
+            )}
+            {saveStatus === "unavailable" && (
+              <span style={S.saveError}>Couldn't save this team on this device. Your squad for this match is unaffected.</span>
             )}
             {saveStatus === "success" && (
               <span style={S.saveSuccess}>Saved!</span>
