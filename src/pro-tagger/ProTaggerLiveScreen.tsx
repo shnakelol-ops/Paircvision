@@ -25,6 +25,14 @@ import {
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ShareSheet } from "../features/shared/ShareSheet";
+import { HtFtDashboardPreview } from "./dashboard/HtFtDashboardPreview";
+import {
+  buildHtFtDashboardView,
+  dashboardAvailability,
+  dashboardSourceFromLive,
+  type DashboardPeriod,
+  type HtFtDashboardView,
+} from "./dashboard/htFtDashboardView";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import { buildLivePdfInput, buildLiveSnapshotInput, toEventStatsReportEvents } from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
@@ -455,6 +463,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const quickReviewTrackWidthPct = quickReviewPageCount * 100;
   const [actionsOpen, setActionsOpen]           = useState(false);
   const [shareSheetOpen, setShareSheetOpen]     = useState(false);
+  // HT / FT dashboard PNG preview — built only when the coach asks for it.
+  const [dashboardView, setDashboardView]       = useState<HtFtDashboardView | null>(null);
   const [notesOpen, setNotesOpen]               = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [htConfirmOpen, setHtConfirmOpen]       = useState(false);
@@ -1055,6 +1065,16 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setActionsOpen(false);
     setShareSheetOpen(true);
   }, []);
+
+  // Actions → HT / FT Dashboard (portrait PNG). Availability is re-checked
+  // against the current match state at tap time.
+  const openDashboard = useCallback((period: DashboardPeriod) => {
+    const state = matchStateRef.current;
+    const available = dashboardAvailability(state);
+    if (period === "HT" ? !available.ht : !available.ft) return;
+    setActionsOpen(false);
+    setDashboardView(buildHtFtDashboardView(dashboardSourceFromLive(session, loggedRef.current, state), period));
+  }, [session]);
 
   // Actions → HT Snapshot PDF (first-half debrief).
   const handleHtSnapshotPdf = useCallback(() => {
@@ -1831,6 +1851,18 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 Share Summary PNG
               </button>
 
+              {dashboardAvailability(matchState).ht && (
+                <button style={AS.actionBtn} onClick={() => openDashboard("HT")}>
+                  HT Dashboard (PNG)
+                </button>
+              )}
+
+              {dashboardAvailability(matchState).ft && (
+                <button style={AS.actionBtn} onClick={() => openDashboard("FT")}>
+                  FT Dashboard (PNG)
+                </button>
+              )}
+
               <button
                 style={AS.actionBtn}
                 onClick={() => { setActionsOpen(false); openQuickReview(); }}
@@ -1916,6 +1948,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           title: `${session.homeTeamName || "Home"} v ${session.awayTeamName || "Away"}`,
         }}
       />
+
+      {dashboardView && (
+        <HtFtDashboardPreview view={dashboardView} onClose={() => setDashboardView(null)} />
+      )}
 
       {/* ── Live review overlay ────────────────────────────────────── */}
       {reviewOpen && reviewMatch && (
