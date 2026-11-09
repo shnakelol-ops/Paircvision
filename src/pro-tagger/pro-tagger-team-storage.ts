@@ -59,34 +59,52 @@ function safeWrite(value: string): boolean {
   }
 }
 
-export function loadSavedTeams(): SavedTeam[] {
+// SAVED_SQUADS_STORAGE_KEY is shared with legacy Match Stats
+// (StatsModeSurface.tsx), whose saved squads are `{ id, name, players,
+// updatedAt }` records with no `teamName` or colours. Reads for display
+// return Event Stats' own teams only; writes start from EVERY stored record
+// so Match Stats' squads are always carried through untouched.
+function isSavedTeam(value: unknown): value is SavedTeam {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.id === "string" && typeof v.teamName === "string" && Array.isArray(v.players);
+}
+
+/** Every stored entry, or null when the stored value is present but not a readable JSON array. */
+function readAllRecords(): unknown[] | null {
   const raw = safeRead();
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SavedTeam[]) : [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
+export function loadSavedTeams(): SavedTeam[] {
+  return (readAllRecords() ?? []).filter(isSavedTeam);
+}
+
 export function saveTeam(team: SavedTeam): boolean {
-  const existing = loadSavedTeams();
-  const idx = existing.findIndex((t) => t.id === team.id);
-  let next: SavedTeam[];
+  const existing = readAllRecords();
+  if (existing === null) return false; // never overwrite an unreadable store
+  const idx = existing.findIndex((t) => isSavedTeam(t) && t.id === team.id);
+  let next: unknown[];
   if (idx !== -1) {
     next = [...existing];
     next[idx] = team;
   } else {
-    if (existing.length >= MAX_SAVED_TEAMS) return false;
+    if (existing.filter(isSavedTeam).length >= MAX_SAVED_TEAMS) return false;
     next = [team, ...existing];
   }
   return safeWrite(JSON.stringify(next));
 }
 
 export function deleteTeam(id: string): boolean {
-  const existing = loadSavedTeams();
-  const next = existing.filter((t) => t.id !== id);
+  const existing = readAllRecords();
+  if (existing === null) return false;
+  const next = existing.filter((t) => !(isSavedTeam(t) && t.id === id));
   if (next.length === existing.length) return false;
   return safeWrite(JSON.stringify(next));
 }
