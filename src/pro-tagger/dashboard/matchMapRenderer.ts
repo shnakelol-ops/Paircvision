@@ -376,6 +376,131 @@ export function drawTurnoverMarker(ctx: CanvasRenderingContext2D, outcome: Turno
 }
 
 const MARKER_R = 15;
+/** Furthest a drawn marker reaches from its centre (goal disc 1.3 × r plus its outline). */
+const MARKER_REACH = MARKER_R * 1.3 + 3;
+
+// ─── Attacking-direction arrow ───────────────────────────────────────────────
+//
+// A white ↑ in the gutter just outside the right-hand touchline. The map is
+// always drawn in the selected team's attacking frame (matchMapPerspective.ts),
+// so whenever that frame is in use the arrow points up — for Home and Away,
+// at HT and FT. With no recorded direction the map shows positions as
+// captured, so no arrow is drawn (the fallback caption explains instead).
+
+const ARROW_HEAD_W = 26;
+const ARROW_HEAD_H = 26;
+const ARROW_SHAFT_W = 9;
+const ARROW_LEN = 132;
+const ARROW_MIN_LEN = 64;
+const ARROW_LABEL = "ATTACKING";
+const ARROW_LABEL_SIZE = 15;
+const ARROW_LABEL_GAP = 12;
+/** Clear space kept between the arrow and the touchline, the image edge and any marker. */
+const ARROW_CLEARANCE = 8;
+
+export type AttackArrowPlacement = {
+  /** Centre line of the arrow column. */
+  cx: number;
+  /** Tip of the arrow head (the top). */
+  tipY: number;
+  /** Bottom of the shaft. */
+  tailY: number;
+  /** Rotated "ATTACKING" label below the shaft (reads bottom to top), or null when it doesn't fit. */
+  label: { top: number; bottom: number } | null;
+};
+
+/**
+ * Where the arrow goes: centred in the gutter between the pitch's right edge
+ * and the image edge, as near the middle of the pitch's length as possible
+ * while staying clear of any marker that reaches into the gutter, and within
+ * the pitch's height. null when the gutter is too narrow or no clear slot
+ * exists — the arrow is then simply not drawn.
+ */
+export function attackArrowPlacement(
+  frame: PitchFrame,
+  markers: readonly { x: number; y: number }[],
+  labelWidth: number,
+): AttackArrowPlacement | null {
+  const right = frame.x + frame.w;
+  const gutter = MAP_WIDTH - right;
+  if (gutter < ARROW_HEAD_W + ARROW_CLEARANCE * 2) return null;
+  const cx = right + gutter / 2;
+  const columnLeft = cx - ARROW_HEAD_W / 2 - ARROW_CLEARANCE;
+  // Vertical bands blocked by markers that reach into the arrow column.
+  const blocked = markers
+    .filter((m) => m.x + MARKER_REACH > columnLeft)
+    .map((m) => [m.y - MARKER_REACH - ARROW_CLEARANCE, m.y + MARKER_REACH + ARROW_CLEARANCE] as const);
+  const clear = (top: number, bottom: number) => blocked.every(([a, b]) => bottom <= a || top >= b);
+
+  const minTop = frame.y + ARROW_CLEARANCE;
+  const maxBottom = frame.y + frame.h - ARROW_CLEARANCE;
+  const mid = frame.y + frame.h / 2;
+  const options: { len: number; withLabel: boolean }[] = [
+    { len: ARROW_LEN, withLabel: true },
+    { len: ARROW_LEN, withLabel: false },
+    { len: ARROW_MIN_LEN, withLabel: false },
+  ];
+  for (const { len, withLabel } of options) {
+    const height = len + (withLabel ? ARROW_LABEL_GAP + labelWidth : 0);
+    if (height > maxBottom - minTop) continue;
+    // Nearest clear slot to the middle: try 0, +4, −4, +8, −8 … px.
+    for (let step = 0; step <= frame.h; step += 4) {
+      for (const dy of step === 0 ? [0] : [step, -step]) {
+        const top = mid - height / 2 + dy;
+        const bottom = top + height;
+        if (top < minTop || bottom > maxBottom || !clear(top, bottom)) continue;
+        return {
+          cx,
+          tipY: top,
+          tailY: top + len,
+          label: withLabel ? { top: top + len + ARROW_LABEL_GAP, bottom } : null,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/** Draws the arrow (and its label) when the map is in the selected team's attacking frame. */
+export function drawAttackArrow(
+  ctx: CanvasRenderingContext2D,
+  frame: PitchFrame,
+  orientation: { status: "ATTACKING_UP" | "AS_CAPTURED" },
+  markers: readonly { x: number; y: number }[],
+): AttackArrowPlacement | null {
+  if (orientation.status !== "ATTACKING_UP") return null;
+  ctx.save();
+  ctx.font = font(800, ARROW_LABEL_SIZE);
+  const labelWidth = ctx.measureText(ARROW_LABEL).width;
+  const placement = attackArrowPlacement(frame, markers, labelWidth);
+  if (placement) {
+    const { cx, tipY, tailY, label } = placement;
+    const baseY = tipY + ARROW_HEAD_H;
+    ctx.beginPath();
+    ctx.moveTo(cx, tipY);
+    ctx.lineTo(cx + ARROW_HEAD_W / 2, baseY);
+    ctx.lineTo(cx + ARROW_SHAFT_W / 2, baseY);
+    ctx.lineTo(cx + ARROW_SHAFT_W / 2, tailY);
+    ctx.lineTo(cx - ARROW_SHAFT_W / 2, tailY);
+    ctx.lineTo(cx - ARROW_SHAFT_W / 2, baseY);
+    ctx.lineTo(cx - ARROW_HEAD_W / 2, baseY);
+    ctx.closePath();
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    if (label) {
+      // Rotated to read upwards, the same way the arrow points.
+      ctx.translate(cx, label.bottom);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ARROW_LABEL, 0, 0);
+      ctx.textBaseline = "alphabetic";
+    }
+  }
+  ctx.restore();
+  return placement;
+}
 
 // ─── Page chrome (shared by both maps) ───────────────────────────────────────
 
@@ -607,11 +732,13 @@ export function drawScoringMap(ctx: CanvasRenderingContext2D, view: ScoringMapVi
   drawPortraitPitch(ctx, view.sport, frame);
   // Misses first, scores on top: a score is never hidden under a miss.
   const order = (o: ShotOutcome) => (o === "GOAL" ? 3 : o === "TWO_POINT" || o === "POINT" ? 2 : 1);
+  const shotPoints = view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : []));
   for (const m of [...view.markers].sort((a, b) => order(a.outcome) - order(b.outcome))) {
     if (!m.point) continue;
     const p = framePoint(frame, m.point);
     drawShotMarker(ctx, m.outcome, p.x, p.y, MARKER_R);
   }
+  drawAttackArrow(ctx, frame, view.orientation, shotPoints);
   if (view.shooting.totalShots === 0) drawEmptyPitchMessage(ctx, frame, "No shots recorded");
   const legendBottom = drawLegend(
     ctx,
@@ -711,6 +838,7 @@ export function drawTurnoverMap(ctx: CanvasRenderingContext2D, view: TurnoverMap
     const p = framePoint(frame, m.point);
     drawTurnoverMarker(ctx, m.outcome, p.x, p.y, MARKER_R);
   }
+  drawAttackArrow(ctx, frame, view.orientation, view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : [])));
   if (view.totals.total === 0) drawEmptyPitchMessage(ctx, frame, "No turnovers recorded");
   const legendBottom = drawLegend(
     ctx,

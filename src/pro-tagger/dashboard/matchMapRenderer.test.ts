@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { projectToPortrait, mapSourceFromSavedMatch, type MapTeamSide } from "./matchMapPerspective";
 import {
   MAP_HEIGHT,
+  attackArrowPlacement,
   MAP_WIDTH,
   SHOT_MARKER_COLOURS,
   TURNOVER_LOST_COLOUR,
@@ -27,7 +28,7 @@ import { buildTurnoverMapView } from "./turnoverMapView";
 // deterministic measureText (0.55 × font size per character).
 const CHAR_W = 0.55;
 type Op = { op: string; args: number[]; fill: string; stroke: string };
-type TextCall = { text: string; left: number; right: number; y: number; size: number };
+type TextCall = { text: string; left: number; right: number; top: number; y: number; size: number };
 
 function sizeOf(font: string): number {
   const m = /(\d+(?:\.\d+)?)px/.exec(font);
@@ -41,13 +42,29 @@ function recordingContext() {
   const record = (op: string) => (...args: number[]) => {
     ops.push({ op, args, fill: String(state.fillStyle), stroke: String(state.strokeStyle) });
   };
+  // translate / rotate are tracked (rotation only in quarter turns, which is
+  // all the renderer uses for text) so rotated text is recorded where it
+  // really lands on the canvas.
+  let tf = { tx: 0, ty: 0, rot: 0 };
+  const stack: (typeof tf)[] = [];
   const methods: Record<string, (...args: never[]) => unknown> = {
     measureText: (t: string) => ({ width: [...t].length * sizeOf(String(state.font)) * CHAR_W }),
+    save: () => { stack.push({ ...tf }); },
+    restore: () => { tf = stack.pop() ?? { tx: 0, ty: 0, rot: 0 }; },
+    translate: (x: number, y: number) => { tf = { ...tf, tx: tf.tx + x, ty: tf.ty + y }; },
+    rotate: (a: number) => { tf = { ...tf, rot: tf.rot + a }; },
     fillText: (t: string, x: number, y: number) => {
       const size = sizeOf(String(state.font));
       const width = [...t].length * size * CHAR_W;
-      const left = state.textAlign === "center" ? x - width / 2 : state.textAlign === "right" ? x - width : x;
-      texts.push({ text: t, left, right: left + width, y, size });
+      if (Math.abs(tf.rot + Math.PI / 2) < 1e-9) {
+        // Reads bottom-to-top from the (translated) origin, left-aligned, middle baseline.
+        const ox = tf.tx + y;
+        const oy = tf.ty - x;
+        texts.push({ text: t, left: ox - size / 2, right: ox + size / 2, top: oy - width, y: oy, size });
+        return;
+      }
+      const left = tf.tx + (state.textAlign === "center" ? x - width / 2 : state.textAlign === "right" ? x - width : x);
+      texts.push({ text: t, left, right: left + width, top: tf.ty + y - size, y: tf.ty + y, size });
     },
     createLinearGradient: () => ({ addColorStop: () => undefined }),
     arc: record("arc"),
@@ -219,6 +236,7 @@ function allTexts(draw: (ctx: CanvasRenderingContext2D) => void) {
     expect(t.left).toBeGreaterThanOrEqual(0);
     expect(t.right).toBeLessThanOrEqual(MAP_WIDTH);
     expect(t.y).toBeGreaterThan(0);
+    expect(t.top).toBeGreaterThanOrEqual(0);
     expect(t.y).toBeLessThanOrEqual(MAP_HEIGHT);
   }
   return texts.map((t) => t.text);
@@ -353,5 +371,100 @@ describe("honesty notes are never cut short", () => {
     expect(joined).toContain("Attack direction not recorded — positions shown as captured");
     expect(joined).toContain("1 of 2 not shown on the map — location not recorded");
     expect(t.some((s) => s.endsWith("…"))).toBe(false);
+  });
+});
+
+// ─── Attacking-direction arrow ────────────────────────────────────────────────
+
+/** The white arrow: the moveTo of its tip right of the pitch, followed by a white fill. */
+function arrowOps(ops: Op[], frameRight: number) {
+  const idx = ops.findIndex((o, i) => o.op === "moveTo" && o.args[0] > frameRight && ops.slice(i).find((n) => n.op === "fill")?.fill === "#ffffff");
+  return idx < 0 ? null : { tipX: ops[idx].args[0], tipY: ops[idx].args[1] };
+}
+
+describe("attacking-direction arrow", () => {
+  const pages = [
+    ["Scoring", (src: ReturnType<typeof ftSrc>, side: MapTeamSide, scope: "HT" | "FT") => {
+      const v = buildScoringMapView(src, side, scope);
+      return { draw: (ctx: CanvasRenderingContext2D) => drawScoringMap(ctx, v), pyMax: scoringPitchExtent(v.markers.map((m) => m.point)), points: v.markers.map((m) => m.point) };
+    }],
+    ["Turnover", (src: ReturnType<typeof ftSrc>, side: MapTeamSide, scope: "HT" | "FT") => {
+      const v = buildTurnoverMapView(src, side, scope);
+      return { draw: (ctx: CanvasRenderingContext2D) => drawTurnoverMap(ctx, v), pyMax: 1, points: v.markers.map((m) => m.point) };
+    }],
+  ] as const;
+
+  for (const [name, build] of pages) {
+    for (const [label, src, scope] of [["HT", htSrc, "HT"], ["FT", ftSrc, "FT"]] as const) {
+      for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+        it(`${name} Map · ${label} · ${side}: white ↑ outside the right touchline, clear of markers and the image edge`, () => {
+          const page = build(src(), side, scope);
+          const { ctx, ops, texts } = recordingContext();
+          page.draw(ctx);
+          const frame = recordedFrame(ops, page.pyMax);
+          const right = frame.x + frame.w;
+          const arrow = arrowOps(ops, right);
+          expect(arrow).not.toBeNull();
+          // Head: the tip is the arrow's highest point, so it points up — for either team.
+          const head = ops.slice(ops.findIndex((o) => o.op === "moveTo" && o.args[0] === arrow!.tipX && o.args[1] === arrow!.tipY));
+          expect(arrow!.tipX - 13).toBeGreaterThanOrEqual(right + 8);
+          expect(arrow!.tipX + 13).toBeLessThanOrEqual(MAP_WIDTH - 8);
+          expect(arrow!.tipY).toBeGreaterThanOrEqual(frame.y);
+          expect(arrow!.tipY + 132).toBeLessThanOrEqual(frame.y + frame.h);
+          expect(head.length).toBeGreaterThan(0);
+          // Label: inside the image, beside (not on) the pitch, reading upwards below the arrow.
+          const lbl = texts.find((t) => t.text === "ATTACKING")!;
+          expect(lbl).toBeTruthy();
+          expect(lbl.left).toBeGreaterThan(right);
+          expect(lbl.right).toBeLessThanOrEqual(MAP_WIDTH);
+          expect(lbl.top).toBeGreaterThan(arrow!.tipY + 132);
+          expect(lbl.y).toBeLessThanOrEqual(frame.y + frame.h);
+          // No marker overlaps the arrow block.
+          const blockTop = arrow!.tipY;
+          const blockBottom = lbl.y;
+          for (const pt of page.points) {
+            if (!pt) continue;
+            const c = framePoint(frame, pt);
+            const reachesColumn = c.x + 22.5 > arrow!.tipX - 13 - 8;
+            const overlapsVertically = c.y + 22.5 > blockTop - 8 && c.y - 22.5 < blockBottom + 8;
+            expect(reachesColumn && overlapsVertically).toBe(false);
+          }
+        });
+      }
+    }
+  }
+
+  it("is not drawn when the attack direction is not recorded (positions shown as captured)", () => {
+    const base = savedMatch({ events: HT_FIXTURE.events });
+    const src = mapSourceFromSavedMatch({ ...base, restoreContext: { ...base.restoreContext, firstHalfAttackingDirection: undefined as never } });
+    for (const draw of [
+      (ctx: CanvasRenderingContext2D) => drawScoringMap(ctx, buildScoringMapView(src, "FOR", "FT")),
+      (ctx: CanvasRenderingContext2D) => drawTurnoverMap(ctx, buildTurnoverMapView(src, "OPP", "FT")),
+    ]) {
+      const { ctx, ops, texts } = recordingContext();
+      draw(ctx);
+      expect(texts.some((t) => t.text === "ATTACKING")).toBe(false);
+      expect(texts.map((t) => t.text).join(" ")).toContain("Attack direction not recorded");
+      expect(ops.some((o) => o.op === "fill" && o.fill === "#ffffff")).toBe(false);
+    }
+  });
+
+  it("moves along the touchline to avoid a marker sitting on it, and gives way when there is no room", () => {
+    const frame = pitchFrame({ x: 432, y: 374, w: 600, h: 700 }, 0.6);
+    const right = frame.x + frame.w;
+    const mid = frame.y + frame.h / 2;
+    const free = attackArrowPlacement(frame, [], 80)!;
+    expect(free.cx).toBe(right + (MAP_WIDTH - right) / 2);
+    expect((free.tipY + free.label!.bottom) / 2).toBeCloseTo(mid, 6); // centred on the pitch
+    const onLine = { x: right, y: mid };
+    const moved = attackArrowPlacement(frame, [onLine], 80)!;
+    expect(moved.label!.bottom <= onLine.y - 30 || moved.tipY >= onLine.y + 30).toBe(true);
+    // A marker well inside the pitch never moves the arrow.
+    expect(attackArrowPlacement(frame, [{ x: right - 60, y: mid }], 80)).toEqual(free);
+    // Markers all along the touchline: nowhere clear, so no arrow.
+    const wall = Array.from({ length: 40 }, (_, i) => ({ x: right, y: frame.y + (i * frame.h) / 39 }));
+    expect(attackArrowPlacement(frame, wall, 80)).toBeNull();
+    // No gutter: no arrow.
+    expect(attackArrowPlacement({ ...frame, x: MAP_WIDTH - frame.w - 10 }, [], 80)).toBeNull();
   });
 });
