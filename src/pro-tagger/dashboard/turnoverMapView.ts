@@ -154,9 +154,30 @@ function turnoverHalf(markers: readonly TurnoverMarker[], period: "1H" | "2H"): 
   return { won, lost: inHalf.length - won };
 }
 
+/** Turnover Map captions: the map is normalised to the selected team, whatever end it attacked. */
+export const TURNOVER_TEAM_RELATIVE_CAPTION = {
+  HT: "Team-relative view · first half",
+  FT: "Team-relative view · both halves combined",
+} as const;
+export const TURNOVER_AS_CAPTURED_CAPTION =
+  "Attack direction not recorded — positions shown as captured; thirds not shown";
+
+/**
+ * The shared orientation (unchanged — same frame, same fallback) with the
+ * Turnover Map's own caption. The team is already named in the banner, and
+ * "team-relative" says plainly that both halves are shown in the selected
+ * team's frame rather than at the ends they physically attacked.
+ */
+function turnoverOrientation(source: MatchMapSource, side: MapTeamSide, scope: MapScope): MapOrientation {
+  const base = mapOrientation(source, side, scope);
+  return base.status === "ATTACKING_UP"
+    ? { ...base, caption: TURNOVER_TEAM_RELATIVE_CAPTION[scope] }
+    : { ...base, caption: TURNOVER_AS_CAPTURED_CAPTION };
+}
+
 export function buildTurnoverMapView(source: MatchMapSource, side: MapTeamSide, scope: MapScope): TurnoverMapView {
   const report = buildScopedMapReport(source, scope);
-  const orientation = mapOrientation(source, side, scope);
+  const orientation = turnoverOrientation(source, side, scope);
 
   const counts = {
     WON: new Map<TurnoverMethod, number>(),

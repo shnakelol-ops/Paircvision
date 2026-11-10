@@ -322,3 +322,47 @@ describe("FT half subtotals", () => {
     expect(m.totals.won).toBe(1);
   });
 });
+
+describe("Turnover Map captions and thirds", () => {
+  it("captions say the view is team-relative, without implying a physical end", () => {
+    const src = mapSourceFromSavedMatch(ftFixtureMatch());
+    for (const side of ["FOR", "OPP"] as const) {
+      expect(buildTurnoverMapView(src, side, "HT").orientation.caption).toBe("Team-relative view · first half");
+      expect(buildTurnoverMapView(src, side, "FT").orientation.caption).toBe("Team-relative view · both halves combined");
+    }
+  });
+
+  it("missing direction keeps the AS_CAPTURED fallback and says thirds are not shown", () => {
+    const base = savedMatch({ events: HT_FIXTURE.events });
+    const src = mapSourceFromSavedMatch({ ...base, restoreContext: { ...base.restoreContext, firstHalfAttackingDirection: undefined as never } });
+    expect(buildTurnoverMapView(src, "FOR", "FT").orientation).toEqual({
+      status: "AS_CAPTURED",
+      homeFirstHalfDirection: null,
+      caption: "Attack direction not recorded — positions shown as captured; thirds not shown",
+    });
+  });
+
+  it("real first half: where each team won and lost the ball, by third (hand-checked from the fixture)", async () => {
+    const { pitchThirdOf } = await import("./matchMapPerspective");
+    const src = mapSourceFromSavedMatch(htFixtureMatch());
+    const byThird = (side: "FOR" | "OPP") =>
+      Object.fromEntries(buildTurnoverMapView(src, side, "HT").markers.map((m) => [m.id, `${m.outcome} ${pitchThirdOf(m.point!)}`]));
+    // Home attacked nx = 1 (RIGHT) in the first half. Thirds of nx: < 1/3 defensive, < 2/3 middle, else attacking.
+    //   e06 nx .389 · e12 .664 · e20 .556 · e21 .293 · e27 .549 · e28 .671 · e35 .487 · e36 .584
+    expect(byThird("FOR")).toEqual({
+      e06: "LOST MIDDLE", e12: "LOST MIDDLE", e20: "LOST MIDDLE", e21: "WON DEFENSIVE",
+      e27: "LOST MIDDLE", e28: "WON ATTACKING", e35: "LOST MIDDLE", e36: "WON MIDDLE",
+    });
+    // Galbally sees the same events from the other end: outcome and third both reversed.
+    expect(byThird("OPP")).toEqual({
+      e06: "WON MIDDLE", e12: "WON MIDDLE", e20: "WON MIDDLE", e21: "LOST ATTACKING",
+      e27: "WON MIDDLE", e28: "LOST DEFENSIVE", e35: "WON MIDDLE", e36: "LOST MIDDLE",
+    });
+  });
+
+  it("won / lost and method totals are unchanged by the overlay work", () => {
+    const src = mapSourceFromSavedMatch(htFixtureMatch());
+    expect(buildTurnoverMapView(src, "FOR", "HT").totals).toEqual({ won: 3, lost: 5, balance: -2, total: 8 });
+    expect(buildTurnoverMapView(src, "OPP", "HT").totals).toEqual({ won: 5, lost: 3, balance: 2, total: 8 });
+  });
+});

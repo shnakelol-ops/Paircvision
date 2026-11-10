@@ -37,6 +37,8 @@
 import type { LoggedMatchEvent } from "../../core/stats/saved-match";
 import { buildMatchReport, type MatchReport } from "../../stats/reporting/matchReport";
 import { buildTeamSummaryBlock } from "../../stats/reporting/teamStatsViews";
+import { getPitchZone } from "../../stats/zones/zone-engine";
+import { ZONE_MAP_V1_NINE_GRID } from "../../stats/zones/zone-maps";
 import {
   toTeamRelativeZoneEvent,
   type AttackingDirection,
@@ -288,4 +290,42 @@ export function summariseLocations(reasons: readonly (UnplottableReason | null)[
 export function recordedClockSeconds(e: { matchClockSeconds?: unknown }): number | null {
   const v = e.matchClockSeconds;
   return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null;
+}
+
+// ─── Pitch thirds (presentation) ──────────────────────────────────────────────
+
+export type PitchThird = "ATTACKING" | "MIDDLE" | "DEFENSIVE";
+
+/**
+ * Which third of the pitch length a map point sits in, from the selected
+ * team's point of view. Only meaningful for a team-relative map
+ * (orientation "ATTACKING_UP"). Delegates to the existing zone engine
+ * (getPitchZone on ZONE_MAP_V1_NINE_GRID, the same thirds the Snapshot's
+ * zone labels use) with the point turned back into its attacking-right
+ * frame: nx = 1 − py. Boundaries follow the engine: each third includes its
+ * lower edge, so a point exactly on a boundary belongs to the third nearer
+ * the attacking goal. Presentation only — it never changes a position.
+ */
+export function pitchThirdOf(point: MapPoint): PitchThird {
+  const zone = getPitchZone(1 - point.py, point.px, ZONE_MAP_V1_NINE_GRID);
+  const id = zone?.id ?? "";
+  return id.startsWith("ATTACKING") ? "ATTACKING" : id.startsWith("MIDDLE") ? "MIDDLE" : "DEFENSIVE";
+}
+
+/**
+ * The map's third bands, top to bottom, as py ranges — derived from the same
+ * zone map, so the drawn bands and pitchThirdOf can never disagree.
+ */
+export function pitchThirdBands(): { third: PitchThird; top: number; bottom: number }[] {
+  const lengthStart = (prefix: string) => {
+    const z = ZONE_MAP_V1_NINE_GRID.zones.find((zone) => zone.id.startsWith(prefix))!;
+    return z.bounds.xMin / ZONE_MAP_V1_NINE_GRID.coordinateMax;
+  };
+  const attackingFrom = 1 - lengthStart("ATTACKING"); // py where the attacking third ends
+  const middleFrom = 1 - lengthStart("MIDDLE");
+  return [
+    { third: "ATTACKING", top: 0, bottom: attackingFrom },
+    { third: "MIDDLE", top: attackingFrom, bottom: middleFrom },
+    { third: "DEFENSIVE", top: middleFrom, bottom: 1 },
+  ];
 }
