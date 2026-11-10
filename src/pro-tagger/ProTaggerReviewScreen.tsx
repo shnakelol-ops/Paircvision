@@ -28,6 +28,14 @@ import { selectZoneOverlayModel } from "../stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "../stats/zones/zone-types";
 import type { ZoneOverlayStyle } from "../core/stats/draw-stats-zone-overlay";
 import { ShareSheet } from "../features/shared/ShareSheet";
+import { HtFtDashboardPreview } from "./dashboard/HtFtDashboardPreview";
+import {
+  buildHtFtDashboardView,
+  dashboardAvailability,
+  dashboardSourceFromSavedMatch,
+  type DashboardPeriod,
+  type HtFtDashboardView,
+} from "./dashboard/htFtDashboardView";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
 import { computeScoreSide, computeScorelineSnapshot } from "./pro-tagger-score";
@@ -269,6 +277,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const [packGenerating, setPackGenerating] = useState(false);
   const [pack, setPack]                     = useState<IntelligencePack | null>(null);
   const [previewOpen, setPreviewOpen]       = useState(false);
+  const [dashboardView, setDashboardView]   = useState<HtFtDashboardView | null>(null);
   const [mapOpen,     setMapOpen]           = useState(false);
   const [mapShareOpen, setMapShareOpen]     = useState(false);
   const pitchHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
@@ -479,6 +488,14 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   // ── Export helpers ─────────────────────────────────────────────────────────
   const hasFirstHalfEvents = match.events.some((e) => e.period === "1H");
   const busy = exporting !== null;
+  // HT / FT dashboard availability follows the saved match's own state: HT
+  // once the first half is complete, FT only once marked Full Time.
+  const dashboardAvail = dashboardAvailability(match.restoreContext.matchState);
+
+  function openDashboard(period: DashboardPeriod) {
+    if (period === "HT" ? !dashboardAvail.ht : !dashboardAvail.ft) return;
+    setDashboardView(buildHtFtDashboardView(dashboardSourceFromSavedMatch(match), period));
+  }
 
   function setResult(key: ExportKey, result: ExportResult) {
     setResults((prev) => ({ ...prev, [key]: result }));
@@ -652,6 +669,29 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
             {packGenerating ? "Generating…" : "Generate"}
           </button>
         </div>
+
+        {/* ── Dashboard image (portrait PNG) ─────────────────────────────── */}
+        <div style={S.sectionLabel}>Dashboard Image</div>
+
+        <ExportRow
+          label="HT Dashboard (PNG)"
+          description="First-half scoreline and key stats · share or save"
+          loading={false}
+          result={undefined}
+          disabled={!dashboardAvail.ht}
+          disabledReason={!dashboardAvail.ht ? "Available once the first half is complete" : undefined}
+          onClick={() => openDashboard("HT")}
+        />
+
+        <ExportRow
+          label="FT Dashboard (PNG)"
+          description="Full-match scoreline and key stats · share or save"
+          loading={false}
+          result={undefined}
+          disabled={!dashboardAvail.ft}
+          disabledReason={!dashboardAvail.ft ? "Available once the match is marked Full Time" : undefined}
+          onClick={() => openDashboard("FT")}
+        />
 
         {/* ── Match Data ────────────────────────────────────────────────── */}
         <div style={S.sectionLabel}>Match Data</div>
@@ -945,6 +985,11 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
             </div>
           ) : null}
         </div>
+      )}
+
+      {/* ── HT / FT dashboard preview (fullscreen overlay) ───────────── */}
+      {dashboardView && (
+        <HtFtDashboardPreview view={dashboardView} onClose={() => setDashboardView(null)} />
       )}
 
       {/* ── Intelligence Pack Preview (fullscreen overlay) ────────────── */}
