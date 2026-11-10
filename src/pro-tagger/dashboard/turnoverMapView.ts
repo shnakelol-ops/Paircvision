@@ -36,6 +36,7 @@
 
 import { turnoverGainedByFor } from "../../stats/reporting/turnoverMetrics";
 import { getTileRowLabelFor } from "../pro-tagger-families";
+import { buildMetaLine } from "./htFtDashboardView";
 import type { ProTaggerSport } from "../pro-tagger-session";
 import {
   buildScopedMapReport,
@@ -123,9 +124,13 @@ export type TurnoverMarker = {
   point: MapPoint | null;
 };
 
+export type TurnoverHalf = { won: number; lost: number };
+
 export type TurnoverMapView = {
   scope: MapScope;
   scopeLabel: "HALF-TIME" | "FULL-TIME";
+  /** "Venue · League · 7 Nov 2026" — only fields the match records; null when none. */
+  metaLine: string | null;
   sport: ProTaggerSport;
   team: MapTeamIdentity;
   opponent: MapTeamIdentity;
@@ -133,10 +138,21 @@ export type TurnoverMapView = {
   totals: { won: number; lost: number; balance: number; total: number };
   /** Every method row in TURNOVER_METHODS order, zero counts included. */
   methods: { won: TurnoverMethodCount[]; lost: TurnoverMethodCount[] };
+  /**
+   * FT only: won / lost in each half. null at HT, and null whenever any
+   * turnover lacks a recorded half (the split would not add up to the totals).
+   */
+  halves: { firstHalf: TurnoverHalf; secondHalf: TurnoverHalf } | null;
   markers: TurnoverMarker[];
   location: MapLocationSummary;
   orientation: MapOrientation;
 };
+
+function turnoverHalf(markers: readonly TurnoverMarker[], period: "1H" | "2H"): TurnoverHalf {
+  const inHalf = markers.filter((m) => m.period === period);
+  const won = inHalf.filter((m) => m.outcome === "WON").length;
+  return { won, lost: inHalf.length - won };
+}
 
 export function buildTurnoverMapView(source: MatchMapSource, side: MapTeamSide, scope: MapScope): TurnoverMapView {
   const report = buildScopedMapReport(source, scope);
@@ -178,15 +194,21 @@ export function buildTurnoverMapView(source: MatchMapSource, side: MapTeamSide, 
 
   const won = markers.filter((m) => m.outcome === "WON").length;
   const lost = markers.length - won;
+  const halves =
+    scope === "FT" && markers.every((m) => m.period != null)
+      ? { firstHalf: turnoverHalf(markers, "1H"), secondHalf: turnoverHalf(markers, "2H") }
+      : null;
   return {
     scope,
     scopeLabel: scopeLabel(scope),
+    metaLine: buildMetaLine(source),
     sport: source.sport,
     team: teamIdentity(source, side),
     opponent: teamIdentity(source, otherSide(side)),
     scoreline: scopedScoreline(report, source),
     totals: { won, lost, balance: won - lost, total: markers.length },
     methods: { won: rows("WON"), lost: rows("LOST") },
+    halves,
     markers,
     location: summariseLocations(reasons),
     orientation,

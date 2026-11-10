@@ -276,3 +276,37 @@ describe("purity", () => {
     expect(JSON.parse(JSON.stringify(a))).toEqual(a);
   });
 });
+
+describe("FT half subtotals", () => {
+  it("match per-half viewShootingConversion over 1H / 2H-scoped reports, for both teams", async () => {
+    const { buildMatchReport } = await import("../../stats/reporting/matchReport");
+    const { toEventStatsReportEvents } = await import("../pro-tagger-review-adapter");
+    const match = ftFixtureMatch();
+    const src = mapSourceFromSavedMatch(match);
+    for (const side of ["FOR", "OPP"] as const) {
+      const m = buildScoringMapView(src, side, "FT");
+      for (const [period, half] of [["1H", m.halves!.firstHalf], ["2H", m.halves!.secondHalf]] as const) {
+        const rep = buildMatchReport({ events: toEventStatsReportEvents(match.events), homeTeam: match.homeTeamName, awayTeam: match.awayTeamName, scope: period });
+        const conv = viewShootingConversion(rep, side);
+        expect(half).toEqual({ shots: conv.den, scores: conv.num, accuracyPct: conv.den > 0 ? conv.pct : null });
+      }
+      expect(m.halves!.firstHalf.shots + m.halves!.secondHalf.shots).toBe(m.shooting.totalShots);
+    }
+    expect(buildScoringMapView(src, "FOR", "FT").halves).toEqual({
+      firstHalf: { shots: 8, scores: 5, accuracyPct: 63 },
+      secondHalf: { shots: 8, scores: 5, accuracyPct: 63 },
+    });
+  });
+
+  it("are absent at HT, and absent when any shot's half is not recorded", () => {
+    expect(buildScoringMapView(mapSourceFromSavedMatch(ftFixtureMatch()), "FOR", "HT").halves).toBeNull();
+    const m = view([ev("POINT", "FOR", { tags: ["PLAY"] }), ev("POINT", "FOR", { tags: ["PLAY"], period: undefined as never })], "FOR", "FT");
+    expect(m.halves).toBeNull();
+    expect(m.shooting.totalShots).toBe(2);
+  });
+
+  it("carries the match metadata line", () => {
+    const m = view([], "FOR", "FT", { venue: "Ballylanders", matchType: "championship" });
+    expect(m.metaLine).toBe("Ballylanders · Championship · 7 Nov 2026");
+  });
+});

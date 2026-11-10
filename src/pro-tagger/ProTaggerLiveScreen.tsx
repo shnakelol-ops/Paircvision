@@ -25,14 +25,9 @@ import {
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ShareSheet } from "../features/shared/ShareSheet";
-import { HtFtDashboardPreview } from "./dashboard/HtFtDashboardPreview";
-import {
-  buildHtFtDashboardView,
-  dashboardAvailability,
-  dashboardSourceFromLive,
-  type DashboardPeriod,
-  type HtFtDashboardView,
-} from "./dashboard/htFtDashboardView";
+import { MatchAnalysisPreview } from "./dashboard/MatchAnalysisPreview";
+import { dashboardAvailability } from "./dashboard/htFtDashboardView";
+import { mapSourceFromLive, type MatchMapSource } from "./dashboard/matchMapPerspective";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import { buildLivePdfInput, buildLiveSnapshotInput, toEventStatsReportEvents } from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
@@ -463,8 +458,9 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const quickReviewTrackWidthPct = quickReviewPageCount * 100;
   const [actionsOpen, setActionsOpen]           = useState(false);
   const [shareSheetOpen, setShareSheetOpen]     = useState(false);
-  // HT / FT dashboard PNG preview — built only when the coach asks for it.
-  const [dashboardView, setDashboardView]       = useState<HtFtDashboardView | null>(null);
+  // Match Analysis (Dashboard / Scoring / Turnovers PNGs) — a read-only
+  // snapshot of the match, taken only when the coach opens it.
+  const [analysisSource, setAnalysisSource]     = useState<MatchMapSource | null>(null);
   const [notesOpen, setNotesOpen]               = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [htConfirmOpen, setHtConfirmOpen]       = useState(false);
@@ -1066,14 +1062,14 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setShareSheetOpen(true);
   }, []);
 
-  // Actions → HT / FT Dashboard (portrait PNG). Availability is re-checked
-  // against the current match state at tap time.
-  const openDashboard = useCallback((period: DashboardPeriod) => {
+  // Actions → Match Analysis (portrait PNGs). Availability is re-checked
+  // against the current match state at tap time; HT / FT inside the screen
+  // follow the same state.
+  const openMatchAnalysis = useCallback(() => {
     const state = matchStateRef.current;
-    const available = dashboardAvailability(state);
-    if (period === "HT" ? !available.ht : !available.ft) return;
+    if (!dashboardAvailability(state).ht) return;
     setActionsOpen(false);
-    setDashboardView(buildHtFtDashboardView(dashboardSourceFromLive(session, loggedRef.current, state), period));
+    setAnalysisSource(mapSourceFromLive(session, loggedRef.current, state));
   }, [session]);
 
   // Actions → HT Snapshot PDF (first-half debrief).
@@ -1852,14 +1848,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               </button>
 
               {dashboardAvailability(matchState).ht && (
-                <button style={AS.actionBtn} onClick={() => openDashboard("HT")}>
-                  HT Dashboard (PNG)
-                </button>
-              )}
-
-              {dashboardAvailability(matchState).ft && (
-                <button style={AS.actionBtn} onClick={() => openDashboard("FT")}>
-                  FT Dashboard (PNG)
+                <button style={AS.actionBtn} onClick={openMatchAnalysis}>
+                  Match Analysis (PNG)
                 </button>
               )}
 
@@ -1949,8 +1939,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         }}
       />
 
-      {dashboardView && (
-        <HtFtDashboardPreview view={dashboardView} onClose={() => setDashboardView(null)} />
+      {analysisSource && (
+        <MatchAnalysisPreview source={analysisSource} onClose={() => setAnalysisSource(null)} />
       )}
 
       {/* ── Live review overlay ────────────────────────────────────── */}

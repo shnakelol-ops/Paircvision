@@ -37,6 +37,7 @@ import {
   viewShootingConversion,
 } from "../../stats/reporting/teamStatsViews";
 import { getFamiliesForSport } from "../pro-tagger-families";
+import { buildMetaLine } from "./htFtDashboardView";
 import type { ProTaggerSport } from "../pro-tagger-session";
 import {
   buildScopedMapReport,
@@ -78,9 +79,14 @@ export type ShotMarker = {
 /** Goals and points (value) scored from one source — enough for "0-19" style notation. */
 export type ScoreSourceTotals = { scores: number; goals: number; points: number; total: number };
 
+/** One half's shooting, from the same per-shot classification as the totals. */
+export type ShootingHalf = { shots: number; scores: number; accuracyPct: number | null };
+
 export type ScoringMapView = {
   scope: MapScope;
   scopeLabel: "HALF-TIME" | "FULL-TIME";
+  /** "Venue · League · 7 Nov 2026" — only fields the match records; null when none. */
+  metaLine: string | null;
   sport: ProTaggerSport;
   team: MapTeamIdentity;
   opponent: MapTeamIdentity;
@@ -117,10 +123,25 @@ export type ScoringMapView = {
     fromPlay: ScoreSourceTotals;
     placedBalls: ScoreSourceTotals;
   };
+  /**
+   * FT only: first- and second-half shooting. null at HT, and null whenever any
+   * shot lacks a recorded half (the split would not add up to the totals).
+   */
+  halves: { firstHalf: ShootingHalf; secondHalf: ShootingHalf } | null;
   markers: ShotMarker[];
   location: MapLocationSummary;
   orientation: MapOrientation;
 };
+
+function shootingHalf(markers: readonly ShotMarker[], period: "1H" | "2H"): ShootingHalf {
+  const inHalf = markers.filter((m) => m.period === period);
+  const scores = inHalf.filter((m) => isScore(m.outcome)).length;
+  return {
+    shots: inHalf.length,
+    scores,
+    accuracyPct: inHalf.length > 0 ? Math.round((scores / inHalf.length) * 100) : null,
+  };
+}
 
 const SHOT_KIND_SET = new Set<MatchEventKind>(SHOT_KINDS);
 
@@ -203,9 +224,14 @@ export function buildScoringMapView(source: MatchMapSource, side: MapTeamSide, s
   }
 
   const twoPointScores = block.twoPointers;
+  const halves =
+    scope === "FT" && markers.every((m) => m.period != null)
+      ? { firstHalf: shootingHalf(markers, "1H"), secondHalf: shootingHalf(markers, "2H") }
+      : null;
   return {
     scope,
     scopeLabel: scopeLabel(scope),
+    metaLine: buildMetaLine(source),
     sport: source.sport,
     team: teamIdentity(source, side),
     opponent: teamIdentity(source, otherSide(side)),
@@ -226,6 +252,7 @@ export function buildScoringMapView(source: MatchMapSource, side: MapTeamSide, s
     },
     misses,
     sources: { fromPlay, placedBalls },
+    halves,
     markers,
     location: summariseLocations(reasons),
     orientation,

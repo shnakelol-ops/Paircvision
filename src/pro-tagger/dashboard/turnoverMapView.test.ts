@@ -298,3 +298,27 @@ describe("purity and storage safety", () => {
     expect({ ...window.localStorage }).toEqual(before);
   });
 });
+
+describe("FT half subtotals", () => {
+  it("match viewMirroredCountsForTeam over 1H / 2H-scoped reports, for both teams", async () => {
+    const { buildMatchReport } = await import("../../stats/reporting/matchReport");
+    const match = ftFixtureMatch();
+    const src = mapSourceFromSavedMatch(match);
+    for (const side of ["FOR", "OPP"] as const) {
+      const m = buildTurnoverMapView(src, side, "FT");
+      for (const [period, half] of [["1H", m.halves!.firstHalf], ["2H", m.halves!.secondHalf]] as const) {
+        const rep = buildMatchReport({ events: toEventStatsReportEvents(match.events), homeTeam: match.homeTeamName, awayTeam: match.awayTeamName, scope: period });
+        const mir = viewMirroredCountsForTeam(rep, side);
+        expect(half).toEqual({ won: mir.turnoversWon, lost: mir.turnoversLost });
+      }
+    }
+    expect(buildTurnoverMapView(src, "OPP", "FT").halves).toEqual({ firstHalf: { won: 5, lost: 3 }, secondHalf: { won: 5, lost: 3 } });
+  });
+
+  it("are absent at HT, and absent when any turnover's half is not recorded", () => {
+    expect(buildTurnoverMapView(mapSourceFromSavedMatch(ftFixtureMatch()), "FOR", "HT").halves).toBeNull();
+    const m = view([ev("TURNOVER_WON", "FOR", { tags: ["TACKLE"], period: undefined as never })], "FOR", "FT");
+    expect(m.halves).toBeNull();
+    expect(m.totals.won).toBe(1);
+  });
+});
