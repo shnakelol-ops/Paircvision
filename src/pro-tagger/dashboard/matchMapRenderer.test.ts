@@ -3,7 +3,9 @@ import { pitchThirdOf, projectToPortrait, mapSourceFromSavedMatch, type MapTeamS
 import {
   MAP_HEIGHT,
   PITCH_THIRD_LABELS,
+  drawPitchThirds,
   pitchThirdLabelBoxes,
+  thirdLabelMaxWidth,
   pitchThirdRects,
   MAP_WIDTH,
   SHOT_MARKER_COLOURS,
@@ -30,7 +32,7 @@ import { buildTurnoverMapView } from "./turnoverMapView";
 // deterministic measureText (0.55 × font size per character).
 const CHAR_W = 0.55;
 type Op = { op: string; args: number[]; fill: string; stroke: string };
-type TextCall = { text: string; left: number; right: number; top: number; y: number; size: number };
+type TextCall = { text: string; left: number; right: number; top: number; y: number; size: number; color: string; font: string };
 
 function sizeOf(font: string): number {
   const m = /(\d+(?:\.\d+)?)px/.exec(font);
@@ -62,11 +64,11 @@ function recordingContext() {
         // Reads bottom-to-top from the (translated) origin, left-aligned, middle baseline.
         const ox = tf.tx + y;
         const oy = tf.ty - x;
-        texts.push({ text: t, left: ox - size / 2, right: ox + size / 2, top: oy - width, y: oy, size });
+        texts.push({ text: t, left: ox - size / 2, right: ox + size / 2, top: oy - width, y: oy, size, color: String(state.fillStyle), font: String(state.font) });
         return;
       }
       const left = tf.tx + (state.textAlign === "center" ? x - width / 2 : state.textAlign === "right" ? x - width : x);
-      texts.push({ text: t, left, right: left + width, top: tf.ty + y - size, y: tf.ty + y, size });
+      texts.push({ text: t, left, right: left + width, top: tf.ty + y - size, y: tf.ty + y, size, color: String(state.fillStyle), font: String(state.font) });
     },
     createLinearGradient: () => ({ addColorStop: () => undefined }),
     arc: record("arc"),
@@ -447,7 +449,7 @@ describe("Turnover Map pitch thirds", () => {
     const frame = pitchFrame({ x: 560, y: 374, w: 470, h: 752 }, 1);
     const width = () => 180;
     const free = pitchThirdLabelBoxes(frame, [], width);
-    expect(free.map((b) => [b.x, b.y])).toEqual(pitchThirdRects(frame).map((r) => [frame.x + 12, r.y0 + 12])); // top-left by default
+    expect(free.map((b) => [b.x, b.y])).toEqual(pitchThirdRects(frame).map((r) => [frame.x + 14, r.y0 + 14])); // top-left by default
     const onTopLeft = { x: free[2].x + 40, y: free[2].y + 16 };
     const moved = pitchThirdLabelBoxes(frame, [onTopLeft], width);
     expect(moved[0]).toEqual(free[0]);
@@ -470,11 +472,82 @@ describe("Turnover Map pitch thirds", () => {
         for (const label of Object.values(PITCH_THIRD_LABELS)) {
           const t = texts.find((x) => x.text === label)!;
           for (const p of pts) {
-            const clear = p.x + 21 <= t.left - 11 || p.x - 21 >= t.right + 11 || p.y + 21 <= t.top - 9 || p.y - 21 >= t.y + 9;
+            const clear = p.x + 21 <= t.left - 8 || p.x - 21 >= t.right + 8 || p.y + 21 <= t.top - 2 || p.y - 21 >= t.y + 6;
             expect(clear).toBe(true);
           }
         }
       }
+    }
+  });
+
+  it("labels are faint watermarks: medium weight, small, 35% white, no badge behind them (Home / Away, HT / FT)", () => {
+    for (const [src, scope] of [[htSrc, "HT"], [ftSrc, "FT"]] as const) {
+      for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+        const { ctx, ops, texts } = recordingContext();
+        drawTurnoverMap(ctx, buildTurnoverMapView(src(), side, scope));
+        const labels = texts.filter((t) => THIRD_LABEL_TEXTS.includes(t.text));
+        expect(labels).toHaveLength(3);
+        for (const t of labels) {
+          expect(t.color).toBe("rgba(255,255,255,0.35)");
+          expect(t.size).toBe(16); // 27% smaller than the previous 22 px
+          expect(t.font.startsWith("500 ")).toBe(true);
+        }
+        // No dark pill / badge fill anywhere on the page.
+        expect(ops.some((o) => o.op === "fill" && o.fill === "rgba(11,20,40,0.42)")).toBe(false);
+      }
+    }
+  });
+
+  it("labels never run into the goal-area boxes (every sport, Home / Away, HT / FT)", async () => {
+    const { getPitchConfig } = await import("../../core/pitch/pitch-config");
+    for (const sport of ["gaelic", "ladies_football", "hurling", "camogie"] as const) {
+      const pitchSport = sport === "ladies_football" ? "gaelic" : sport;
+      const boxes = getPitchConfig(pitchSport).markings.filter((m) => m.kind === "rect" && m.h < 90) as { y: number; h: number }[];
+      const leftSide = Math.min(...boxes.map((b) => b.y)) / 100;
+      const rightSide = Math.max(...boxes.map((b) => b.y + b.h)) / 100;
+      for (const [label, match] of [["HT", htFixtureMatch()], ["FT", ftFixtureMatch()]] as const) {
+        const src = mapSourceFromSavedMatch({ ...match, sport });
+        for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+          const { ctx, ops, texts } = recordingContext();
+          drawTurnoverMap(ctx, buildTurnoverMapView(src, side, label));
+          const frame = recordedFrame(ops, 1);
+          for (const t of texts.filter((x) => THIRD_LABEL_TEXTS.includes(x.text))) {
+            const onLeft = t.left < frame.x + frame.w / 2;
+            if (onLeft) expect(t.right).toBeLessThanOrEqual(frame.x + leftSide * frame.w - 8);
+            else expect(t.left).toBeGreaterThanOrEqual(frame.x + rightSide * frame.w + 8 - 0.5);
+          }
+        }
+      }
+    }
+  });
+
+  it("on a narrower pitch the labels shrink (never below 13 px) rather than cross a marking", () => {
+    // Real Turnover Map pitches are ~470 px wide (labels fit at 16 px). At 370 px the
+    // longest label needs a smaller size; 13 px is the floor for tiny pitches.
+    const frame = pitchFrame({ x: 0, y: 0, w: 370, h: 592 }, 1);
+    const { ctx, texts } = recordingContext();
+    drawPitchThirds(ctx, frame, [], "gaelic");
+    const labels = texts.filter((t) => THIRD_LABEL_TEXTS.includes(t.text));
+    expect(labels).toHaveLength(3);
+    const maxW = thirdLabelMaxWidth(frame, "gaelic");
+    for (const t of labels) {
+      expect(t.size).toBeLessThan(16);
+      expect(t.size).toBeGreaterThanOrEqual(13);
+      expect(t.right - t.left).toBeLessThanOrEqual(maxW);
+    }
+    expect(new Set(labels.map((t) => t.size)).size).toBe(1); // one consistent style
+  });
+
+  it("labels sit in the same corner of every third unless a marker is there", () => {
+    const view = buildTurnoverMapView(htSrc(), "OPP", "HT");
+    const { ctx, ops, texts } = recordingContext();
+    drawTurnoverMap(ctx, { ...view, markers: [] });
+    const frame = recordedFrame(ops, 1);
+    const rects = pitchThirdRects(frame);
+    for (const r of rects) {
+      const t = texts.find((x) => x.text === PITCH_THIRD_LABELS[r.third])!;
+      expect(t.left).toBeCloseTo(frame.x + 14 + 8, 6);
+      expect(t.y).toBeCloseTo(r.y0 + 14 + 18, 6);
     }
   });
 

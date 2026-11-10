@@ -395,7 +395,28 @@ const THIRD_SHADE: Record<PitchThird, string | null> = {
   MIDDLE: null,
   DEFENSIVE: "rgba(0,0,0,0.12)",
 };
-const THIRD_LABEL_SIZE = 22;
+/** Watermark labels: soft, medium-weight, semi-transparent — never competing with the markers. */
+const THIRD_LABEL_SIZE = 16;
+const THIRD_LABEL_WEIGHT = 500;
+export const THIRD_LABEL_COLOUR = "rgba(255,255,255,0.35)";
+const THIRD_LABEL_MIN_SIZE = 13;
+/** Kept clear between a label and the goal-area rectangles' sides. */
+const THIRD_LABEL_MARKING_GAP = 8;
+
+/**
+ * Widest a corner label may be without running into the goal-area
+ * rectangles at either end: the corner labels sit between the touchline and
+ * those rectangles' sides. Read from the sport's own pitch markings
+ * (landscape y across the width → portrait x).
+ */
+export function thirdLabelMaxWidth(frame: PitchFrame, sport: ProTaggerSport): number {
+  const endBoxes = getPitchConfig(pitchSportFor(sport)).markings.filter(
+    (m): m is Extract<PitchMarking, { kind: "rect" }> => m.kind === "rect" && m.h < PITCH_WID * 0.9,
+  );
+  const nearestSide = endBoxes.length > 0 ? Math.min(...endBoxes.map((b) => b.y)) : PITCH_WID / 2;
+  const sideX = (nearestSide / PITCH_WID) * frame.w; // distance from the touchline to the box side
+  return sideX - THIRD_LABEL_INSET - THIRD_LABEL_PAD_X - THIRD_LABEL_MARKING_GAP;
+}
 
 /** Canvas y-ranges of the three bands on this pitch frame (top to bottom). */
 export function pitchThirdRects(frame: PitchFrame): { third: PitchThird; y0: number; y1: number }[] {
@@ -405,8 +426,10 @@ export function pitchThirdRects(frame: PitchFrame): { third: PitchThird; y0: num
     .map((b) => ({ third: b.third, y0: toY(b.top), y1: toY(b.bottom) }));
 }
 
-const THIRD_PILL_H = 34;
-const THIRD_PILL_INSET = 12;
+/** Clear space kept around a label's text when checking it against markers. */
+const THIRD_LABEL_PAD_X = 8;
+const THIRD_LABEL_BOX_H = 24;
+const THIRD_LABEL_INSET = 14;
 /** Furthest a turnover marker reaches from its centre (diamond 1.18 × r plus outline). */
 const TURNOVER_MARKER_REACH = MARKER_R * 1.18 + 3;
 
@@ -422,26 +445,31 @@ export function pitchThirdLabelBoxes(
   labelWidth: (third: PitchThird) => number,
 ): { third: PitchThird; x: number; y: number; w: number; h: number }[] {
   return pitchThirdRects(frame).map((r) => {
-    const w = labelWidth(r.third) + 22;
-    const left = frame.x + THIRD_PILL_INSET;
-    const right = frame.x + frame.w - THIRD_PILL_INSET - w;
-    const top = r.y0 + THIRD_PILL_INSET;
-    const bottom = r.y1 - THIRD_PILL_INSET - THIRD_PILL_H;
+    const w = labelWidth(r.third) + THIRD_LABEL_PAD_X * 2;
+    const left = frame.x + THIRD_LABEL_INSET;
+    const right = frame.x + frame.w - THIRD_LABEL_INSET - w;
+    const top = r.y0 + THIRD_LABEL_INSET;
+    const bottom = r.y1 - THIRD_LABEL_INSET - THIRD_LABEL_BOX_H;
     const corners = [[left, top], [left, bottom], [right, top], [right, bottom]] as const;
     const hits = ([x, y]: readonly [number, number]) =>
       markers.filter((m) =>
         m.x + TURNOVER_MARKER_REACH > x && m.x - TURNOVER_MARKER_REACH < x + w &&
-        m.y + TURNOVER_MARKER_REACH > y && m.y - TURNOVER_MARKER_REACH < y + THIRD_PILL_H).length;
+        m.y + TURNOVER_MARKER_REACH > y && m.y - TURNOVER_MARKER_REACH < y + THIRD_LABEL_BOX_H).length;
     let best = corners[0];
     for (const c of corners) {
       if (hits(c) === 0) { best = c; break; }
       if (hits(c) < hits(best)) best = c;
     }
-    return { third: r.third, x: best[0], y: best[1], w, h: THIRD_PILL_H };
+    return { third: r.third, x: best[0], y: best[1], w, h: THIRD_LABEL_BOX_H };
   });
 }
 
-export function drawPitchThirds(ctx: CanvasRenderingContext2D, frame: PitchFrame, markers: readonly { x: number; y: number }[] = []): void {
+export function drawPitchThirds(
+  ctx: CanvasRenderingContext2D,
+  frame: PitchFrame,
+  markers: readonly { x: number; y: number }[] = [],
+  sport: ProTaggerSport = "gaelic",
+): void {
   const rects = pitchThirdRects(frame);
   ctx.save();
   roundRectPath(ctx, frame.x, frame.y, frame.w, frame.h, 18);
@@ -464,14 +492,27 @@ export function drawPitchThirds(ctx: CanvasRenderingContext2D, frame: PitchFrame
     ctx.stroke();
   }
   ctx.setLineDash([]);
-  // Small labels on a faint pill, in a corner of each third clear of markers.
-  ctx.font = font(800, THIRD_LABEL_SIZE);
+  // Faint watermark labels (no badge): the same corner of every third
+  // (top-left), moved to another corner only to stay clear of a marker.
+  // One style for all three labels: light tracking at 16 px if the longest
+  // label fits beside the goal-area box, else no tracking, else a smaller size.
+  const maxW = thirdLabelMaxWidth(frame, sport);
+  const tracks = "letterSpacing" in ctx;
+  const widest = (size: number, tracking: string) => {
+    ctx.font = font(THIRD_LABEL_WEIGHT, size);
+    if (tracks) ctx.letterSpacing = tracking;
+    return Math.max(...Object.values(PITCH_THIRD_LABELS).map((l) => ctx.measureText(l).width));
+  };
+  let size = THIRD_LABEL_SIZE;
+  let tracking = "1px";
+  if (widest(size, tracking) > maxW) tracking = "0px";
+  while (size > THIRD_LABEL_MIN_SIZE && widest(size, tracking) > maxW) size -= 1;
+  widest(size, tracking); // leave the chosen font / tracking set for measuring and drawing
   const boxes = pitchThirdLabelBoxes(frame, markers, (third) => ctx.measureText(PITCH_THIRD_LABELS[third]).width);
   for (const b of boxes) {
-    roundRectPath(ctx, b.x, b.y, b.w, b.h, b.h / 2);
-    ctx.fillStyle = "rgba(11,20,40,0.42)";
-    ctx.fill();
-    text(ctx, PITCH_THIRD_LABELS[b.third], b.x + 11, b.y + 25, { weight: 800, size: THIRD_LABEL_SIZE, color: "rgba(255,255,255,0.88)" });
+    text(ctx, PITCH_THIRD_LABELS[b.third], b.x + THIRD_LABEL_PAD_X, b.y + 18, {
+      weight: THIRD_LABEL_WEIGHT, size, color: THIRD_LABEL_COLOUR,
+    });
   }
   ctx.restore();
 }
@@ -808,7 +849,7 @@ export function drawTurnoverMap(ctx: CanvasRenderingContext2D, view: TurnoverMap
   // Thirds only when the map is team-relative: with positions shown as
   // captured, "attacking" / "defensive" would not be verified.
   if (view.orientation.status === "ATTACKING_UP") {
-    drawPitchThirds(ctx, frame, view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : [])));
+    drawPitchThirds(ctx, frame, view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : [])), view.sport);
   }
   for (const m of view.markers) {
     if (!m.point) continue;
