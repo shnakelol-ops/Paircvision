@@ -59,6 +59,8 @@ import {
   readableTextOn,
   teamMonogram,
 } from "./htFtDashboardView";
+import type { CrestArtwork } from "../crest/crest-artwork";
+import { MAP_CREST_SIZE, drawCrest } from "./crestDraw";
 import { pitchThirdBands, type MapPoint, type MapScope, type MapScoreline, type MapTeamIdentity, type PitchThird } from "./matchMapPerspective";
 import type { ScoringMapView, ShotOutcome } from "./scoringMapView";
 import type { TurnoverMapView, TurnoverOutcomeForTeam } from "./turnoverMapView";
@@ -590,9 +592,11 @@ function drawTeamBanner(
   identity: MapTeamIdentity,
   scoreline: MapScoreline,
   metaLine: string | null,
+  crest: CrestArtwork | null | undefined,
 ): void {
   panelAt(ctx, MARGIN, 140, MAP_WIDTH - MARGIN * 2, 214);
-  drawBadge(ctx, team, MARGIN + 88, 247, 58);
+  // Selected team's club crest in its natural shape when one is linked; otherwise the unchanged monogram badge.
+  if (!drawCrest(ctx, crest, { cx: MARGIN + 88, cy: 247, ...MAP_CREST_SIZE })) drawBadge(ctx, team, MARGIN + 88, 247, 58);
   text(ctx, pageTitle, BANNER_TEXT_X, 190, { weight: 800, size: 24, color: SECTION });
   fittedLine(ctx, team.name, BANNER_TEXT_X, 250, BANNER_TEXT_W, { weight: 800, maxSize: 56, minSize: 30, color: TEXT, align: "left" });
   fittedLine(ctx, selectedScoreLine(identity, scoreline), BANNER_TEXT_X, 296, BANNER_TEXT_W, {
@@ -729,12 +733,12 @@ const SHOT_LEGEND: readonly { outcome: ShotOutcome; label: string }[] = [
   { outcome: "OTHER", label: "Outcome not recorded" },
 ];
 
-/** Draws the whole Scoring Map onto a 1080 × 1350 context. Pure: no I/O, no awaits. */
-export function drawScoringMap(ctx: CanvasRenderingContext2D, view: ScoringMapView): void {
+/** Draws the whole Scoring Map onto a 1080 × 1350 context. Pure: no I/O, no awaits. `crest` = the selected team's decoded crest. */
+export function drawScoringMap(ctx: CanvasRenderingContext2D, view: ScoringMapView, crest?: CrestArtwork | null): void {
   const team = resolveTeam(view.team);
   drawMapBackground(ctx, team);
   drawHeader(ctx, { stageLabel: view.scopeLabel, period: view.scope });
-  drawTeamBanner(ctx, "SCORING MAP", team, view.team, view.scoreline, view.metaLine);
+  drawTeamBanner(ctx, "SCORING MAP", team, view.team, view.scoreline, view.metaLine, crest);
 
   // ── Right: pitch, legend, caption ──
   const present = SHOT_LEGEND.filter((l) => view.markers.some((m) => m.outcome === l.outcome));
@@ -832,12 +836,12 @@ export function drawScoringMap(ctx: CanvasRenderingContext2D, view: ScoringMapVi
 
 // ─── Turnover Map ─────────────────────────────────────────────────────────────
 
-/** Draws the whole Turnover Map onto a 1080 × 1350 context. Pure: no I/O, no awaits. */
-export function drawTurnoverMap(ctx: CanvasRenderingContext2D, view: TurnoverMapView): void {
+/** Draws the whole Turnover Map onto a 1080 × 1350 context. Pure: no I/O, no awaits. `crest` = the selected team's decoded crest. */
+export function drawTurnoverMap(ctx: CanvasRenderingContext2D, view: TurnoverMapView, crest?: CrestArtwork | null): void {
   const team = resolveTeam(view.team);
   drawMapBackground(ctx, team);
   drawHeader(ctx, { stageLabel: view.scopeLabel, period: view.scope });
-  drawTeamBanner(ctx, "TURNOVER MAP", team, view.team, view.scoreline, view.metaLine);
+  drawTeamBanner(ctx, "TURNOVER MAP", team, view.team, view.scoreline, view.metaLine, crest);
 
   // ── Right: whole pitch (turnovers happen anywhere), legend, caption ──
   const notesH = view.location.note ? 128 : 66; // caption and note may each wrap to two lines
@@ -953,10 +957,10 @@ async function renderPng(draw: (ctx: CanvasRenderingContext2D) => void, filename
   return new File([blob], filename, { type: "image/png" });
 }
 
-export function renderScoringMapPng(view: ScoringMapView, doc: Document = document): Promise<File> {
-  return renderPng((ctx) => drawScoringMap(ctx, view), mapFilename(view, "scoring"), doc);
+export function renderScoringMapPng(view: ScoringMapView, doc: Document = document, crest?: CrestArtwork | null): Promise<File> {
+  return renderPng((ctx) => drawScoringMap(ctx, view, crest), mapFilename(view, "scoring"), doc);
 }
 
-export function renderTurnoverMapPng(view: TurnoverMapView, doc: Document = document): Promise<File> {
-  return renderPng((ctx) => drawTurnoverMap(ctx, view), mapFilename(view, "turnovers"), doc);
+export function renderTurnoverMapPng(view: TurnoverMapView, doc: Document = document, crest?: CrestArtwork | null): Promise<File> {
+  return renderPng((ctx) => drawTurnoverMap(ctx, view, crest), mapFilename(view, "turnovers"), doc);
 }

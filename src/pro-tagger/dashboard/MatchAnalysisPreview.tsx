@@ -12,11 +12,19 @@
  *
  * Read-only: builds views from the source it is given and never writes to
  * storage or changes the match.
+ *
+ * Club crests (Club Crest V1): when the screen opens, the Home and Away
+ * crests are looked up by Saved Team id and decoded ONCE (bounded by a
+ * timeout) before the first page is drawn. That snapshot is used for every
+ * page, team and HT / FT choice until the screen closes, so a preview and its
+ * shared PNG always show the same crest; a missing or failed crest is simply
+ * the monogram. Decoded images are released when the screen closes.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ShareSheet } from "../../features/shared/ShareSheet";
+import { NO_CRESTS, crestsKey, loadMatchCrests, type LoadedMatchCrests, type MatchCrests } from "../crest/crest-artwork";
 import { renderHtFtDashboardPng } from "./htFtDashboardRenderer";
 import { buildHtFtDashboardView, dashboardAvailability, dashboardFilename, type DashboardPeriod } from "./htFtDashboardView";
 import type { MapTeamSide, MatchMapSource } from "./matchMapPerspective";
@@ -41,7 +49,12 @@ export type MatchAnalysisPreviewProps = {
   onClose: () => void;
   /** Injectable for tests; defaults to the real canvas renderers. */
   renderers?: Partial<MatchAnalysisRenderers>;
+  /** Test seam; the app loads crests from the crest store. */
+  loadCrests?: (ids: { home?: string; away?: string }) => Promise<LoadedMatchCrests>;
 };
+
+/** Upper bound on waiting for crests before drawing with monograms (the loader has its own, shorter, timeouts). */
+export const CREST_SNAPSHOT_TIMEOUT_MS = 5000;
 
 const PAGES: readonly { id: AnalysisPage; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
@@ -68,21 +81,96 @@ export function analysisPageJob(
   scope: DashboardPeriod,
   side: MapTeamSide,
   renderers: MatchAnalysisRenderers,
+  crests: MatchCrests = NO_CRESTS,
 ): { key: string; filename: string; render: () => Promise<File> } {
+  const crestKey = crestsKey(crests);
   if (page === "dashboard") {
     const view = buildHtFtDashboardView(source, scope);
-    return { key: `dashboard:${scope}`, filename: dashboardFilename(view), render: () => renderers.dashboard(view) };
+    return {
+      key: `dashboard:${scope}:${crestKey}`,
+      filename: dashboardFilename(view),
+      render: () => renderers.dashboard(view, undefined, crests),
+    };
   }
   if (page === "scoring") {
     const view = buildScoringMapView(source, side, scope);
-    return { key: `scoring:${scope}:${side}`, filename: mapFilename(view, "scoring"), render: () => renderers.scoring(view) };
+    const crest = view.team.role === "HOME" ? crests.home : crests.away;
+    return {
+      key: `scoring:${scope}:${side}:${crestKey}`,
+      filename: mapFilename(view, "scoring"),
+      render: () => renderers.scoring(view, undefined, crest),
+    };
   }
   const view = buildTurnoverMapView(source, side, scope);
-  return { key: `turnovers:${scope}:${side}`, filename: mapFilename(view, "turnovers"), render: () => renderers.turnovers(view) };
+  const crest = view.team.role === "HOME" ? crests.home : crests.away;
+  return {
+    key: `turnovers:${scope}:${side}:${crestKey}`,
+    filename: mapFilename(view, "turnovers"),
+    render: () => renderers.turnovers(view, undefined, crest),
+  };
 }
 
-export function MatchAnalysisPreview({ source, onClose, renderers }: MatchAnalysisPreviewProps) {
+/**
+ * One crest snapshot per screen: null while loading, then fixed. Resolves to
+ * monograms if the loader fails or exceeds CREST_SNAPSHOT_TIMEOUT_MS; a late
+ * result is released, never applied.
+ */
+function useCrestSnapshot(
+  homeId: string | undefined,
+  awayId: string | undefined,
+  load: (ids: { home?: string; away?: string }) => Promise<LoadedMatchCrests>,
+): MatchCrests | null {
+  const [crests, setCrests] = useState<MatchCrests | null>(homeId || awayId ? null : NO_CRESTS);
+  useEffect(() => {
+    if (!homeId && !awayId) {
+      setCrests(NO_CRESTS);
+      return;
+    }
+    let active = true;
+    let settled = false;
+    let loaded: LoadedMatchCrests | null = null;
+    setCrests(null);
+    const timer = setTimeout(() => {
+      if (settled || !active) return;
+      settled = true;
+      setCrests(NO_CRESTS);
+    }, CREST_SNAPSHOT_TIMEOUT_MS);
+    let pending: Promise<LoadedMatchCrests>;
+    try {
+      pending = load({ home: homeId, away: awayId });
+    } catch {
+      pending = Promise.reject(new Error("crest loader threw"));
+    }
+    pending.then(
+      (result) => {
+        if (!active || settled) {
+          result.release();
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        loaded = result;
+        setCrests(result.crests);
+      },
+      () => {
+        if (!active || settled) return;
+        settled = true;
+        clearTimeout(timer);
+        setCrests(NO_CRESTS);
+      },
+    );
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      loaded?.release();
+    };
+  }, [homeId, awayId, load]);
+  return crests;
+}
+
+export function MatchAnalysisPreview({ source, onClose, renderers, loadCrests = loadMatchCrests }: MatchAnalysisPreviewProps) {
   const r = useMemo(() => ({ ...DEFAULT_RENDERERS, ...renderers }), [renderers]);
+  const crests = useCrestSnapshot(source.homeSavedTeamId, source.awaySavedTeamId, loadCrests);
   const available = dashboardAvailability(source.matchState);
   const [page, setPage] = useState<AnalysisPage>("dashboard");
   const [scope, setScope] = useState<DashboardPeriod>(available.ft ? "FT" : "HT");
@@ -102,13 +190,20 @@ export function MatchAnalysisPreview({ source, onClose, renderers }: MatchAnalys
     };
   }, []);
 
-  const job = useMemo(() => analysisPageJob(source, page, scope, side, r), [source, page, scope, side, r]);
+  const job = useMemo(
+    () => (crests ? analysisPageJob(source, page, scope, side, r, crests) : null),
+    [source, page, scope, side, r, crests],
+  );
 
   const canRender = available.ht;
   useEffect(() => {
     let cancelled = false;
     setShareOpen(false);
     if (!canRender) return;
+    if (!job) {
+      setState({ phase: "rendering" }); // crests still loading (bounded by a timeout)
+      return;
+    }
     const hit = cache.current.get(job.key);
     if (hit) {
       setState({ phase: "ready", ...hit });

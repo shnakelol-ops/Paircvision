@@ -23,6 +23,14 @@ export type ProTaggerSquad = {
   teamName?: string;
   primaryColour?: string;
   secondaryColour?: string;
+  /**
+   * The Saved Team (pro-tagger-team-storage.ts SavedTeam.id) this squad was
+   * loaded from or saved as — the only link used to find the club crest.
+   * Absent on squads that were never linked and on every match recorded
+   * before Club Crest V1; those always show the monogram. Never derived from
+   * the team name. Separate from `id`, which events reference as squadId.
+   */
+  savedTeamId?: string;
 };
 
 export interface ProTaggerSession {

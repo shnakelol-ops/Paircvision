@@ -15,6 +15,8 @@
  * covers the Irish fadas.
  */
 
+import type { MatchCrests } from "../crest/crest-artwork";
+import { DASHBOARD_CREST_CY, DASHBOARD_CREST_SIZE, drawCrest } from "./crestDraw";
 import {
   DASHBOARD_BG,
   NO_VALUE,
@@ -258,8 +260,9 @@ function drawBadge(ctx: CanvasRenderingContext2D, team: DashboardTeamView, cx: n
   ctx.textBaseline = "alphabetic";
 }
 
-function drawTeamColumn(ctx: CanvasRenderingContext2D, team: DashboardTeamView, cx: number): void {
-  drawBadge(ctx, team, cx);
+function drawTeamColumn(ctx: CanvasRenderingContext2D, team: DashboardTeamView, cx: number, crest: MatchCrests["home"]): void {
+  // Club crest in its natural shape when one is linked and decoded; otherwise the unchanged monogram badge.
+  if (!drawCrest(ctx, crest, { cx, cy: DASHBOARD_CREST_CY, ...DASHBOARD_CREST_SIZE })) drawBadge(ctx, team, cx);
 
   const name = fitText(ctx, team.name, COLUMN_WIDTH, {
     weight: 700, maxSize: MAX_NAME_SIZE, minSize: MIN_NAME_SIZE, maxLines: 2, maxWrappedSize: MAX_WRAPPED_NAME_SIZE,
@@ -276,10 +279,10 @@ function drawTeamColumn(ctx: CanvasRenderingContext2D, team: DashboardTeamView, 
   text(ctx, team.totalText, cx, 566, { weight: 600, size: 38, color: MUTED, align: "center" });
 }
 
-function drawScoreBlock(ctx: CanvasRenderingContext2D, view: HtFtDashboardView): void {
+function drawScoreBlock(ctx: CanvasRenderingContext2D, view: HtFtDashboardView, crests: MatchCrests | undefined): void {
   panel(ctx, 140, 450);
-  drawTeamColumn(ctx, view.home, HOME_X);
-  drawTeamColumn(ctx, view.away, AWAY_X);
+  drawTeamColumn(ctx, view.home, HOME_X, crests?.home ?? null);
+  drawTeamColumn(ctx, view.away, AWAY_X, crests?.away ?? null);
   // Centre divider + "v".
   ctx.strokeStyle = "rgba(255,255,255,0.10)";
   ctx.lineWidth = 2;
@@ -378,11 +381,15 @@ function drawFooter(ctx: CanvasRenderingContext2D): void {
   text(ctx, "Event Stats", DASHBOARD_WIDTH - MARGIN - 16, 1324, { weight: 500, size: 24, color: FAINT, align: "right" });
 }
 
-/** Draws the whole dashboard onto a 1080 × 1350 context. Pure: no I/O, no awaits. */
-export function drawHtFtDashboard(ctx: CanvasRenderingContext2D, view: HtFtDashboardView): void {
+/**
+ * Draws the whole dashboard onto a 1080 × 1350 context. Pure: no I/O, no awaits.
+ * `crests` (already decoded) replace the monogram badges; without them the
+ * output is exactly the monogram design.
+ */
+export function drawHtFtDashboard(ctx: CanvasRenderingContext2D, view: HtFtDashboardView, crests?: MatchCrests): void {
   drawBackground(ctx, view);
   drawHeader(ctx, view);
-  drawScoreBlock(ctx, view);
+  drawScoreBlock(ctx, view, crests);
   let y = 712;
   y = drawStatPanel(ctx, view, y, "Shooting accuracy", (t) => t.shooting, null);
   y = drawStatPanel(ctx, view, y, view.restartTitle, (t) => t.restarts, view.restartOwnerNote);
@@ -391,13 +398,13 @@ export function drawHtFtDashboard(ctx: CanvasRenderingContext2D, view: HtFtDashb
 }
 
 /** Creates the canvas, draws the dashboard and encodes it as a PNG File. */
-export async function renderHtFtDashboardPng(view: HtFtDashboardView, doc: Document = document): Promise<File> {
+export async function renderHtFtDashboardPng(view: HtFtDashboardView, doc: Document = document, crests?: MatchCrests): Promise<File> {
   const canvas = doc.createElement("canvas");
   canvas.width = DASHBOARD_WIDTH;
   canvas.height = DASHBOARD_HEIGHT;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available on this device.");
-  drawHtFtDashboard(ctx, view);
+  drawHtFtDashboard(ctx, view, crests);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
   canvas.width = 0; // release the bitmap
   if (!blob || blob.size === 0) throw new Error("Couldn't create the dashboard image.");
