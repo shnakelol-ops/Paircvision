@@ -22,13 +22,13 @@
 // (fit into the 600×738 jersey frame).
 import { MAX_UPLOAD_BYTES, decodeToPixels, paintToCanvas } from "../../internal-team-sheet/kit-image-codec";
 import {
-  DEFAULT_TOLERANCE,
   MAX_TOLERANCE,
   alphaBounds,
   buildAlpha,
   computeAutoMask,
   estimateBackdrop,
   hasTransparency,
+  type Backdrop,
   type Bounds,
   type PixelImage,
 } from "../../internal-team-sheet/kit-image-processing";
@@ -257,14 +257,144 @@ export async function checkCrestFile(file: Blob): Promise<CrestFileCheck> {
 
 // ── Background removal (pure) ────────────────────────────────────────────
 
+export type BackgroundRemovalUnavailable = "already-transparent" | "busy-background" | "nothing-found" | "similar-colours";
+
 export type BackgroundRemovalOffer =
-  | { offered: true; mask: Uint8Array }
-  | { offered: false; reason: "already-transparent" | "busy-background" | "nothing-found" | "similar-colours" };
+  | {
+      offered: true;
+      mask: Uint8Array;
+      /** Flood-fill tolerance chosen for this image (24–48). */
+      tolerance: number;
+      /** Pixels of tiny separate edge artefacts removed (see removeEdgeSpecks). */
+      specksRemoved: number;
+    }
+  | { offered: false; reason: BackgroundRemovalUnavailable };
+
+/** Edge pixels within this distance of the backdrop colour count as backdrop. */
+export const PLAIN_BACKDROP_NEAR = 32;
+/** At least this share of the (opaque) edge pixels must be backdrop… */
+export const PLAIN_BACKDROP_MIN_SHARE = 0.6;
+/** …and their median distance from the backdrop colour must be at most this. */
+export const PLAIN_BACKDROP_MAX_SPREAD = 16;
+/** Tolerances tried in order; the first at which removal stops growing is used. Never above 48. */
+export const REMOVAL_TOLERANCES = [24, 32, 40, 48] as const;
+/** "Stops growing": the next step (+8) removes less than this share of the image. */
+export const REMOVAL_PLATEAU = 0.005;
+/** An edge artefact may be removed only if it is at most this share of the image… */
+export const EDGE_SPECK_MAX_SHARE = 0.001;
+/** …and at least this share of the image's longer side (min 4 px) away from the crest. */
+export const EDGE_SPECK_MIN_GAP_SHARE = 0.02;
 
 function keptRatio(mask: Uint8Array): number {
   let kept = 0;
   for (let i = 0; i < mask.length; i++) kept += mask[i];
   return mask.length === 0 ? 0 : kept / mask.length;
+}
+
+function forEachEdgePixel(width: number, height: number, fn: (p: number) => void): void {
+  for (let x = 0; x < width; x++) {
+    fn(x);
+    if (height > 1) fn((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y++) {
+    fn(y * width);
+    if (width > 1) fn(y * width + width - 1);
+  }
+}
+
+/**
+ * Is the backdrop plain? Judged on the edge pixels that ARE backdrop: crest
+ * artwork that touches the image edge (a tightly cropped circular badge) is
+ * not mistaken for a busy background. A genuinely busy or photographic
+ * background has no dominant edge colour (share below 60%) or varies too much.
+ */
+export function assessPlainBackdrop(
+  img: PixelImage,
+  backdrop: Backdrop = estimateBackdrop(img),
+): { plain: boolean; share: number; spread: number } {
+  const { data, width, height } = img;
+  const [br, bg, bb] = backdrop.color;
+  const near: number[] = [];
+  let total = 0;
+  forEachEdgePixel(width, height, (p) => {
+    const i = p * 4;
+    if (data[i + 3] < 128) return;
+    total++;
+    const d = Math.max(Math.abs(data[i] - br), Math.abs(data[i + 1] - bg), Math.abs(data[i + 2] - bb));
+    if (d <= PLAIN_BACKDROP_NEAR) near.push(d);
+  });
+  if (total === 0) return { plain: false, share: 0, spread: Infinity };
+  near.sort((a, b) => a - b);
+  const share = near.length / total;
+  const spread = near.length > 0 ? near[Math.floor(near.length / 2)] : Infinity;
+  return { plain: share >= PLAIN_BACKDROP_MIN_SHARE && spread <= PLAIN_BACKDROP_MAX_SPREAD, share, spread };
+}
+
+/**
+ * Removes tiny artefacts left on the image edge (e.g. a screenshot's dark
+ * rounded corner) — never a crest detail. A kept region is removed only when
+ * ALL hold: it is not the main crest (the largest region); it touches the
+ * image edge; it is at most 0.1% of the image; and no main-crest pixel is
+ * within 2% of the image's longer side of it. Small details inside the image
+ * (stops, stars, lettering) and anything touching or near the crest are kept.
+ */
+export function removeEdgeSpecks(mask: Uint8Array, width: number, height: number): { mask: Uint8Array; removed: number } {
+  const n = width * height;
+  const label = new Int32Array(n).fill(-1);
+  const queue = new Int32Array(n);
+  const regions: { size: number; touchesEdge: boolean; start: number }[] = [];
+  for (let s = 0; s < n; s++) {
+    if (!mask[s] || label[s] !== -1) continue;
+    const id = regions.length;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = s;
+    label[s] = id;
+    let touchesEdge = false;
+    while (head < tail) {
+      const p = queue[head++];
+      const x = p % width;
+      const y = (p - x) / width;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) touchesEdge = true;
+      const visit = (q: number) => {
+        if (mask[q] && label[q] === -1) {
+          label[q] = id;
+          queue[tail++] = q;
+        }
+      };
+      if (x > 0) visit(p - 1);
+      if (x < width - 1) visit(p + 1);
+      if (y > 0) visit(p - width);
+      if (y < height - 1) visit(p + width);
+    }
+    regions.push({ size: tail, touchesEdge, start: s });
+  }
+  if (regions.length < 2) return { mask, removed: 0 };
+  let main = 0;
+  for (let i = 1; i < regions.length; i++) if (regions[i].size > regions[main].size) main = i;
+  const maxSize = n * EDGE_SPECK_MAX_SHARE;
+  const gap = Math.max(4, Math.round(Math.max(width, height) * EDGE_SPECK_MIN_GAP_SHARE));
+  const nearMain = (id: number): boolean => {
+    for (let p = 0; p < n; p++) {
+      if (label[p] !== id) continue;
+      const x = p % width;
+      const y = (p - x) / width;
+      for (let yy = Math.max(0, y - gap); yy <= Math.min(height - 1, y + gap); yy++) {
+        for (let xx = Math.max(0, x - gap); xx <= Math.min(width - 1, x + gap); xx++) {
+          if (label[yy * width + xx] === main) return true;
+        }
+      }
+    }
+    return false;
+  };
+  const out = new Uint8Array(mask);
+  let removed = 0;
+  regions.forEach((r, id) => {
+    if (id === main || !r.touchesEdge || r.size > maxSize || nearMain(id)) return;
+    for (let p = 0; p < n; p++) if (label[p] === id) out[p] = 0;
+    removed += r.size;
+  });
+  return { mask: out, removed };
 }
 
 /**
@@ -274,21 +404,52 @@ function keptRatio(mask: Uint8Array): number {
  * largestOnly = false: only backdrop pixels connected to the image edge are
  * removed, so white areas enclosed by the crest are never touched, and crest
  * parts that are not joined to the main shape (lettering, stars, ribbons) are
- * all kept. Offered only for a plain backdrop whose removed area is stable
- * when the tolerance is loosened (an unstable area means the backdrop colour
- * is bleeding into the artwork).
+ * all kept.
+ *
+ * 1. The backdrop must be plain (assessPlainBackdrop).
+ * 2. Tolerance: the first of 24 / 32 / 40 / 48 after which the removed area
+ *    stops growing. Shaded photo backdrops need a little more than 24; a
+ *    removed area that keeps growing up to 48 means the backdrop colour is
+ *    bleeding into the artwork, and removal is refused.
+ * 3. The removed area must be stable when the tolerance is loosened by 16.
+ * 4. Tiny separate edge artefacts are cleaned up (removeEdgeSpecks).
  */
-export function assessCrestBackgroundRemoval(img: PixelImage, tolerance = DEFAULT_TOLERANCE): BackgroundRemovalOffer {
+export function assessCrestBackgroundRemoval(img: PixelImage): BackgroundRemovalOffer {
   if (hasTransparency(img)) return { offered: false, reason: "already-transparent" };
   const backdrop = estimateBackdrop(img);
-  if (backdrop.spread > 12) return { offered: false, reason: "busy-background" };
-  const mask = computeAutoMask(img, tolerance, backdrop, false);
-  const kept = keptRatio(mask);
+  if (!assessPlainBackdrop(img, backdrop).plain) return { offered: false, reason: "busy-background" };
+
+  const masks = new Map<number, Uint8Array>();
+  const keptAt = (t: number) => {
+    let m = masks.get(t);
+    if (!m) {
+      m = computeAutoMask(img, t, backdrop, false);
+      masks.set(t, m);
+    }
+    return keptRatio(m);
+  };
+
+  const first = keptAt(REMOVAL_TOLERANCES[0]);
+  if (first > 0.97) return { offered: false, reason: "nothing-found" };
+  if (first < 0.1) return { offered: false, reason: "similar-colours" };
+
+  let tolerance: number | null = null;
+  for (const t of REMOVAL_TOLERANCES) {
+    if (keptAt(t) - keptAt(t + 8) < REMOVAL_PLATEAU) {
+      tolerance = t;
+      break;
+    }
+  }
+  if (tolerance === null) return { offered: false, reason: "similar-colours" };
+
+  const kept = keptAt(tolerance);
   if (kept > 0.97) return { offered: false, reason: "nothing-found" };
   if (kept < 0.1) return { offered: false, reason: "similar-colours" };
-  const looser = keptRatio(computeAutoMask(img, Math.min(MAX_TOLERANCE + 16, tolerance + 16), backdrop, false));
+  const looser = keptAt(Math.min(MAX_TOLERANCE + 16, tolerance + 16));
   if ((kept - looser) / kept > 0.04) return { offered: false, reason: "similar-colours" };
-  return { offered: true, mask };
+
+  const cleaned = removeEdgeSpecks(masks.get(tolerance)!, img.width, img.height);
+  return { offered: true, mask: cleaned.mask, tolerance, specksRemoved: cleaned.removed };
 }
 
 /**

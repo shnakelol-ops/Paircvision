@@ -71,6 +71,21 @@ function useBlobUrl(blob: Blob | null): string | null {
   return url;
 }
 
+/** Why "Remove plain background" is not offered, in the coach's terms. */
+export function unavailableRemovalMessage(offer: BackgroundRemovalOffer): string {
+  if (!("reason" in offer)) return "";
+  switch (offer.reason) {
+    case "already-transparent":
+      return "Transparent background kept.";
+    case "busy-background":
+      return "Automatic background removal isn't available: the background isn't plain enough. For the cleanest look, use a PNG with a transparent background.";
+    case "similar-colours":
+      return "Automatic background removal isn't available: parts of the crest are too close in colour to the background. For the cleanest look, use a PNG with a transparent background.";
+    case "nothing-found":
+      return "No plain background was found around this crest, so it will be used as it is.";
+  }
+}
+
 function errorText(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
@@ -309,10 +324,8 @@ export function CrestSheet({ team, onClose, onChanged, codec = browserCrestCodec
                         Check the crest is intact. Leave this off if any part of the crest has disappeared.
                       </p>
                     </>
-                  ) : ready.offer.offered === false && ready.offer.reason === "already-transparent" ? (
-                    <p style={S.hint}>Transparent background kept.</p>
                   ) : (
-                    <p style={S.hint}>For the cleanest look, use a PNG with a transparent background.</p>
+                    <p style={S.hint}>{unavailableRemovalMessage(ready.offer)}</p>
                   )}
                 </>
               )}
