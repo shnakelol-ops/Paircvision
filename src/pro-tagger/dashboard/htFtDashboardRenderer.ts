@@ -29,18 +29,20 @@ export const DASHBOARD_HEIGHT = 1350;
 
 export const DASHBOARD_FONT_STACK = 'system-ui, -apple-system, Roboto, "Segoe UI", Arial, sans-serif';
 
-const MARGIN = 48;
+export const MARGIN = 48;
 const COLUMN_WIDTH = 420;
 const HOME_X = 290;
 const AWAY_X = DASHBOARD_WIDTH - HOME_X;
 
-const TEXT = "#f8fafc";
-const MUTED = "#94a3b8";
-const FAINT = "#64748b";
-const ACCENT = "#22c55e";
-const SECTION = "#93c5fd";
-const PANEL_FILL = "rgba(255,255,255,0.045)";
-const PANEL_STROKE = "rgba(255,255,255,0.09)";
+// Shared with the Match Analysis map pages (matchMapRenderer.ts) so all
+// three pages keep one visual identity.
+export const TEXT = "#f8fafc";
+export const MUTED = "#94a3b8";
+export const FAINT = "#64748b";
+export const ACCENT = "#22c55e";
+export const SECTION = "#93c5fd";
+export const PANEL_FILL = "rgba(255,255,255,0.045)";
+export const PANEL_STROKE = "rgba(255,255,255,0.09)";
 
 /** Minimum team-name size: still readable on a phone without zooming. */
 export const MIN_NAME_SIZE = 28;
@@ -48,7 +50,7 @@ export const MAX_NAME_SIZE = 46;
 /** Two-line names are capped smaller so the second line clears the score. */
 export const MAX_WRAPPED_NAME_SIZE = 36;
 
-function font(weight: number, size: number): string {
+export function font(weight: number, size: number): string {
   return `${weight} ${size}px ${DASHBOARD_FONT_STACK}`;
 }
 
@@ -138,7 +140,7 @@ export function fitText(
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y);
@@ -161,7 +163,7 @@ function panel(ctx: CanvasRenderingContext2D, y: number, h: number): void {
   ctx.stroke();
 }
 
-function text(
+export function text(
   ctx: CanvasRenderingContext2D,
   value: string,
   x: number,
@@ -176,7 +178,7 @@ function text(
 }
 
 /** Centred single line, shrunk then truncated so it never exceeds maxWidth. */
-function fittedLine(
+export function fittedLine(
   ctx: CanvasRenderingContext2D,
   value: string,
   x: number,
@@ -206,7 +208,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, view: HtFtDashboardView):
   ctx.fillRect(DASHBOARD_WIDTH / 2, 0, DASHBOARD_WIDTH / 2, 10);
 }
 
-function drawHeader(ctx: CanvasRenderingContext2D, view: HtFtDashboardView): void {
+export function drawHeader(ctx: CanvasRenderingContext2D, view: Pick<HtFtDashboardView, "stageLabel" | "period">): void {
   // Wordmark: "Páirc" + green "Vision".
   ctx.font = font(800, 42);
   const paircWidth = ctx.measureText("Páirc").width;

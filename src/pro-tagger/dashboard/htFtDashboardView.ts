@@ -35,7 +35,8 @@ export type DashboardMatchState = ProTaggerSavedMatch["restoreContext"]["matchSt
 /** Everything the dashboard needs, from either the live session or a saved match. */
 export type HtFtDashboardSource = {
   events: readonly LoggedMatchEvent[];
-  matchState: DashboardMatchState;
+  /** undefined when the record does not say (older / partial saved matches). */
+  matchState: DashboardMatchState | undefined;
   sport: ProTaggerSport;
   homeTeamName: string;
   awayTeamName: string;
@@ -54,7 +55,7 @@ export type HtFtDashboardSource = {
  * Time) — never while the first half is still being played. FT: only once
  * the match has been marked Full Time.
  */
-export function dashboardAvailability(matchState: DashboardMatchState): { ht: boolean; ft: boolean } {
+export function dashboardAvailability(matchState: DashboardMatchState | null | undefined): { ht: boolean; ft: boolean } {
   return {
     ht: matchState === "HALF_TIME" || matchState === "SECOND_HALF" || matchState === "FULL_TIME",
     ft: matchState === "FULL_TIME",
@@ -71,7 +72,9 @@ function teamLabel(matchName: string, squadName: string | undefined, fallback: s
 export function dashboardSourceFromSavedMatch(m: ProTaggerSavedMatch): HtFtDashboardSource {
   return {
     events: m.events,
-    matchState: m.restoreContext.matchState,
+    // Older or partial records may lack a restore context / match state:
+    // unknown state means no HT / FT dashboard, never a crash or a guess.
+    matchState: m.restoreContext?.matchState,
     sport: m.sport,
     homeTeamName: teamLabel(m.homeTeamName, m.homeSquad?.teamName, "Home"),
     awayTeamName: teamLabel(m.awayTeamName, m.awaySquad?.teamName, "Away"),
@@ -109,7 +112,7 @@ export function dashboardSourceFromLive(
 export const DASHBOARD_BG = "#0b1428";
 
 /** Same fallbacks as the live scoreboard (ProTaggerLiveScreen). */
-const DEFAULT_COLOURS = {
+export const DEFAULT_COLOURS = {
   home: { primary: "#16a34a", secondary: "#ffffff" },
   away: { primary: "#dc2626", secondary: "#ffffff" },
 };
@@ -235,7 +238,7 @@ export function formatDashboardDate(ms: number): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-function buildMetaLine(source: HtFtDashboardSource): string | null {
+export function buildMetaLine(source: Pick<HtFtDashboardSource, "venue" | "matchType" | "createdAt">): string | null {
   const parts: string[] = [];
   const venue = source.venue?.trim();
   if (venue) parts.push(venue);
@@ -338,17 +341,20 @@ export function buildHtFtDashboardView(source: HtFtDashboardSource, period: Dash
   };
 }
 
+/** File-name slug: ASCII-only, fadas folded, at most 30 characters. */
+export function fileSlug(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 30);
+}
+
 /** "ballylanders-v-galbally-ht-dashboard.png" — ASCII-only, fadas folded. */
 export function dashboardFilename(view: Pick<HtFtDashboardView, "period" | "home" | "away">): string {
-  const slug = (s: string) =>
-    s
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 30);
-  const home = slug(view.home.name) || "home";
-  const away = slug(view.away.name) || "away";
+  const home = fileSlug(view.home.name) || "home";
+  const away = fileSlug(view.away.name) || "away";
   return `${home}-v-${away}-${view.period.toLowerCase()}-dashboard.png`;
 }
