@@ -126,6 +126,7 @@ import type { ProvenanceRow } from "./reporting/reportProvenance";
 import { GAME_ORIGIN_EXPLANATION, PART_QUESTIONS } from "./reporting/fullReviewCopy";
 import { isBlockedOrSavedAttempt, normalizeEventsForReporting } from "./reporting/eventTagClassification";
 import { splitPercentages } from "./reporting/splitPercentages";
+import { drawPdfScoreCrests, type PdfScoreCrests } from "./reporting/pdfScoreCrests";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -200,6 +201,12 @@ export type ReviewPdfExportInput = {
    * logged. When absent, first-half vs second-half comparisons are suppressed.
    */
   halfDurationMinutes?: number;
+  /**
+   * Club crests for the page-1 score header, already decoded by the caller
+   * (selected by Saved Team id). Optional and presentation-only: when absent,
+   * or when neither crest is usable, page 1 is drawn exactly as before.
+   */
+  scoreCrests?: PdfScoreCrests;
 };
 
 // ─── Snapshot export types ────────────────────────────────────────────────────
@@ -1001,6 +1008,7 @@ export function makeSummaryPage(
   venueName: string | undefined,
   totalPages: number,
   sport: PitchSport = "gaelic",
+  scoreCrests?: PdfScoreCrests,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_W;
@@ -1084,6 +1092,14 @@ export function makeSummaryPage(
   ctx.stroke();
 
   ctx.restore();
+
+  // Club crests beside the scoreline (optional; never throws; draws nothing without a usable crest).
+  drawPdfScoreCrests(ctx, scoreCrests, {
+    homeCX: forCX,
+    awayCX: oppCX,
+    home: [{ text: truncTeam(homeTeam, 22), font: "bold 44px sans-serif" }, { text: fmtScore(forScore), font: "bold 64px sans-serif" }],
+    away: [{ text: truncTeam(awayTeam, 22), font: "bold 44px sans-serif" }, { text: fmtScore(oppScore), font: "bold 64px sans-serif" }],
+  });
 
   // ── Two-block stats table (starts at y=244) ───────────────────────────────────
   drawSummaryStatsTable(ctx, report, homeTeam, awayTeam, 244, sport);
@@ -7889,7 +7905,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // ── p.1 — Match Summary (cover) ─────────────────────────────────────────────
 
-  const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
+  const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport, input.scoreCrests);
   addCanvasPage(p1, false, "Match Summary");
 
   // ── p.2 — Understanding PáircVision Analytics ────────────────────────────────
@@ -13284,6 +13300,7 @@ function makeSnapshotDashboardPage(
   model: SnapshotDashboardModel,
   pageNum: number,
   totalPages: number,
+  scoreCrests?: PdfScoreCrests,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -13324,6 +13341,14 @@ function makeSnapshotDashboardPage(
   ctx.fillStyle = "#e2e8f0";
   ctx.fillText(snapshotMarginLabel(model), Math.round(CANVAS_W / 2), 244);
   ctx.restore();
+
+  // Club crests beside the scoreline (optional; never throws; draws nothing without a usable crest).
+  drawPdfScoreCrests(ctx, scoreCrests, {
+    homeCX: forCX,
+    awayCX: oppCX,
+    home: [{ text: truncTeam(homeTeam, 22), font: "bold 40px sans-serif" }, { text: fmtDashboardScore(us.score), font: "bold 60px sans-serif" }],
+    away: [{ text: truncTeam(awayTeam, 22), font: "bold 40px sans-serif" }, { text: fmtDashboardScore(them.score), font: "bold 60px sans-serif" }],
+  });
 
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.08)";
@@ -13465,7 +13490,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Dashboard — "What happened in the first half?"
     addPage(
-      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES),
+      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES, input.scoreCrests),
       false,
       "Dashboard",
       "STATISTICS",
@@ -13511,7 +13536,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Dashboard — "What happened?"
     addPage(
-      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES),
+      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES, input.scoreCrests),
       false,
       "Dashboard",
       "STATISTICS",

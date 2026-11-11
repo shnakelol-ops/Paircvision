@@ -29,6 +29,7 @@ import { MatchAnalysisPreview } from "./dashboard/MatchAnalysisPreview";
 import { dashboardAvailability } from "./dashboard/htFtDashboardView";
 import { mapSourceFromLive, type MatchMapSource } from "./dashboard/matchMapPerspective";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
+import { exportWithClubCrests } from "./crest/pdf-crests";
 import { buildLivePdfInput, buildLiveSnapshotInput, toEventStatsReportEvents } from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { buildPendingWinnerSummary } from "./pro-tagger-team-labels";
@@ -1079,7 +1080,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     if (pdfExporting !== null) return;
     if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
     setPdfExporting("ht");
-    void exportSnapshotPdf(buildLiveSnapshotInput(session, events, "HALF_TIME_SNAPSHOT"))
+    void exportWithClubCrests(buildLiveSnapshotInput(session, events, "HALF_TIME_SNAPSHOT"), { home: session.homeSquad, away: session.awaySquad }, exportSnapshotPdf)
       .then(() => {
         setActionsFeedback("✓ HT PDF exported");
         actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
@@ -1098,7 +1099,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     if (pdfExporting !== null) return;
     if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
     setPdfExporting("full");
-    void exportReviewPdf(buildLivePdfInput(session, events))
+    void exportWithClubCrests(buildLivePdfInput(session, events), { home: session.homeSquad, away: session.awaySquad }, exportReviewPdf)
       .then(() => {
         setActionsFeedback("✓ Review PDF exported");
         actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
@@ -1117,7 +1118,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     if (pdfExporting !== null) return;
     if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
     setPdfExporting("ft");
-    void exportSnapshotPdf(buildLiveSnapshotInput(session, events, "FULL_TIME_SNAPSHOT"))
+    void exportWithClubCrests(buildLiveSnapshotInput(session, events, "FULL_TIME_SNAPSHOT"), { home: session.homeSquad, away: session.awaySquad }, exportSnapshotPdf)
       .then(() => {
         setActionsFeedback("✓ FT PDF exported");
         actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
