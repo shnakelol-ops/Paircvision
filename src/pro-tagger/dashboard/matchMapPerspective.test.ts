@@ -8,6 +8,8 @@ import {
   mapSourceFromLive,
   mapSourceFromSavedMatch,
   normaliseAttackDirection,
+  pitchThirdBands,
+  pitchThirdOf,
   plotEvent,
   projectToPortrait,
   recordedClockSeconds,
@@ -283,4 +285,53 @@ describe("fixture facts the audit relied on", () => {
 
 it("ev() helper builds a plottable event (sanity)", () => {
   expect(plotEvent(ev("POINT", "FOR", { nx: 0.9, ny: 0.2 }), "FOR", "RIGHT").point).not.toBeNull();
+});
+
+describe("pitch thirds (presentation)", () => {
+  it("bands are equal thirds of the length, attacking at the top", () => {
+    const b = pitchThirdBands();
+    expect(b.map((x) => x.third)).toEqual(["ATTACKING", "MIDDLE", "DEFENSIVE"]);
+    expect(b[0].top).toBe(0);
+    expect(b[2].bottom).toBe(1);
+    for (const x of b) expect(x.bottom - x.top).toBeCloseTo(1 / 3, 12);
+  });
+
+  it("classifies by distance from the attacking end, across the full width", () => {
+    for (const px of [0, 0.25, 0.5, 0.99, 1]) {
+      expect(pitchThirdOf({ px, py: 0 })).toBe("ATTACKING");
+      expect(pitchThirdOf({ px, py: 0.2 })).toBe("ATTACKING");
+      expect(pitchThirdOf({ px, py: 0.5 })).toBe("MIDDLE");
+      expect(pitchThirdOf({ px, py: 0.8 })).toBe("DEFENSIVE");
+      expect(pitchThirdOf({ px, py: 1 })).toBe("DEFENSIVE");
+    }
+  });
+
+  it("points exactly on a boundary are deterministic: they belong to the third nearer the attacking goal", () => {
+    const [att, mid] = pitchThirdBands();
+    expect(pitchThirdOf({ px: 0.5, py: att.bottom })).toBe("ATTACKING");
+    expect(pitchThirdOf({ px: 0.5, py: mid.bottom })).toBe("MIDDLE");
+    // Same answer on every call, and just past each boundary flips as expected.
+    for (let i = 0; i < 5; i++) expect(pitchThirdOf({ px: 0.1, py: att.bottom })).toBe("ATTACKING");
+    expect(pitchThirdOf({ px: 0.5, py: att.bottom + 1e-9 })).toBe("MIDDLE");
+    expect(pitchThirdOf({ px: 0.5, py: mid.bottom + 1e-9 })).toBe("DEFENSIVE");
+  });
+
+  it("matches the zone engine's thirds for a team attacking right (the Snapshot's zone labels)", () => {
+    // In the attacking-right frame nx 0.9 is the attacking third, 0.5 middle, 0.1 defensive.
+    for (const [nx, want] of [[0.9, "ATTACKING"], [0.5, "MIDDLE"], [0.1, "DEFENSIVE"]] as const) {
+      expect(pitchThirdOf(projectToPortrait({ nx, ny: 0.4 }))).toBe(want);
+    }
+  });
+
+  it("the same physical spot is in each team's opposite third, in either half; HT and FT agree", () => {
+    // Near the nx = 1 end, Home attacking RIGHT in the first half.
+    const spot = { nx: 0.9, ny: 0.3, teamSide: "FOR" as const };
+    const third = (side: MapTeamSide, period: "1H" | "2H") => pitchThirdOf(plotEvent({ ...spot, period }, side, "RIGHT").point!);
+    expect(third("FOR", "1H")).toBe("ATTACKING");
+    expect(third("OPP", "1H")).toBe("DEFENSIVE");
+    // After changing ends the same physical spot is Home's defensive third.
+    expect(third("FOR", "2H")).toBe("DEFENSIVE");
+    expect(third("OPP", "2H")).toBe("ATTACKING");
+    // The thirds depend only on (side, half, direction) — never on the HT / FT scope.
+  });
 });

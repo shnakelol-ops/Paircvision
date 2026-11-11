@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { projectToPortrait, mapSourceFromSavedMatch, type MapTeamSide } from "./matchMapPerspective";
+import { pitchThirdOf, projectToPortrait, mapSourceFromSavedMatch, type MapTeamSide } from "./matchMapPerspective";
 import {
   MAP_HEIGHT,
-  attackArrowPlacement,
+  PITCH_THIRD_LABELS,
+  drawPitchThirds,
+  pitchThirdLabelBoxes,
+  thirdLabelMaxWidth,
+  pitchThirdRects,
   MAP_WIDTH,
   SHOT_MARKER_COLOURS,
   TURNOVER_LOST_COLOUR,
@@ -28,7 +32,7 @@ import { buildTurnoverMapView } from "./turnoverMapView";
 // deterministic measureText (0.55 × font size per character).
 const CHAR_W = 0.55;
 type Op = { op: string; args: number[]; fill: string; stroke: string };
-type TextCall = { text: string; left: number; right: number; top: number; y: number; size: number };
+type TextCall = { text: string; left: number; right: number; top: number; y: number; size: number; color: string; font: string };
 
 function sizeOf(font: string): number {
   const m = /(\d+(?:\.\d+)?)px/.exec(font);
@@ -60,14 +64,15 @@ function recordingContext() {
         // Reads bottom-to-top from the (translated) origin, left-aligned, middle baseline.
         const ox = tf.tx + y;
         const oy = tf.ty - x;
-        texts.push({ text: t, left: ox - size / 2, right: ox + size / 2, top: oy - width, y: oy, size });
+        texts.push({ text: t, left: ox - size / 2, right: ox + size / 2, top: oy - width, y: oy, size, color: String(state.fillStyle), font: String(state.font) });
         return;
       }
       const left = tf.tx + (state.textAlign === "center" ? x - width / 2 : state.textAlign === "right" ? x - width : x);
-      texts.push({ text: t, left, right: left + width, top: tf.ty + y - size, y: tf.ty + y, size });
+      texts.push({ text: t, left, right: left + width, top: tf.ty + y - size, y: tf.ty + y, size, color: String(state.fillStyle), font: String(state.font) });
     },
     createLinearGradient: () => ({ addColorStop: () => undefined }),
     arc: record("arc"),
+    fillRect: record("fillRect"),
     moveTo: record("moveTo"),
     fill: record("fill"),
     stroke: record("stroke"),
@@ -259,7 +264,7 @@ describe("page content", () => {
     const t = allTexts((ctx) => drawTurnoverMap(ctx, view));
     for (const s of [
       "Ballylanders", "TURNOVER MAP", "HALF-TIME", "3", "5", "−2", "WON BY · 3", "LOST BY · 5",
-      "Tackle", "Opposition KP Error", "Dispossessed", "HP Error", "KP Error", "Ballylanders attacking ↑ · first half",
+      "Tackle", "Opposition KP Error", "Dispossessed", "HP Error", "KP Error", "Team-relative view · first half",
     ]) expect(t).toContain(s);
     expect(t.some((s) => s.startsWith("1st "))).toBe(false); // no half split at HT
   });
@@ -374,97 +379,215 @@ describe("honesty notes are never cut short", () => {
   });
 });
 
-// ─── Attacking-direction arrow ────────────────────────────────────────────────
+// ─── No external arrow on either map ─────────────────────────────────────────
 
-/** The white arrow: the moveTo of its tip right of the pitch, followed by a white fill. */
-function arrowOps(ops: Op[], frameRight: number) {
-  const idx = ops.findIndex((o, i) => o.op === "moveTo" && o.args[0] > frameRight && ops.slice(i).find((n) => n.op === "fill")?.fill === "#ffffff");
-  return idx < 0 ? null : { tipX: ops[idx].args[0], tipY: ops[idx].args[1] };
-}
-
-describe("attacking-direction arrow", () => {
-  const pages = [
-    ["Scoring", (src: ReturnType<typeof ftSrc>, side: MapTeamSide, scope: "HT" | "FT") => {
-      const v = buildScoringMapView(src, side, scope);
-      return { draw: (ctx: CanvasRenderingContext2D) => drawScoringMap(ctx, v), pyMax: scoringPitchExtent(v.markers.map((m) => m.point)), points: v.markers.map((m) => m.point) };
-    }],
-    ["Turnover", (src: ReturnType<typeof ftSrc>, side: MapTeamSide, scope: "HT" | "FT") => {
-      const v = buildTurnoverMapView(src, side, scope);
-      return { draw: (ctx: CanvasRenderingContext2D) => drawTurnoverMap(ctx, v), pyMax: 1, points: v.markers.map((m) => m.point) };
-    }],
-  ] as const;
-
-  for (const [name, build] of pages) {
-    for (const [label, src, scope] of [["HT", htSrc, "HT"], ["FT", ftSrc, "FT"]] as const) {
+describe("no external attacking-direction arrow", () => {
+  it("neither map draws the white arrow or a vertical ATTACKING label (Home / Away, HT / FT)", () => {
+    for (const [src, scope] of [[htSrc, "HT"], [ftSrc, "FT"]] as const) {
       for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
-        it(`${name} Map · ${label} · ${side}: white ↑ outside the right touchline, clear of markers and the image edge`, () => {
-          const page = build(src(), side, scope);
+        for (const draw of [
+          (ctx: CanvasRenderingContext2D) => drawScoringMap(ctx, buildScoringMapView(src(), side, scope)),
+          (ctx: CanvasRenderingContext2D) => drawTurnoverMap(ctx, buildTurnoverMapView(src(), side, scope)),
+        ]) {
           const { ctx, ops, texts } = recordingContext();
-          page.draw(ctx);
-          const frame = recordedFrame(ops, page.pyMax);
-          const right = frame.x + frame.w;
-          const arrow = arrowOps(ops, right);
-          expect(arrow).not.toBeNull();
-          // Head: the tip is the arrow's highest point, so it points up — for either team.
-          const head = ops.slice(ops.findIndex((o) => o.op === "moveTo" && o.args[0] === arrow!.tipX && o.args[1] === arrow!.tipY));
-          expect(arrow!.tipX - 13).toBeGreaterThanOrEqual(right + 8);
-          expect(arrow!.tipX + 13).toBeLessThanOrEqual(MAP_WIDTH - 8);
-          expect(arrow!.tipY).toBeGreaterThanOrEqual(frame.y);
-          expect(arrow!.tipY + 132).toBeLessThanOrEqual(frame.y + frame.h);
-          expect(head.length).toBeGreaterThan(0);
-          // Label: inside the image, beside (not on) the pitch, reading upwards below the arrow.
-          const lbl = texts.find((t) => t.text === "ATTACKING")!;
-          expect(lbl).toBeTruthy();
-          expect(lbl.left).toBeGreaterThan(right);
-          expect(lbl.right).toBeLessThanOrEqual(MAP_WIDTH);
-          expect(lbl.top).toBeGreaterThan(arrow!.tipY + 132);
-          expect(lbl.y).toBeLessThanOrEqual(frame.y + frame.h);
-          // No marker overlaps the arrow block.
-          const blockTop = arrow!.tipY;
-          const blockBottom = lbl.y;
-          for (const pt of page.points) {
-            if (!pt) continue;
-            const c = framePoint(frame, pt);
-            const reachesColumn = c.x + 22.5 > arrow!.tipX - 13 - 8;
-            const overlapsVertically = c.y + 22.5 > blockTop - 8 && c.y - 22.5 < blockBottom + 8;
-            expect(reachesColumn && overlapsVertically).toBe(false);
-          }
-        });
+          draw(ctx);
+          expect(texts.some((t) => t.text === "ATTACKING")).toBe(false);
+          expect(ops.some((o) => o.op === "fill" && o.fill === "#ffffff")).toBe(false);
+          // Nothing drawn in the gutter right of the pitch.
+          expect(ops.some((o) => o.op === "moveTo" && o.args[0] > 1040)).toBe(false);
+        }
       }
+    }
+  });
+});
+
+// ─── Turnover Map pitch thirds ────────────────────────────────────────────────
+
+describe("Turnover Map pitch thirds", () => {
+  const THIRD_LABEL_TEXTS = Object.values(PITCH_THIRD_LABELS);
+
+  for (const [label, src, scope] of [["HT", htSrc, "HT"], ["FT", ftSrc, "FT"]] as const) {
+    for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+      it(`${label} · ${side}: three labelled bands in the same orientation; every marker sits in its own third`, () => {
+        const view = buildTurnoverMapView(src(), side, scope);
+        const { ctx, ops, texts } = recordingContext();
+        drawTurnoverMap(ctx, view);
+        const frame = recordedFrame(ops, 1);
+        const rects = pitchThirdRects(frame);
+        // Attacking at the top, defensive at the bottom, equal thirds of the pitch length.
+        expect(rects.map((r) => r.third)).toEqual(["ATTACKING", "MIDDLE", "DEFENSIVE"]);
+        expect(rects[0].y0).toBeCloseTo(frame.y, 6);
+        expect(rects[2].y1).toBeCloseTo(frame.y + frame.h, 6);
+        for (const r of rects) expect(r.y1 - r.y0).toBeCloseTo(frame.h / 3, 6);
+        // Labels: each once, horizontal, inside the pitch near its left edge, inside its own band.
+        for (const r of rects) {
+          const t = texts.filter((x) => x.text === PITCH_THIRD_LABELS[r.third]);
+          expect(t).toHaveLength(1);
+          expect(t[0].left).toBeGreaterThan(frame.x);
+          expect(t[0].right).toBeLessThan(frame.x + frame.w);
+          expect(t[0].top).toBeGreaterThan(r.y0);
+          expect(t[0].y).toBeLessThan(r.y1);
+        }
+        // The shaded bands are drawn before any marker, so markers stay on top.
+        const lastBand = ops.map((o) => o.op).lastIndexOf("fillRect");
+        const firstMarkerFill = ops.findIndex((o) => o.op === "fill" && (o.fill === TURNOVER_WON_COLOUR || o.fill === TURNOVER_LOST_COLOUR));
+        expect(lastBand).toBeLessThan(firstMarkerFill);
+        // Every marker is drawn inside the band pitchThirdOf assigns it.
+        for (const m of view.markers) {
+          const y = framePoint(frame, m.point!).y;
+          const band = rects.find((r) => r.third === pitchThirdOf(m.point!))!;
+          expect(y).toBeGreaterThanOrEqual(band.y0 - 1e-9);
+          expect(y).toBeLessThanOrEqual(band.y1 + 1e-9);
+        }
+        expect(texts.map((x) => x.text)).toContain(scope === "HT" ? "Team-relative view · first half" : "Team-relative view · both halves combined");
+        expect(texts.some((x) => /attacking ↑/.test(x.text))).toBe(false);
+      });
     }
   }
 
-  it("is not drawn when the attack direction is not recorded (positions shown as captured)", () => {
-    const base = savedMatch({ events: HT_FIXTURE.events });
-    const src = mapSourceFromSavedMatch({ ...base, restoreContext: { ...base.restoreContext, firstHalfAttackingDirection: undefined as never } });
-    for (const draw of [
-      (ctx: CanvasRenderingContext2D) => drawScoringMap(ctx, buildScoringMapView(src, "FOR", "FT")),
-      (ctx: CanvasRenderingContext2D) => drawTurnoverMap(ctx, buildTurnoverMapView(src, "OPP", "FT")),
-    ]) {
-      const { ctx, ops, texts } = recordingContext();
-      draw(ctx);
-      expect(texts.some((t) => t.text === "ATTACKING")).toBe(false);
-      expect(texts.map((t) => t.text).join(" ")).toContain("Attack direction not recorded");
-      expect(ops.some((o) => o.op === "fill" && o.fill === "#ffffff")).toBe(false);
+  it("labels move to a clear corner of their third rather than sit under a marker", () => {
+    const frame = pitchFrame({ x: 560, y: 374, w: 470, h: 752 }, 1);
+    const width = () => 180;
+    const free = pitchThirdLabelBoxes(frame, [], width);
+    expect(free.map((b) => [b.x, b.y])).toEqual(pitchThirdRects(frame).map((r) => [frame.x + 14, r.y0 + 14])); // top-left by default
+    const onTopLeft = { x: free[2].x + 40, y: free[2].y + 16 };
+    const moved = pitchThirdLabelBoxes(frame, [onTopLeft], width);
+    expect(moved[0]).toEqual(free[0]);
+    expect(moved[2]).not.toEqual(free[2]);
+    const reach = 15 * 1.18 + 3;
+    const b = moved[2];
+    expect(onTopLeft.x + reach <= b.x || onTopLeft.x - reach >= b.x + b.w || onTopLeft.y + reach <= b.y || onTopLeft.y - reach >= b.y + b.h).toBe(true);
+    // Deterministic.
+    expect(pitchThirdLabelBoxes(frame, [onTopLeft], width)).toEqual(moved);
+  });
+
+  it("real fixtures: no third label sits under a marker (Home / Away, HT / FT)", () => {
+    for (const [src, scope] of [[htSrc, "HT"], [ftSrc, "FT"]] as const) {
+      for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+        const view = buildTurnoverMapView(src(), side, scope);
+        const { ctx, ops, texts } = recordingContext();
+        drawTurnoverMap(ctx, view);
+        const frame = recordedFrame(ops, 1);
+        const pts = view.markers.map((m) => framePoint(frame, m.point!));
+        for (const label of Object.values(PITCH_THIRD_LABELS)) {
+          const t = texts.find((x) => x.text === label)!;
+          for (const p of pts) {
+            const clear = p.x + 21 <= t.left - 8 || p.x - 21 >= t.right + 8 || p.y + 21 <= t.top - 2 || p.y - 21 >= t.y + 6;
+            expect(clear).toBe(true);
+          }
+        }
+      }
     }
   });
 
-  it("moves along the touchline to avoid a marker sitting on it, and gives way when there is no room", () => {
-    const frame = pitchFrame({ x: 432, y: 374, w: 600, h: 700 }, 0.6);
-    const right = frame.x + frame.w;
-    const mid = frame.y + frame.h / 2;
-    const free = attackArrowPlacement(frame, [], 80)!;
-    expect(free.cx).toBe(right + (MAP_WIDTH - right) / 2);
-    expect((free.tipY + free.label!.bottom) / 2).toBeCloseTo(mid, 6); // centred on the pitch
-    const onLine = { x: right, y: mid };
-    const moved = attackArrowPlacement(frame, [onLine], 80)!;
-    expect(moved.label!.bottom <= onLine.y - 30 || moved.tipY >= onLine.y + 30).toBe(true);
-    // A marker well inside the pitch never moves the arrow.
-    expect(attackArrowPlacement(frame, [{ x: right - 60, y: mid }], 80)).toEqual(free);
-    // Markers all along the touchline: nowhere clear, so no arrow.
-    const wall = Array.from({ length: 40 }, (_, i) => ({ x: right, y: frame.y + (i * frame.h) / 39 }));
-    expect(attackArrowPlacement(frame, wall, 80)).toBeNull();
-    // No gutter: no arrow.
-    expect(attackArrowPlacement({ ...frame, x: MAP_WIDTH - frame.w - 10 }, [], 80)).toBeNull();
+  it("labels are faint watermarks: medium weight, small, 35% white, no badge behind them (Home / Away, HT / FT)", () => {
+    for (const [src, scope] of [[htSrc, "HT"], [ftSrc, "FT"]] as const) {
+      for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+        const { ctx, ops, texts } = recordingContext();
+        drawTurnoverMap(ctx, buildTurnoverMapView(src(), side, scope));
+        const labels = texts.filter((t) => THIRD_LABEL_TEXTS.includes(t.text));
+        expect(labels).toHaveLength(3);
+        for (const t of labels) {
+          expect(t.color).toBe("rgba(255,255,255,0.35)");
+          expect(t.size).toBe(16); // 27% smaller than the previous 22 px
+          expect(t.font.startsWith("500 ")).toBe(true);
+        }
+        // No dark pill / badge fill anywhere on the page.
+        expect(ops.some((o) => o.op === "fill" && o.fill === "rgba(11,20,40,0.42)")).toBe(false);
+      }
+    }
+  });
+
+  it("labels never run into the goal-area boxes (every sport, Home / Away, HT / FT)", async () => {
+    const { getPitchConfig } = await import("../../core/pitch/pitch-config");
+    for (const sport of ["gaelic", "ladies_football", "hurling", "camogie"] as const) {
+      const pitchSport = sport === "ladies_football" ? "gaelic" : sport;
+      const boxes = getPitchConfig(pitchSport).markings.filter((m) => m.kind === "rect" && m.h < 90) as { y: number; h: number }[];
+      const leftSide = Math.min(...boxes.map((b) => b.y)) / 100;
+      const rightSide = Math.max(...boxes.map((b) => b.y + b.h)) / 100;
+      for (const [label, match] of [["HT", htFixtureMatch()], ["FT", ftFixtureMatch()]] as const) {
+        const src = mapSourceFromSavedMatch({ ...match, sport });
+        for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+          const { ctx, ops, texts } = recordingContext();
+          drawTurnoverMap(ctx, buildTurnoverMapView(src, side, label));
+          const frame = recordedFrame(ops, 1);
+          for (const t of texts.filter((x) => THIRD_LABEL_TEXTS.includes(x.text))) {
+            const onLeft = t.left < frame.x + frame.w / 2;
+            if (onLeft) expect(t.right).toBeLessThanOrEqual(frame.x + leftSide * frame.w - 8);
+            else expect(t.left).toBeGreaterThanOrEqual(frame.x + rightSide * frame.w + 8 - 0.5);
+          }
+        }
+      }
+    }
+  });
+
+  it("on a narrower pitch the labels shrink (never below 13 px) rather than cross a marking", () => {
+    // Real Turnover Map pitches are ~470 px wide (labels fit at 16 px). At 370 px the
+    // longest label needs a smaller size; 13 px is the floor for tiny pitches.
+    const frame = pitchFrame({ x: 0, y: 0, w: 370, h: 592 }, 1);
+    const { ctx, texts } = recordingContext();
+    drawPitchThirds(ctx, frame, [], "gaelic");
+    const labels = texts.filter((t) => THIRD_LABEL_TEXTS.includes(t.text));
+    expect(labels).toHaveLength(3);
+    const maxW = thirdLabelMaxWidth(frame, "gaelic");
+    for (const t of labels) {
+      expect(t.size).toBeLessThan(16);
+      expect(t.size).toBeGreaterThanOrEqual(13);
+      expect(t.right - t.left).toBeLessThanOrEqual(maxW);
+    }
+    expect(new Set(labels.map((t) => t.size)).size).toBe(1); // one consistent style
+  });
+
+  it("labels sit in the same corner of every third unless a marker is there", () => {
+    const view = buildTurnoverMapView(htSrc(), "OPP", "HT");
+    const { ctx, ops, texts } = recordingContext();
+    drawTurnoverMap(ctx, { ...view, markers: [] });
+    const frame = recordedFrame(ops, 1);
+    const rects = pitchThirdRects(frame);
+    for (const r of rects) {
+      const t = texts.find((x) => x.text === PITCH_THIRD_LABELS[r.third])!;
+      expect(t.left).toBeCloseTo(frame.x + 14 + 8, 6);
+      expect(t.y).toBeCloseTo(r.y0 + 14 + 18, 6);
+    }
+  });
+
+  it("markers and totals are identical with and without the overlay", () => {
+    for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+      const view = buildTurnoverMapView(ftSrc(), side, "FT");
+      const withThirds = recordingContext();
+      drawTurnoverMap(withThirds.ctx, view);
+      const without = recordingContext();
+      drawTurnoverMap(without.ctx, { ...view, orientation: { ...view.orientation, status: "AS_CAPTURED", homeFirstHalfDirection: null } });
+      // Each marker fill, paired with the path start (arc / moveTo) just before it.
+      const markerOps = (ops: Op[]) => ops.flatMap((o, i) => {
+        if (o.op !== "fill" || ![TURNOVER_WON_COLOUR, TURNOVER_LOST_COLOUR].includes(o.fill)) return [];
+        const start = ops.slice(0, i).reverse().find((p) => p.op === "arc" || p.op === "moveTo")!;
+        return [{ fill: o.fill, at: start.args.slice(0, 2) }];
+      });
+      expect(markerOps(withThirds.ops)).toEqual(markerOps(without.ops));
+      const figures = (t: TextCall[]) => t.filter((x) => /^[+−]?\d+$/.test(x.text)).map((x) => x.text);
+      expect(figures(withThirds.texts)).toEqual(figures(without.texts));
+    }
+  });
+
+  it("missing attack direction: no third bands or labels, and an explanatory caption", () => {
+    const base = savedMatch({ events: HT_FIXTURE.events });
+    const src = mapSourceFromSavedMatch({ ...base, restoreContext: { ...base.restoreContext, firstHalfAttackingDirection: undefined as never } });
+    const view = buildTurnoverMapView(src, "OPP", "FT");
+    const { ctx, ops, texts } = recordingContext();
+    drawTurnoverMap(ctx, view);
+    expect(texts.some((t) => THIRD_LABEL_TEXTS.includes(t.text))).toBe(false);
+    expect(ops.some((o) => o.op === "fillRect" && /rgba\((255,255,255,0\.07|0,0,0,0\.12)\)/.test(o.fill))).toBe(false);
+    expect(texts.map((t) => t.text).join(" ")).toContain("Attack direction not recorded — positions shown as captured; thirds not shown");
+  });
+
+  it("the Scoring Map never gets the thirds overlay or the Turnover caption", () => {
+    for (const side of ["FOR", "OPP"] as MapTeamSide[]) {
+      const { ctx, texts } = recordingContext();
+      drawScoringMap(ctx, buildScoringMapView(ftSrc(), side, "FT"));
+      expect(texts.some((t) => THIRD_LABEL_TEXTS.includes(t.text))).toBe(false);
+      expect(texts.some((t) => t.text.startsWith("Team-relative view"))).toBe(false);
+      expect(texts.map((t) => t.text)).toContain(`${side === "FOR" ? "Ballylanders" : "Galbally"} attacking ↑ · both halves`);
+    }
   });
 });

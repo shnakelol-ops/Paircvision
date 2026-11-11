@@ -59,7 +59,7 @@ import {
   readableTextOn,
   teamMonogram,
 } from "./htFtDashboardView";
-import type { MapPoint, MapScope, MapScoreline, MapTeamIdentity } from "./matchMapPerspective";
+import { pitchThirdBands, type MapPoint, type MapScope, type MapScoreline, type MapTeamIdentity, type PitchThird } from "./matchMapPerspective";
 import type { ScoringMapView, ShotOutcome } from "./scoringMapView";
 import type { TurnoverMapView, TurnoverOutcomeForTeam } from "./turnoverMapView";
 
@@ -376,130 +376,145 @@ export function drawTurnoverMarker(ctx: CanvasRenderingContext2D, outcome: Turno
 }
 
 const MARKER_R = 15;
-/** Furthest a drawn marker reaches from its centre (goal disc 1.3 × r plus its outline). */
-const MARKER_REACH = MARKER_R * 1.3 + 3;
 
-// ─── Attacking-direction arrow ───────────────────────────────────────────────
+// ─── Pitch thirds overlay (Turnover Map) ─────────────────────────────────────
 //
-// A white ↑ in the gutter just outside the right-hand touchline. The map is
-// always drawn in the selected team's attacking frame (matchMapPerspective.ts),
-// so whenever that frame is in use the arrow points up — for Home and Away,
-// at HT and FT. With no recorded direction the map shows positions as
-// captured, so no arrow is drawn (the fallback caption explains instead).
+// Three subtle bands across the full pitch — attacking third at the top,
+// defensive at the bottom — so a coach sees at a glance where possession was
+// won and lost. Bands come from pitchThirdBands() (the zone engine's thirds),
+// so a marker's band always matches pitchThirdOf(). Drawn under the markers;
+// only for a team-relative map, never for positions shown as captured.
 
-const ARROW_HEAD_W = 26;
-const ARROW_HEAD_H = 26;
-const ARROW_SHAFT_W = 9;
-const ARROW_LEN = 132;
-const ARROW_MIN_LEN = 64;
-const ARROW_LABEL = "ATTACKING";
-const ARROW_LABEL_SIZE = 15;
-const ARROW_LABEL_GAP = 12;
-/** Clear space kept between the arrow and the touchline, the image edge and any marker. */
-const ARROW_CLEARANCE = 8;
-
-export type AttackArrowPlacement = {
-  /** Centre line of the arrow column. */
-  cx: number;
-  /** Tip of the arrow head (the top). */
-  tipY: number;
-  /** Bottom of the shaft. */
-  tailY: number;
-  /** Rotated "ATTACKING" label below the shaft (reads bottom to top), or null when it doesn't fit. */
-  label: { top: number; bottom: number } | null;
+export const PITCH_THIRD_LABELS: Record<PitchThird, string> = {
+  ATTACKING: "ATTACKING THIRD",
+  MIDDLE: "MIDDLE THIRD",
+  DEFENSIVE: "DEFENSIVE THIRD",
 };
+const THIRD_SHADE: Record<PitchThird, string | null> = {
+  ATTACKING: "rgba(255,255,255,0.07)",
+  MIDDLE: null,
+  DEFENSIVE: "rgba(0,0,0,0.12)",
+};
+/** Watermark labels: soft, medium-weight, semi-transparent — never competing with the markers. */
+const THIRD_LABEL_SIZE = 16;
+const THIRD_LABEL_WEIGHT = 500;
+export const THIRD_LABEL_COLOUR = "rgba(255,255,255,0.35)";
+const THIRD_LABEL_MIN_SIZE = 13;
+/** Kept clear between a label and the goal-area rectangles' sides. */
+const THIRD_LABEL_MARKING_GAP = 8;
 
 /**
- * Where the arrow goes: centred in the gutter between the pitch's right edge
- * and the image edge, as near the middle of the pitch's length as possible
- * while staying clear of any marker that reaches into the gutter, and within
- * the pitch's height. null when the gutter is too narrow or no clear slot
- * exists — the arrow is then simply not drawn.
+ * Widest a corner label may be without running into the goal-area
+ * rectangles at either end: the corner labels sit between the touchline and
+ * those rectangles' sides. Read from the sport's own pitch markings
+ * (landscape y across the width → portrait x).
  */
-export function attackArrowPlacement(
-  frame: PitchFrame,
-  markers: readonly { x: number; y: number }[],
-  labelWidth: number,
-): AttackArrowPlacement | null {
-  const right = frame.x + frame.w;
-  const gutter = MAP_WIDTH - right;
-  if (gutter < ARROW_HEAD_W + ARROW_CLEARANCE * 2) return null;
-  const cx = right + gutter / 2;
-  const columnLeft = cx - ARROW_HEAD_W / 2 - ARROW_CLEARANCE;
-  // Vertical bands blocked by markers that reach into the arrow column.
-  const blocked = markers
-    .filter((m) => m.x + MARKER_REACH > columnLeft)
-    .map((m) => [m.y - MARKER_REACH - ARROW_CLEARANCE, m.y + MARKER_REACH + ARROW_CLEARANCE] as const);
-  const clear = (top: number, bottom: number) => blocked.every(([a, b]) => bottom <= a || top >= b);
-
-  const minTop = frame.y + ARROW_CLEARANCE;
-  const maxBottom = frame.y + frame.h - ARROW_CLEARANCE;
-  const mid = frame.y + frame.h / 2;
-  const options: { len: number; withLabel: boolean }[] = [
-    { len: ARROW_LEN, withLabel: true },
-    { len: ARROW_LEN, withLabel: false },
-    { len: ARROW_MIN_LEN, withLabel: false },
-  ];
-  for (const { len, withLabel } of options) {
-    const height = len + (withLabel ? ARROW_LABEL_GAP + labelWidth : 0);
-    if (height > maxBottom - minTop) continue;
-    // Nearest clear slot to the middle: try 0, +4, −4, +8, −8 … px.
-    for (let step = 0; step <= frame.h; step += 4) {
-      for (const dy of step === 0 ? [0] : [step, -step]) {
-        const top = mid - height / 2 + dy;
-        const bottom = top + height;
-        if (top < minTop || bottom > maxBottom || !clear(top, bottom)) continue;
-        return {
-          cx,
-          tipY: top,
-          tailY: top + len,
-          label: withLabel ? { top: top + len + ARROW_LABEL_GAP, bottom } : null,
-        };
-      }
-    }
-  }
-  return null;
+export function thirdLabelMaxWidth(frame: PitchFrame, sport: ProTaggerSport): number {
+  const endBoxes = getPitchConfig(pitchSportFor(sport)).markings.filter(
+    (m): m is Extract<PitchMarking, { kind: "rect" }> => m.kind === "rect" && m.h < PITCH_WID * 0.9,
+  );
+  const nearestSide = endBoxes.length > 0 ? Math.min(...endBoxes.map((b) => b.y)) : PITCH_WID / 2;
+  const sideX = (nearestSide / PITCH_WID) * frame.w; // distance from the touchline to the box side
+  return sideX - THIRD_LABEL_INSET - THIRD_LABEL_PAD_X - THIRD_LABEL_MARKING_GAP;
 }
 
-/** Draws the arrow (and its label) when the map is in the selected team's attacking frame. */
-export function drawAttackArrow(
+/** Canvas y-ranges of the three bands on this pitch frame (top to bottom). */
+export function pitchThirdRects(frame: PitchFrame): { third: PitchThird; y0: number; y1: number }[] {
+  const toY = (py: number) => frame.y + (Math.min(py, frame.pyMax) / frame.pyMax) * frame.h;
+  return pitchThirdBands()
+    .filter((b) => b.top < frame.pyMax)
+    .map((b) => ({ third: b.third, y0: toY(b.top), y1: toY(b.bottom) }));
+}
+
+/** Clear space kept around a label's text when checking it against markers. */
+const THIRD_LABEL_PAD_X = 8;
+const THIRD_LABEL_BOX_H = 24;
+const THIRD_LABEL_INSET = 14;
+/** Furthest a turnover marker reaches from its centre (diamond 1.18 × r plus outline). */
+const TURNOVER_MARKER_REACH = MARKER_R * 1.18 + 3;
+
+/**
+ * Where each third's label pill goes: the first corner of its band (top-left,
+ * bottom-left, top-right, bottom-right) that no marker reaches into, else the
+ * corner with the fewest — so a label is never hidden by a marker when there
+ * is any clear corner. Deterministic for a given set of markers.
+ */
+export function pitchThirdLabelBoxes(
+  frame: PitchFrame,
+  markers: readonly { x: number; y: number }[],
+  labelWidth: (third: PitchThird) => number,
+): { third: PitchThird; x: number; y: number; w: number; h: number }[] {
+  return pitchThirdRects(frame).map((r) => {
+    const w = labelWidth(r.third) + THIRD_LABEL_PAD_X * 2;
+    const left = frame.x + THIRD_LABEL_INSET;
+    const right = frame.x + frame.w - THIRD_LABEL_INSET - w;
+    const top = r.y0 + THIRD_LABEL_INSET;
+    const bottom = r.y1 - THIRD_LABEL_INSET - THIRD_LABEL_BOX_H;
+    const corners = [[left, top], [left, bottom], [right, top], [right, bottom]] as const;
+    const hits = ([x, y]: readonly [number, number]) =>
+      markers.filter((m) =>
+        m.x + TURNOVER_MARKER_REACH > x && m.x - TURNOVER_MARKER_REACH < x + w &&
+        m.y + TURNOVER_MARKER_REACH > y && m.y - TURNOVER_MARKER_REACH < y + THIRD_LABEL_BOX_H).length;
+    let best = corners[0];
+    for (const c of corners) {
+      if (hits(c) === 0) { best = c; break; }
+      if (hits(c) < hits(best)) best = c;
+    }
+    return { third: r.third, x: best[0], y: best[1], w, h: THIRD_LABEL_BOX_H };
+  });
+}
+
+export function drawPitchThirds(
   ctx: CanvasRenderingContext2D,
   frame: PitchFrame,
-  orientation: { status: "ATTACKING_UP" | "AS_CAPTURED" },
-  markers: readonly { x: number; y: number }[],
-): AttackArrowPlacement | null {
-  if (orientation.status !== "ATTACKING_UP") return null;
+  markers: readonly { x: number; y: number }[] = [],
+  sport: ProTaggerSport = "gaelic",
+): void {
+  const rects = pitchThirdRects(frame);
   ctx.save();
-  ctx.font = font(800, ARROW_LABEL_SIZE);
-  const labelWidth = ctx.measureText(ARROW_LABEL).width;
-  const placement = attackArrowPlacement(frame, markers, labelWidth);
-  if (placement) {
-    const { cx, tipY, tailY, label } = placement;
-    const baseY = tipY + ARROW_HEAD_H;
-    ctx.beginPath();
-    ctx.moveTo(cx, tipY);
-    ctx.lineTo(cx + ARROW_HEAD_W / 2, baseY);
-    ctx.lineTo(cx + ARROW_SHAFT_W / 2, baseY);
-    ctx.lineTo(cx + ARROW_SHAFT_W / 2, tailY);
-    ctx.lineTo(cx - ARROW_SHAFT_W / 2, tailY);
-    ctx.lineTo(cx - ARROW_SHAFT_W / 2, baseY);
-    ctx.lineTo(cx - ARROW_HEAD_W / 2, baseY);
-    ctx.closePath();
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    if (label) {
-      // Rotated to read upwards, the same way the arrow points.
-      ctx.translate(cx, label.bottom);
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillStyle = "rgba(255,255,255,0.72)";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(ARROW_LABEL, 0, 0);
-      ctx.textBaseline = "alphabetic";
+  roundRectPath(ctx, frame.x, frame.y, frame.w, frame.h, 18);
+  ctx.clip();
+  for (const r of rects) {
+    const shade = THIRD_SHADE[r.third];
+    if (shade) {
+      ctx.fillStyle = shade;
+      ctx.fillRect(frame.x, r.y0, frame.w, r.y1 - r.y0);
     }
   }
+  // Soft dashed boundaries between the thirds — lighter than the pitch lines.
+  ctx.strokeStyle = "rgba(255,255,255,0.32)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 10]);
+  for (const r of rects.slice(1)) {
+    ctx.beginPath();
+    ctx.moveTo(frame.x, r.y0);
+    ctx.lineTo(frame.x + frame.w, r.y0);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Faint watermark labels (no badge): the same corner of every third
+  // (top-left), moved to another corner only to stay clear of a marker.
+  // One style for all three labels: light tracking at 16 px if the longest
+  // label fits beside the goal-area box, else no tracking, else a smaller size.
+  const maxW = thirdLabelMaxWidth(frame, sport);
+  const tracks = "letterSpacing" in ctx;
+  const widest = (size: number, tracking: string) => {
+    ctx.font = font(THIRD_LABEL_WEIGHT, size);
+    if (tracks) ctx.letterSpacing = tracking;
+    return Math.max(...Object.values(PITCH_THIRD_LABELS).map((l) => ctx.measureText(l).width));
+  };
+  let size = THIRD_LABEL_SIZE;
+  let tracking = "1px";
+  if (widest(size, tracking) > maxW) tracking = "0px";
+  while (size > THIRD_LABEL_MIN_SIZE && widest(size, tracking) > maxW) size -= 1;
+  widest(size, tracking); // leave the chosen font / tracking set for measuring and drawing
+  const boxes = pitchThirdLabelBoxes(frame, markers, (third) => ctx.measureText(PITCH_THIRD_LABELS[third]).width);
+  for (const b of boxes) {
+    text(ctx, PITCH_THIRD_LABELS[b.third], b.x + THIRD_LABEL_PAD_X, b.y + 18, {
+      weight: THIRD_LABEL_WEIGHT, size, color: THIRD_LABEL_COLOUR,
+    });
+  }
   ctx.restore();
-  return placement;
 }
 
 // ─── Page chrome (shared by both maps) ───────────────────────────────────────
@@ -732,13 +747,11 @@ export function drawScoringMap(ctx: CanvasRenderingContext2D, view: ScoringMapVi
   drawPortraitPitch(ctx, view.sport, frame);
   // Misses first, scores on top: a score is never hidden under a miss.
   const order = (o: ShotOutcome) => (o === "GOAL" ? 3 : o === "TWO_POINT" || o === "POINT" ? 2 : 1);
-  const shotPoints = view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : []));
   for (const m of [...view.markers].sort((a, b) => order(a.outcome) - order(b.outcome))) {
     if (!m.point) continue;
     const p = framePoint(frame, m.point);
     drawShotMarker(ctx, m.outcome, p.x, p.y, MARKER_R);
   }
-  drawAttackArrow(ctx, frame, view.orientation, shotPoints);
   if (view.shooting.totalShots === 0) drawEmptyPitchMessage(ctx, frame, "No shots recorded");
   const legendBottom = drawLegend(
     ctx,
@@ -833,12 +846,16 @@ export function drawTurnoverMap(ctx: CanvasRenderingContext2D, view: TurnoverMap
   const rightX = MAP_WIDTH - MARGIN - pitchW;
   const frame = pitchFrame({ x: rightX, y: BODY_TOP, w: pitchW, h: pitchMaxH }, 1);
   drawPortraitPitch(ctx, view.sport, frame);
+  // Thirds only when the map is team-relative: with positions shown as
+  // captured, "attacking" / "defensive" would not be verified.
+  if (view.orientation.status === "ATTACKING_UP") {
+    drawPitchThirds(ctx, frame, view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : [])), view.sport);
+  }
   for (const m of view.markers) {
     if (!m.point) continue;
     const p = framePoint(frame, m.point);
     drawTurnoverMarker(ctx, m.outcome, p.x, p.y, MARKER_R);
   }
-  drawAttackArrow(ctx, frame, view.orientation, view.markers.flatMap((m) => (m.point ? [framePoint(frame, m.point)] : [])));
   if (view.totals.total === 0) drawEmptyPitchMessage(ctx, frame, "No turnovers recorded");
   const legendBottom = drawLegend(
     ctx,
