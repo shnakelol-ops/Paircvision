@@ -15,11 +15,19 @@ import {
   buildNewTeam,
 } from "./pro-tagger-team-storage";
 import type { SavedTeam } from "./pro-tagger-team-storage";
+import { CrestSheet } from "./crest/CrestSheet";
+import { CrestThumb } from "./crest/CrestThumb";
+import type { CrestCodec } from "./crest/crest-image";
+import { isCrestStorageSupported, type CrestBackend } from "./crest/crest-store";
 
 interface Props {
   session: ProTaggerSession;
   onBack: () => void;
   onStart: (session: ProTaggerSession) => void;
+  /** Test seams for club crest storage; the app uses the defaults. */
+  crestBackend?: CrestBackend;
+  crestCodec?: CrestCodec;
+  crestStorageSupported?: boolean;
 }
 
 type TeamTab   = "home" | "away";
@@ -32,7 +40,14 @@ function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
+/** A Saved Team whose players are all unnamed (e.g. an opposition club saved only for its name and crest). */
+export function isClubOnlyTeam(team: Pick<SavedTeam, "players">): boolean {
+  return team.players.every((p) => !p.name || p.name.trim() === "");
+}
+
+type CrestTarget = { id: string; teamName: string };
+
+export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, crestCodec, crestStorageSupported }: Props) {
   const [activeTab, setActiveTab]     = useState<TeamTab>("home");
   const [homePlayers, setHomePlayers] = useState<ProTaggerSquadPlayer[]>(
     () => session.homeSquad.players.map((p) => ({ ...p })),
@@ -63,6 +78,12 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   const [saveOpen, setSaveOpen]       = useState(false);
   const [saveName, setSaveName]       = useState("");
   const [saveStatus, setSaveStatus]   = useState<SaveStatus>("idle");
+  const [lastSavedTeam, setLastSavedTeam] = useState<CrestTarget | null>(null);
+
+  // Club crests (stored separately in IndexedDB, keyed by Saved Team id)
+  const crestsSupported = crestStorageSupported ?? isCrestStorageSupported();
+  const [crestTarget, setCrestTarget]   = useState<CrestTarget | null>(null);
+  const [crestVersion, setCrestVersion] = useState(0);
 
   // Visual lineup summary (read-only) is shown by default; the existing
   // name-editing list — unchanged — is collapsed behind this toggle. There
@@ -130,6 +151,9 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     setLibraryOpen(false);
   }
 
+  // Deleting a Saved Team deliberately leaves its club crest in the crest
+  // store: matches that reference this team id keep showing its crest. Only
+  // "Remove crest" deletes a crest, and there is no automatic cleanup.
   function removeTeam(id: string) {
     deleteTeam(id);
     setSavedTeams((prev) => prev.filter((t) => t.id !== id));
@@ -141,6 +165,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     const fallback = activeLabel === "Home" || activeLabel === "Away" ? "" : activeLabel;
     setSaveName(fallback);
     setSaveStatus("idle");
+    setLastSavedTeam(null);
     setSaveOpen(true);
   }
 
@@ -165,7 +190,10 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     const result = saveTeamResult(team);
     if (result.ok) {
       setSaveStatus("success");
-      setTimeout(() => setSaveOpen(false), 900);
+      setLastSavedTeam({ id: team.id, teamName: team.teamName });
+      // With crest storage available the prompt stays open so the coach can
+      // tap "Add crest" for the team just saved; otherwise it closes as before.
+      if (!crestsSupported) setTimeout(() => setSaveOpen(false), 900);
     } else {
       setSaveStatus(result.reason);
     }
@@ -354,11 +382,30 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
               <div style={S.teamList}>
                 {savedTeams.map((team) => (
                   <div key={team.id} style={S.teamRow}>
-                    <div style={{ ...S.colourDot, background: team.primaryColour }} />
+                    <div style={S.crestSlot}>
+                      <CrestThumb
+                        teamId={team.id}
+                        teamName={team.teamName}
+                        version={crestVersion}
+                        backend={crestsSupported ? crestBackend : null}
+                        fallback={<div style={{ ...S.colourDot, background: team.primaryColour }} />}
+                      />
+                    </div>
                     <div style={S.teamInfo}>
                       <span style={S.teamRowName}>{team.teamName}</span>
-                      <span style={S.teamRowMeta}>{team.players.length} players</span>
+                      <span style={S.teamRowMeta}>
+                        {isClubOnlyTeam(team) ? "Club only" : `${team.players.length} players`}
+                      </span>
                     </div>
+                    {crestsSupported && (
+                      <button
+                        style={S.crestBtn}
+                        aria-label={`Crest for ${team.teamName}`}
+                        onClick={() => setCrestTarget({ id: team.id, teamName: team.teamName })}
+                      >
+                        Crest
+                      </button>
+                    )}
                     <button style={S.loadBtn} onClick={() => loadTeam(team)}>Load</button>
                     <button style={S.deleteBtn} onClick={() => removeTeam(team.id)}>✕</button>
                   </div>
@@ -395,18 +442,45 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
             {saveStatus === "success" && (
               <span style={S.saveSuccess}>Saved!</span>
             )}
-            <div style={S.saveActions}>
-              <button style={S.cancelBtn} onClick={closeSave}>Cancel</button>
-              <button
-                style={{ ...S.confirmBtn, ...(saveStatus === "success" ? S.confirmDone : {}) }}
-                onClick={confirmSave}
-                disabled={saveStatus === "success"}
-              >
-                {saveStatus === "success" ? "Saved!" : "Save"}
-              </button>
-            </div>
+            {saveStatus === "success" && crestsSupported && lastSavedTeam ? (
+              <div style={S.saveActions}>
+                <button style={S.cancelBtn} onClick={closeSave}>Done</button>
+                <button
+                  style={S.confirmBtn}
+                  onClick={() => {
+                    setCrestTarget(lastSavedTeam);
+                    setSaveOpen(false);
+                  }}
+                >
+                  Add crest
+                </button>
+              </div>
+            ) : (
+              <div style={S.saveActions}>
+                <button style={S.cancelBtn} onClick={closeSave}>Cancel</button>
+                <button
+                  style={{ ...S.confirmBtn, ...(saveStatus === "success" ? S.confirmDone : {}) }}
+                  onClick={confirmSave}
+                  disabled={saveStatus === "success"}
+                >
+                  {saveStatus === "success" ? "Saved!" : "Save"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      )}
+
+      {/* ── Club crest sheet (above the library) ───────────────────── */}
+      {crestTarget && (
+        <CrestSheet
+          team={crestTarget}
+          onClose={() => setCrestTarget(null)}
+          onChanged={() => setCrestVersion((v) => v + 1)}
+          backend={crestBackend}
+          codec={crestCodec}
+          storageSupported={crestsSupported}
+        />
       )}
 
     </div>
@@ -773,6 +847,27 @@ const S: Record<string, CSSProperties> = {
     gap: 10,
     padding: "11px 16px",
     borderBottom: "1px solid #17324a",
+  },
+  crestSlot: {
+    width: 26,
+    height: 26,
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  crestBtn: {
+    background: "transparent",
+    border: "1px solid #1c3a52",
+    borderRadius: 6,
+    color: "#9fb6ca",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
   },
   colourDot: {
     width: 14,
