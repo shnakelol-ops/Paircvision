@@ -69,6 +69,10 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
   const [awaySquadTeamName, setAwaySquadTeamName] = useState<string | undefined>(
     session.awaySquad.teamName,
   );
+  // Saved Team link per side (club crest identity). Set only by loading a
+  // Saved Team or saving this squad as one — never from a name.
+  const [homeSavedTeamId, setHomeSavedTeamId] = useState<string | undefined>(session.homeSquad.savedTeamId);
+  const [awaySavedTeamId, setAwaySavedTeamId] = useState<string | undefined>(session.awaySquad.savedTeamId);
 
   // Library overlay
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -145,9 +149,11 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
     const playerSetter = activeTab === "home" ? setHomePlayers : setAwayPlayers;
     const colourSetter = activeTab === "home" ? setHomeColours : setAwayColours;
     const nameSetter   = activeTab === "home" ? setHomeSquadTeamName : setAwaySquadTeamName;
+    const linkSetter   = activeTab === "home" ? setHomeSavedTeamId : setAwaySavedTeamId;
     playerSetter(squad.players);
     colourSetter({ primary: team.primaryColour, secondary: team.secondaryColour });
     nameSetter(team.teamName);
+    linkSetter(team.id);
     setLibraryOpen(false);
   }
 
@@ -191,6 +197,8 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
     if (result.ok) {
       setSaveStatus("success");
       setLastSavedTeam({ id: team.id, teamName: team.teamName });
+      // This squad is now that Saved Team: link it so the match uses its crest.
+      (activeTab === "home" ? setHomeSavedTeamId : setAwaySavedTeamId)(team.id);
       // With crest storage available the prompt stays open so the coach can
       // tap "Add crest" for the team just saved; otherwise it closes as before.
       if (!crestsSupported) setTimeout(() => setSaveOpen(false), 900);
@@ -216,6 +224,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
         primaryColour:   homeColours.primary,
         secondaryColour: homeColours.secondary,
         teamName:        homeSquadTeamName,
+        savedTeamId:     homeSavedTeamId,
       },
       awaySquad: {
         ...session.awaySquad,
@@ -223,6 +232,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
         primaryColour:   awayColours.primary,
         secondaryColour: awayColours.secondary,
         teamName:        awaySquadTeamName,
+        savedTeamId:     awaySavedTeamId,
       },
     });
   }

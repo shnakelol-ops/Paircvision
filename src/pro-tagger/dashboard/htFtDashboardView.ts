@@ -46,6 +46,9 @@ export type HtFtDashboardSource = {
   createdAt?: number;
   homeColours: { primary?: string; secondary?: string };
   awayColours: { primary?: string; secondary?: string };
+  /** Saved Team ids for club crests (ProTaggerSquad.savedTeamId); undefined = monogram. */
+  homeSavedTeamId?: string;
+  awaySavedTeamId?: string;
 };
 
 // ─── Availability ─────────────────────────────────────────────────────────────
@@ -68,6 +71,12 @@ function teamLabel(matchName: string, squadName: string | undefined, fallback: s
   return matchName.trim() || squadName?.trim() || fallback;
 }
 
+/** A usable Saved Team id, or undefined (older matches, malformed records). */
+export function savedTeamIdOf(squad: { savedTeamId?: unknown } | null | undefined): string | undefined {
+  const id = squad?.savedTeamId;
+  return typeof id === "string" && id.trim().length > 0 ? id : undefined;
+}
+
 /** Saved match (Review) → dashboard source. Reads only; never copies back. */
 export function dashboardSourceFromSavedMatch(m: ProTaggerSavedMatch): HtFtDashboardSource {
   return {
@@ -83,6 +92,8 @@ export function dashboardSourceFromSavedMatch(m: ProTaggerSavedMatch): HtFtDashb
     createdAt: m.createdAt,
     homeColours: { primary: m.homeSquad?.primaryColour, secondary: m.homeSquad?.secondaryColour },
     awayColours: { primary: m.awaySquad?.primaryColour, secondary: m.awaySquad?.secondaryColour },
+    homeSavedTeamId: savedTeamIdOf(m.homeSquad),
+    awaySavedTeamId: savedTeamIdOf(m.awaySquad),
   };
 }
 
@@ -103,6 +114,8 @@ export function dashboardSourceFromLive(
     createdAt: session.createdAt,
     homeColours: { primary: session.homeSquad?.primaryColour, secondary: session.homeSquad?.secondaryColour },
     awayColours: { primary: session.awaySquad?.primaryColour, secondary: session.awaySquad?.secondaryColour },
+    homeSavedTeamId: savedTeamIdOf(session.homeSquad),
+    awaySavedTeamId: savedTeamIdOf(session.awaySquad),
   };
 }
 
