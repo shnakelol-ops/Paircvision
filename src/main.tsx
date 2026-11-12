@@ -40,6 +40,10 @@ const INTERNAL_SLATE_RUGBY_PATH = "/internal/slate/rugby";
 // only. Lazy so the screen and its video engine load only when opened.
 const INTERNAL_MATCH_CLIPPER_PATH = "/internal/match-clipper";
 const MatchClipperScreen = lazy(() => import("./internal-match-clipper/MatchClipperScreen"));
+// Montage Lab — Stage 0 phone feasibility harness for Match Montage V2. Internal
+// launcher only; lazy so it costs nothing unless opened.
+const INTERNAL_MONTAGE_LAB_PATH = "/internal/montage-lab";
+const MontageLabScreen = lazy(() => import("./internal-montage-lab/MontageLabScreen"));
 // Goal View prototype — internal testing only (the experimental branch
 // preview, or a dev build with ?goalview). The internal-tools gate is a literal
 // false in production builds, so the route and its lazy chunk are compiled out
@@ -193,6 +197,13 @@ function pickRootComponent() {
     return () => (
       <Suspense fallback={null}>
         <MatchClipperScreen />
+      </Suspense>
+    );
+  }
+  if (normalizedPath === INTERNAL_MONTAGE_LAB_PATH) {
+    return () => (
+      <Suspense fallback={null}>
+        <MontageLabScreen />
       </Suspense>
     );
   }
