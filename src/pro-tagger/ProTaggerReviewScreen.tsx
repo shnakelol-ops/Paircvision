@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type { CSSProperties } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
+import { exportWithClubCrests } from "./crest/pdf-crests";
 import {
   proTaggerMatchToPdfInput,
   proTaggerMatchToSnapshotInput,
@@ -502,7 +503,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     if (busy) return;
     setExporting("full");
     setResult("full", { ok: true, text: "" });
-    void exportReviewPdf(proTaggerMatchToPdfInput(match))
+    void exportWithClubCrests(proTaggerMatchToPdfInput(match), { home: match.homeSquad, away: match.awaySquad }, exportReviewPdf)
       .then(() => setResult("full", { ok: true, text: "Exported" }))
       .catch(() => setResult("full", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
@@ -512,7 +513,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     if (busy || !hasFirstHalfEvents) return;
     setExporting("ht");
     setResult("ht", { ok: true, text: "" });
-    void exportSnapshotPdf(proTaggerMatchToSnapshotInput(match, "HALF_TIME_SNAPSHOT"))
+    void exportWithClubCrests(proTaggerMatchToSnapshotInput(match, "HALF_TIME_SNAPSHOT"), { home: match.homeSquad, away: match.awaySquad }, exportSnapshotPdf)
       .then(() => setResult("ht", { ok: true, text: "Exported" }))
       .catch(() => setResult("ht", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
@@ -522,7 +523,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     if (busy) return;
     setExporting("ft");
     setResult("ft", { ok: true, text: "" });
-    void exportSnapshotPdf(proTaggerMatchToSnapshotInput(match, "FULL_TIME_SNAPSHOT"))
+    void exportWithClubCrests(proTaggerMatchToSnapshotInput(match, "FULL_TIME_SNAPSHOT"), { home: match.homeSquad, away: match.awaySquad }, exportSnapshotPdf)
       .then(() => setResult("ft", { ok: true, text: "Exported" }))
       .catch(() => setResult("ft", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
