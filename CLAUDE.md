@@ -72,6 +72,26 @@ Event families: Restart Won = cyan `#22d3ee` · Restart Lost = pink `#fb7185`
 
 These colours are canonical. Do not introduce page-specific overrides.
 
+### Approved exception — Event Stats Scoring Map markers (LOCKED)
+
+The Match Analysis **Scoring Map** (pitch, legend, Scoring Shots / Missed
+panels and its exported PNG — `src/pro-tagger/dashboard/matchMapRenderer.ts`)
+uses its own approved marker set. It applies to the Scoring Map only; PDFs,
+HT/FT snapshots, the live canvas and all other surfaces keep the table above.
+
+| Outcome         | Scoring Map marker                                    |
+|-----------------|-------------------------------------------------------|
+| Goal            | Orange `#F28C28` regular hexagon (vertices top/bottom), same footprint as a Point |
+| Point           | Light green `#4ade80` circle                          |
+| Two Pointer     | Bright yellow `#FFDF00` circle                        |
+| Wide            | Red `#ef4444` X                                       |
+| Dropped short   | Wine `#641E39` circle with a white downward arrow     |
+| Hit the post    | Grey `#94a3b8` ring with a centre dot                 |
+| Blocked / saved | Grey `#94a3b8` filled circle                          |
+
+Shot markers use `SHOT_MARKER_R` with the thin dark outline `#0b1428`.
+Do not change these without explicit design approval.
+
 ---
 
 ## Terminology (LOCKED)
