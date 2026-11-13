@@ -3,11 +3,14 @@ import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupPitchBackground, LINEUP_PITCH_PORTRAIT_VIEWBOX } from "./ProTaggerLineupPitchBackground";
 import { LINEUP_FORMATION_POSITIONS } from "./pro-tagger-lineup-geometry";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+import type { JerseyKit } from "./jersey-kit";
 
 interface Props {
   players: readonly ProTaggerSquadPlayer[];
   primary: string;
   secondary: string;
+  /** Jersey Designer V2 kit, forwarded to every tile (starters, subs and empty slots alike). */
+  kit?: JerseyKit | null;
 }
 
 // Final player-tile tuning pass: the jersey now reads as a small
@@ -18,16 +21,20 @@ interface Props {
 // without dominating the tile. Subs shrink by the same ratio (27 -> 22,
 // 17 -> 13). Formation coordinates are untouched.
 //
-// Final number positioning tune: the approved jersey size stays put, but the
-// starter number was still slightly too large at 15px, so it drops to 13px
-// (its vertical re-centring onto the shirt body lives in
-// ProTaggerLineupJerseyTile.tsx's shared numberText style, which applies to
-// starters and subs alike). Subs' own number size is left as-is — it wasn't
-// flagged as oversized and this pass is scoped to the starter number only.
+// Jersey Designer V2: numbers sit below the jersey as compact SVG text
+// (PlayerNumber in ProTaggerLineupJerseyTile.tsx), 12px for starters and
+// subs alike — 1px smaller than the earlier on-shirt 13px.
 const STARTER_JERSEY_SIZE = 26;
-const STARTER_NUMBER_FONT_SIZE = 13;
+const STARTER_NUMBER_FONT_SIZE = 12;
 const SUB_JERSEY_SIZE = 22;
-const SUB_NUMBER_FONT_SIZE = 13;
+const SUB_NUMBER_FONT_SIZE = 12;
+
+// Player numbers sit below the jersey (Jersey Designer V2), so a tile is
+// taller than its jersey. Each slot is anchored on the JERSEY's centre, not
+// the whole tile's, so every shirt stays exactly on its formation point and
+// the number and optional name hang below it — the same for named and
+// unnamed players. Height follows ProTaggerJersey's 20:22 aspect ratio.
+const STARTER_JERSEY_HALF_HEIGHT = Math.round((STARTER_JERSEY_SIZE * 22) / 20) / 2;
 
 export type LineupSlots = {
   starters: ProTaggerSquadPlayer[];
@@ -68,7 +75,7 @@ export function deriveLineupSlots(players: readonly ProTaggerSquadPlayer[]): Lin
 // data, no React) rather than being computed here, so a future non-React
 // renderer (e.g. a canvas-based share-card export) can lay out the identical
 // team sheet from that one shared source of truth — see that file's header.
-export function ProTaggerLineupFormation({ players, primary, secondary }: Props) {
+export function ProTaggerLineupFormation({ players, primary, secondary, kit }: Props) {
   const { starters, subs } = deriveLineupSlots(players);
 
   return (
@@ -87,10 +94,10 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
           return (
             <div
               key={p?.id ?? `empty-${slot}`}
-              style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%` }}
+              style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%`, transform: `translate(-50%, -${STARTER_JERSEY_HALF_HEIGHT}px)` }}
             >
               <ProTaggerLineupJerseyTile
-                player={p} primary={primary} secondary={secondary}
+                player={p} primary={primary} secondary={secondary} kit={kit}
                 size={STARTER_JERSEY_SIZE} numberFontSize={STARTER_NUMBER_FONT_SIZE}
               />
             </div>
@@ -104,7 +111,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
           <div style={S.subsRow}>
             {subs.map((p) => (
               <ProTaggerLineupJerseyTile
-                key={p.id} player={p} primary={primary} secondary={secondary}
+                key={p.id} player={p} primary={primary} secondary={secondary} kit={kit}
                 size={SUB_JERSEY_SIZE} numberFontSize={SUB_NUMBER_FONT_SIZE}
               />
             ))}

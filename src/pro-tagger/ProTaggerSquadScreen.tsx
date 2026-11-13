@@ -3,6 +3,15 @@ import type { CSSProperties, ChangeEvent } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
+import { ProTaggerJersey } from "./ProTaggerJersey";
+import {
+  JERSEY_PATTERNS,
+  JERSEY_PATTERN_LABEL,
+  resolveJerseyKit,
+  storedJerseyKit,
+  type JerseyKit,
+  type JerseyTrim,
+} from "./jersey-kit";
 import type {
   ProTaggerSession,
   ProTaggerSquadPlayer,
@@ -73,6 +82,14 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
   // Saved Team or saving this squad as one — never from a name.
   const [homeSavedTeamId, setHomeSavedTeamId] = useState<string | undefined>(session.homeSquad.savedTeamId);
   const [awaySavedTeamId, setAwaySavedTeamId] = useState<string | undefined>(session.awaySquad.savedTeamId);
+  // Jersey Designer V2 kit per side. Undefined = this squad has never had a
+  // kit (renders the default and is written back as absent, so untouched
+  // legacy squads are not rewritten). Set by editing it or loading a team.
+  const [homeKit, setHomeKit] = useState<JerseyKit | undefined>(() => storedJerseyKit(session.homeSquad.kit));
+  const [awayKit, setAwayKit] = useState<JerseyKit | undefined>(() => storedJerseyKit(session.awaySquad.kit));
+  // Jersey Design panel: collapsed by default, shared across both tabs like
+  // the name editor below — a display preference, not squad data.
+  const [showKitDesigner, setShowKitDesigner] = useState(false);
 
   // Library overlay
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -101,6 +118,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
   const activeLabel   = activeTab === "home" ? homeLabel : awayLabel;
   const players       = activeTab === "home" ? homePlayers : awayPlayers;
   const activeColours = activeTab === "home" ? homeColours : awayColours;
+  const activeKit     = resolveJerseyKit(activeTab === "home" ? homeKit : awayKit);
 
   const setName = useCallback(
     (team: TeamTab, index: number, name: string) => {
@@ -120,6 +138,11 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
     } else {
       setAwayColours((prev) => ({ ...prev, [type]: value }));
     }
+  }
+
+  function handleKitChange(change: Partial<JerseyKit>) {
+    const setter = activeTab === "home" ? setHomeKit : setAwayKit;
+    setter((prev) => ({ ...resolveJerseyKit(prev), ...change }));
   }
 
   function addPlayer() {
@@ -150,10 +173,12 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
     const colourSetter = activeTab === "home" ? setHomeColours : setAwayColours;
     const nameSetter   = activeTab === "home" ? setHomeSquadTeamName : setAwaySquadTeamName;
     const linkSetter   = activeTab === "home" ? setHomeSavedTeamId : setAwaySavedTeamId;
+    const kitSetter    = activeTab === "home" ? setHomeKit : setAwayKit;
     playerSetter(squad.players);
     colourSetter({ primary: team.primaryColour, secondary: team.secondaryColour });
     nameSetter(team.teamName);
     linkSetter(team.id);
+    kitSetter(squad.kit);
     setLibraryOpen(false);
   }
 
@@ -182,10 +207,12 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
   function confirmSave() {
     const currentPlayers = activeTab === "home" ? homePlayers : awayPlayers;
     const currentColours = activeTab === "home" ? homeColours : awayColours;
+    const currentKit     = activeTab === "home" ? homeKit : awayKit;
     const team = buildNewTeam({
       teamName:        saveName.trim() || activeLabel,
       primaryColour:   currentColours.primary,
       secondaryColour: currentColours.secondary,
+      kit:             currentKit,
       players: currentPlayers.map((p) => ({
         id:       p.id,
         number:   p.number,
@@ -225,6 +252,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
         secondaryColour: homeColours.secondary,
         teamName:        homeSquadTeamName,
         savedTeamId:     homeSavedTeamId,
+        kit:             homeKit,
       },
       awaySquad: {
         ...session.awaySquad,
@@ -233,6 +261,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
         secondaryColour: awayColours.secondary,
         teamName:        awaySquadTeamName,
         savedTeamId:     awaySavedTeamId,
+        kit:             awayKit,
       },
     });
   }
@@ -279,11 +308,6 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
           <div style={S.colourSection}>
             <span style={S.colourHeading}>Team Colours</span>
             <div style={S.colourRow}>
-              <ProTaggerMiniJersey
-                primary={activeColours.primary}
-                secondary={activeColours.secondary}
-                size={32}
-              />
               {(["primary", "secondary"] as const).map((type) => (
                 <div key={type} style={S.colourItem}>
                   <span style={S.colourItemLabel}>
@@ -304,7 +328,80 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
                   />
                 </div>
               ))}
+              {/* Jersey Design toggle — sits where the old 32px colour preview
+                  jersey was, so the collapsed panel costs no extra height. */}
+              <button
+                type="button"
+                style={S.kitToggle}
+                onClick={() => setShowKitDesigner((v) => !v)}
+                aria-expanded={showKitDesigner}
+                aria-label="Jersey design"
+              >
+                <ProTaggerMiniJersey
+                  primary={activeColours.primary}
+                  secondary={activeColours.secondary}
+                  kit={activeKit}
+                  size={24}
+                />
+                <span>Jersey</span>
+                <span style={S.editNamesChevron}>{showKitDesigner ? "▲" : "▼"}</span>
+              </button>
             </div>
+
+            {/* Jersey Design panel — six pattern buttons drawn in this team's own
+                colours, plus sleeve and collar colour. The Starting XV below
+                is the live preview. Presentation only. */}
+            {showKitDesigner && (
+              <div style={S.kitPanel}>
+                <div style={S.patternGrid} role="group" aria-label="Jersey pattern">
+                  {JERSEY_PATTERNS.map((pattern) => {
+                    const on = activeKit.pattern === pattern;
+                    return (
+                      <button
+                        key={pattern}
+                        type="button"
+                        style={{ ...S.patternBtn, ...(on ? S.patternBtnOn : {}) }}
+                        aria-pressed={on}
+                        onClick={() => handleKitChange({ pattern })}
+                      >
+                        <ProTaggerJersey
+                          primary={activeColours.primary}
+                          secondary={activeColours.secondary}
+                          kit={{ ...activeKit, pattern }}
+                          size={28}
+                        />
+                        <span>{JERSEY_PATTERN_LABEL[pattern]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {(["sleeves", "collar"] as const).map((part) => {
+                  const partLabel = part === "sleeves" ? "Sleeves" : "Collar";
+                  return (
+                    <div key={part} style={S.trimRow}>
+                      <span style={S.trimLabel}>{partLabel}</span>
+                      <div style={S.trimSeg} role="group" aria-label={`${partLabel} colour`}>
+                        {(["primary", "secondary"] as const).map((trim: JerseyTrim) => {
+                          const on = activeKit[part] === trim;
+                          return (
+                            <button
+                              key={trim}
+                              type="button"
+                              style={{ ...S.trimBtn, ...(on ? S.trimBtnOn : {}) }}
+                              aria-pressed={on}
+                              onClick={() => handleKitChange({ [part]: trim })}
+                            >
+                              <span style={{ ...S.trimChip, background: activeColours[trim] }} />
+                              {trim === "primary" ? "Primary" : "Secondary"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Visual lineup summary — read-only team sheet, Starting 15 in the
@@ -314,6 +411,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
             players={players}
             primary={activeColours.primary}
             secondary={activeColours.secondary}
+            kit={activeKit}
           />
 
           {/* Edit Player Names — collapsed by default. Expanding reveals the
@@ -642,6 +740,7 @@ const S: Record<string, CSSProperties> = {
   },
   colourRow: {
     display: "flex",
+    flexWrap: "wrap",
     gap: 12,
     alignItems: "center",
   },
@@ -666,6 +765,105 @@ const S: Record<string, CSSProperties> = {
     padding: 0,
     WebkitAppearance: "none",
   } as CSSProperties,
+
+  // ── Jersey Design (Jersey Designer V2) ────────────────────────────────────
+  kitToggle: {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 40,
+    background: "#17324a",
+    border: "1px solid #1c3a52",
+    borderRadius: 8,
+    color: "#dce8f4",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "0 10px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  kitPanel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginTop: 10,
+  },
+  patternGrid: {
+    display: "grid",
+    // Six patterns as two rows of three: wide enough for "Chest Band" at
+    // 360px phone widths, and every button stays well above 48px tall.
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 6,
+  },
+  patternBtn: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    minHeight: 58,
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
+    borderRadius: 10,
+    color: "#a9bdd0",
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "6px 2px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  patternBtnOn: {
+    borderColor: "#2ea043",
+    background: "#0e2d22",
+    color: "#dce8f4",
+  },
+  trimRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  trimLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#7a95ad",
+  },
+  trimSeg: {
+    display: "flex",
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
+    borderRadius: 9,
+    padding: 2,
+  },
+  trimBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 40,
+    padding: "0 12px",
+    border: "none",
+    borderRadius: 7,
+    background: "transparent",
+    color: "#a9bdd0",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  trimBtnOn: {
+    background: "#17405e",
+    color: "#ffffff",
+  },
+  trimChip: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+    boxShadow: "0 0 0 1px #3b5b77",
+  },
 
   // ── Player rows ──────────────────────────────────────────────────────────
   row: {

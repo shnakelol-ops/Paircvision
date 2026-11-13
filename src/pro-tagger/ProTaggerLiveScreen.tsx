@@ -1198,6 +1198,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const awayColour          = session.awaySquad.primaryColour   ?? "#dc2626";
   const homeSecondaryColour = session.homeSquad.secondaryColour ?? "#ffffff";
   const awaySecondaryColour = session.awaySquad.secondaryColour ?? "#ffffff";
+  // Jersey Designer V2 — presentation only, passed straight to the jersey
+  // icons and the Player Picker. Never read by capture logic.
+  const homeKit             = session.homeSquad.kit;
+  const awayKit             = session.awaySquad.kit;
 
   // Subs sheet derived values (computed once per render, outside JSX).
   const subSquadState    = subTeam === "home" ? homeSquadState : awaySquadState;
@@ -1276,13 +1280,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
         {/* Scoreboard row */}
         <div style={S.scoreboard}>
-          <ProTaggerMiniJersey primary={homeColour} secondary={homeSecondaryColour} size={18} />
+          <ProTaggerMiniJersey primary={homeColour} secondary={homeSecondaryColour} kit={homeKit} size={18} />
           <span style={{ ...S.teamNameLeft, color: homeColour }}>{homeLabel}</span>
           <span style={S.scoreLeft}>{fmtGP(forScore.goals, forScore.points)}</span>
           <span style={S.vSep}>v</span>
           <span style={S.scoreRight}>{fmtGP(oppScore.goals, oppScore.points)}</span>
           <span style={{ ...S.teamNameRight, color: awayColour }}>{awayLabel}</span>
-          <ProTaggerMiniJersey primary={awayColour} secondary={awaySecondaryColour} size={18} />
+          <ProTaggerMiniJersey primary={awayColour} secondary={awaySecondaryColour} kit={awayKit} size={18} />
         </div>
 
         {/* Controls row */}
@@ -1506,6 +1510,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   secondaryColour={
                     pickerTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
                   }
+                  kit={pickerTeamSide === "FOR" ? homeKit : awayKit}
                   disciplineStatus={disciplineStatus}
                   onSelect={handlePlayerSelect}
                 />

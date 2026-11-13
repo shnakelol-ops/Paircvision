@@ -22,6 +22,15 @@
 // Neither file has a React rendering harness in this repo, so — as with
 // every other presentational/wiring suite this session — this exercises
 // the exact composition by reading it out of both files' own source.
+//
+// Jersey Designer V2 superseded the picker-only LivePickerJerseyMark: the
+// picker, Squad Setup and the header icons now all draw the one shared
+// ProTaggerJersey, whose look comes from the team's kit (default: plain,
+// secondary sleeves, secondary collar — the closest match to the old
+// picker mark). Numbers now sit centred below the jersey with one shared
+// treatment, so the picker-only `livePicker` number flag is retired. The
+// geometry assertions below were updated accordingly; every behaviour
+// guard (sizes, hit areas, discipline, selection, formation) is unchanged.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -29,110 +38,88 @@ import { fileURLToPath } from "node:url";
 const pickerSource = readFileSync(fileURLToPath(new URL("./ProTaggerPlayerPicker.tsx", import.meta.url)), "utf8");
 const tileSource = readFileSync(fileURLToPath(new URL("./ProTaggerLineupJerseyTile.tsx", import.meta.url)), "utf8");
 const formationSource = readFileSync(fileURLToPath(new URL("./ProTaggerLineupFormation.tsx", import.meta.url)), "utf8");
+const jerseySource = readFileSync(fileURLToPath(new URL("./ProTaggerJersey.tsx", import.meta.url)), "utf8");
+const miniJerseySource = readFileSync(fileURLToPath(new URL("./ProTaggerMiniJersey.tsx", import.meta.url)), "utf8");
 const pickerCodeOnly = pickerSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 const tileCodeOnly = tileSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("ProTaggerPlayerPicker — requests the simplified live-tagging jersey (req. 1)", () => {
-  it("both formation and bench tiles pass the livePicker prop", () => {
+  it("Jersey Designer V2: formation and bench tiles no longer pass a picker-only flag — the picker shows the same marker as Squad Setup", () => {
     const jerseyTileCalls = pickerSource.match(/<ProTaggerLineupJerseyTile[\s\S]*?\/>/g) ?? [];
     expect(jerseyTileCalls.length).toBeGreaterThanOrEqual(1);
     for (const call of jerseyTileCalls) {
-      expect(call).toMatch(/\blivePicker\b/);
+      expect(call).not.toMatch(/\blivePicker\b/);
     }
   });
 });
 
-describe("ProTaggerLineupJerseyTile — LivePickerJerseyMark geometry (req. 2, 3, 4)", () => {
-  const markMatch = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/);
-  const mark = markMatch ? markMatch[0] : "";
-
-  it("exists and is used only when livePicker is requested", () => {
-    expect(markMatch).not.toBeNull();
-    expect(tileSource).toMatch(/livePicker \? \(\s*<LivePickerJerseyMark/);
+describe("ProTaggerLineupJerseyTile — one shared V2 jersey drawing (req. 2, 3, 4)", () => {
+  it("the picker-only LivePickerJerseyMark is gone; every tile draws the shared ProTaggerJersey with the team kit", () => {
+    expect(tileSource).not.toMatch(/LivePickerJerseyMark/);
+    expect(tileSource).toMatch(/<ProTaggerJersey primary=\{primary\} secondary=\{secondary\} kit=\{kit\} size=\{size\} \/>/);
   });
 
-  it("has NO secondary chest band — no <rect> element and no fill covering a horizontal stripe across the body", () => {
-    expect(mark).not.toMatch(/<rect/);
+  it("the picker passes the team kit to every tile and to its header icon", () => {
+    const jerseyTileCalls = pickerSource.match(/<ProTaggerLineupJerseyTile[\s\S]*?\/>/g) ?? [];
+    expect(jerseyTileCalls.length).toBeGreaterThanOrEqual(1);
+    for (const call of jerseyTileCalls) expect(call).toMatch(/kit=\{kit\}/);
+    expect(pickerSource).toMatch(/<ProTaggerMiniJersey[^>]*kit=\{kit\}/);
   });
 
-  it("has no collar accent either (no fourth path, no Q-curve collar shape)", () => {
-    const pathCount = (mark.match(/<path/g) ?? []).length;
-    expect(pathCount).toBe(3); // two sleeves + one torso, nothing else
-    expect(mark).not.toMatch(/\bQ\d/); // no quadratic-curve collar shape
+  it("the body is primary-filled; pattern is secondary; sleeves and collar follow the kit", () => {
+    expect(jerseySource).toMatch(/<path d=\{JERSEY_BODY_PATH\} fill=\{primary\}/);
+    expect(jerseySource).toMatch(/fill=\{secondary\} data-layer="pattern"/);
+    expect(jerseySource).toMatch(/k\.sleeves === "secondary" \? secondary : primary/);
+    expect(jerseySource).toMatch(/k\.collar === "secondary" \? secondary : primary/);
   });
 
-  it("uses primary colour fill on the torso (body) path", () => {
-    const torsoPathMatch = mark.match(/<path d="M4,21[^"]*" fill=\{primary\} \/>/);
-    expect(torsoPathMatch).not.toBeNull();
-  });
-
-  it("uses secondary colour fill on both sleeve paths", () => {
-    const secondaryFillCount = (mark.match(/fill=\{secondary\}/g) ?? []).length;
-    expect(secondaryFillCount).toBe(2); // left sleeve + right sleeve, nothing else secondary-filled
-  });
-
-  it("the three sub-paths reconstruct the exact same outer silhouette ProTaggerMiniJersey draws (shared boundary coordinates, same viewBox/size formula)", () => {
-    expect(mark).toMatch(/viewBox="0 0 20 22"/);
-    expect(mark).toMatch(/Math\.round\(\(size \* 22\) \/ 20\)/);
-    // Every coordinate pair used by ProTaggerMiniJersey's single outline
-    // path must appear somewhere across the three decomposed sub-paths.
-    const originalPoints = ["4,21", "4,8", "0,8", "0,4", "4,2", "7,5", "10,8", "13,5", "16,2", "20,4", "20,8", "16,8", "16,21"];
-    for (const point of originalPoints) {
-      expect(mark).toContain(point);
-    }
+  it("keeps the previous 20:22 jersey aspect ratio, so outer pixel size for a given size prop is unchanged", () => {
+    expect(jerseySource).toMatch(/JERSEY_VIEWBOX_W = 40/);
+    expect(jerseySource).toMatch(/JERSEY_VIEWBOX_H = 44/);
+    expect(jerseySource).toMatch(/Math\.round\(\(size \* JERSEY_VIEWBOX_H\) \/ JERSEY_VIEWBOX_W\)/);
   });
 });
 
 describe("ProTaggerLineupJerseyTile — live-picker number treatment (req. 5, 6)", () => {
-  it("the livePicker number outline has no WebkitTextStroke — clean white text, no heavy outline", () => {
-    const block = tileSource.match(/numberOutlineLivePicker:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    expect(block).not.toMatch(/WebkitTextStroke/);
+  it("the number sits below the jersey with a thin outline painted behind the fill", () => {
+    expect(tileSource).toMatch(/strokeWidth=\{1\.8\}/);
+    expect(tileSource).toMatch(/paintOrder="stroke"/);
   });
 
-  it("the livePicker number outline uses a single shadow, not the previous multi-layer stack", () => {
-    const block = tileSource.match(/numberOutlineLivePicker:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    const shadowMatch = block.match(/textShadow:\s*["']([^"']+)["']/);
-    expect(shadowMatch).not.toBeNull();
-    // Strip the rgba(...) argument list before checking for a top-level
-    // comma — rgba() itself contains commas, but a multi-layer shadow
-    // stack (like numberOutlineDefault's) joins whole "offset offset blur
-    // colour" layers with a comma OUTSIDE any rgba().
-    const withoutColourArgs = shadowMatch![1].replace(/rgba?\([^)]*\)/g, "rgba(...)");
-    expect(withoutColourArgs).not.toContain(",");
+  it("the number uses no shadow stack at all", () => {
+    expect(tileSource).not.toMatch(/textShadow/);
   });
 
-  it("the number itself is still white, bold, and centred (unchanged base numberText style)", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?color:\s*["']#ffffff["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?fontWeight:\s*900/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?left:\s*["']50%["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?transform:\s*["']translate\(-50%, -50%\)["']/);
+  it("the number itself is still white, bold, and centred (now below the jersey)", () => {
+    expect(tileSource).toMatch(/fill="#ffffff"/);
+    expect(tileSource).toMatch(/fontWeight: 700/);
+    expect(tileSource).toMatch(/textAnchor: "middle"/);
   });
 
-  it("livePicker's outline takes priority over numberCrisp when both could apply", () => {
-    expect(tileSource).toMatch(/livePicker\s*\n?\s*\?\s*S\.numberOutlineLivePicker/);
+  it("there is exactly one number treatment — no per-caller outline variants remain", () => {
+    expect(tileSource).not.toMatch(/numberOutline\w+/);
   });
 });
 
-describe("Default Squad Setup rendering is unchanged unless livePicker is explicitly requested (req. 7, 8)", () => {
+describe("Squad Setup and the picker share one marker (req. 7, 8)", () => {
   it("ProTaggerLineupFormation.tsx (Squad Setup's own caller) passes neither livePicker nor numberCrisp", () => {
     expect(formationSource).not.toMatch(/livePicker/);
     expect(formationSource).not.toMatch(/numberCrisp/);
   });
 
-  it("the tile falls back to ProTaggerMiniJersey and numberOutlineDefault whenever livePicker is falsy", () => {
-    expect(tileSource).toMatch(/\{livePicker \? \(/);
-    expect(tileSource).toMatch(/<ProTaggerMiniJersey primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>/);
+  it("Squad Setup and the picker render the identical marker: neither passes a number-treatment flag", () => {
+    expect(formationSource).not.toMatch(/livePicker|numberCrisp/);
+    expect(pickerSource).not.toMatch(/livePicker|numberCrisp/);
   });
 
-  it("ProTaggerMiniJersey.tsx itself is not referenced by name inside LivePickerJerseyMark — it's an independent local shape, not a wrapper around the shared component", () => {
-    const markMatch = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/)![0];
-    expect(markMatch).not.toMatch(/ProTaggerMiniJersey/);
+  it("ProTaggerMiniJersey is a thin wrapper around the same shared ProTaggerJersey — no separate jersey art", () => {
+    expect(miniJerseySource).toMatch(/<ProTaggerJersey /);
+    expect(miniJerseySource).not.toMatch(/<path/);
   });
 
-  it("the default outline (numberOutlineDefault) values are completely untouched by this pass", () => {
-    const defaultBlock = tileSource.match(/numberOutlineDefault:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    expect(defaultBlock).toMatch(/WebkitTextStroke:\s*["']0\.75px rgba\(6, 10, 16, 0\.9\)["']/);
-    expect(defaultBlock.split(",").length).toBeGreaterThanOrEqual(5); // still the 5-layer shadow stack
+  it("number font sizes: Squad Setup 12px, picker 13px", () => {
+    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 12/);
+    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 13/);
   });
 });
 
@@ -142,9 +129,9 @@ describe("Jersey and hit-target dimensions unchanged (req. 9, 10)", () => {
     expect(pickerSource).toMatch(/BENCH_JERSEY_SIZE = 22/);
   });
 
-  it("LivePickerJerseyMark uses the exact same size formula as ProTaggerMiniJersey — same outer pixel dimensions for a given size prop", () => {
-    const markMatch = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/)![0];
-    expect(markMatch).toMatch(/const h = Math\.round\(\(size \* 22\) \/ 20\);/);
+  it("the header icon and the tiles share one size formula — MiniJersey delegates to ProTaggerJersey", () => {
+    expect(miniJerseySource).toMatch(/size=\{size\}/);
+    expect(jerseySource).toMatch(/const h = Math\.round\(\(size \* JERSEY_VIEWBOX_H\) \/ JERSEY_VIEWBOX_W\);/);
   });
 
   it("player hit-area (playerBtn/subBtn) CSS is byte-identical to before this experiment", () => {
@@ -185,11 +172,10 @@ describe("Home/Away colour values still come from squad state (req. 13)", () => 
     expect(pickerSource).toMatch(/const colour = teamColour \?\? "#238636";/);
   });
 
-  it("LivePickerJerseyMark takes primary/secondary as plain string props — no colour hardcoded to green/red/white inside it", () => {
-    const markMatch = tileSource.match(/function LivePickerJerseyMark\(\{ primary, secondary, size \}: \{ primary: string; secondary: string; size: number \}\)/);
-    expect(markMatch).not.toBeNull();
-    const markBody = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/)![0];
-    expect(markBody).not.toMatch(/#([0-9a-fA-F]{3}){1,2}/); // no literal hex colour anywhere in the shape
+  it("ProTaggerJersey takes primary/secondary as plain string props — no team colour hardcoded in the shape layers", () => {
+    expect(jerseySource).toMatch(/export function ProTaggerJersey\(\{ primary, secondary, kit, size \}: Props\)/);
+    const layers = jerseySource.match(/<g clipPath[\s\S]*?<\/g>/)![0];
+    expect(layers).not.toMatch(/#([0-9a-fA-F]{3}){1,2}/); // shading uses a gradient id, not a colour
   });
 });
 
@@ -238,15 +224,14 @@ describe("Position abbreviations remain absent (req. 20)", () => {
 });
 
 describe("No new production files/architecture were introduced beyond the two approved ones", () => {
-  it("the simplified jersey is built inline in ProTaggerLineupJerseyTile.tsx, not a new file or a modification to ProTaggerMiniJersey.tsx", () => {
-    // The picker still imports ProTaggerMiniJersey for its own unchanged
-    // header icon (a hard-kept element, unrelated to the player tiles) —
-    // this experiment did not remove that or add any other jersey import.
+  it("the picker header icon is still the 18px ProTaggerMiniJersey in the team colours, now with the team kit", () => {
     expect(pickerSource).toMatch(/import \{ ProTaggerMiniJersey \} from ".\/ProTaggerMiniJersey"/);
-    expect(pickerSource).toMatch(/<ProTaggerMiniJersey primary=\{colour\} secondary=\{secondaryColour \?\? "#ffffff"\} size=\{18\} \/>/);
+    expect(pickerSource).toMatch(/<ProTaggerMiniJersey primary=\{colour\} secondary=\{secondaryColour \?\? "#ffffff"\} kit=\{kit\} size=\{18\} \/>/);
   });
 
-  it("ProTaggerLineupJerseyTile.tsx is the only file that defines the simplified jersey shape", () => {
-    expect(tileSource).toMatch(/function LivePickerJerseyMark/);
+  it("ProTaggerJersey.tsx is the only file that defines jersey geometry", () => {
+    expect(jerseySource).toMatch(/export const JERSEY_BODY_PATH/);
+    expect(tileSource).not.toMatch(/<path/);
+    expect(miniJerseySource).not.toMatch(/<path/);
   });
 });

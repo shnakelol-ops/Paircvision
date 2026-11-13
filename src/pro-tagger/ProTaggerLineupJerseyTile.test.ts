@@ -45,14 +45,14 @@ describe("ProTaggerLineupJerseyTile — no black circular badge (visual correcti
     expect(tileSource).not.toMatch(/rgba\(5,\s*12,\s*20/); // the old badge fill colour
   });
 
-  it("the number is bold, white, high-contrast text with an outline — not a filled shape", () => {
-    expect(tileSource).toMatch(/numberText[\s\S]*?fontWeight:\s*900/);
-    expect(tileSource).toMatch(/numberText[\s\S]*?color:\s*["']#ffffff["']/);
-    expect(tileSource).toMatch(/WebkitTextStroke/);
+  it("the number is bold, white text with a thin outline painted behind it — not a filled shape", () => {
+    expect(tileSource).toMatch(/fill="#ffffff" stroke="rgba\(6, 10, 16, 0\.9\)"[^>]*paintOrder="stroke"/);
+    expect(tileSource).toMatch(/fontWeight: 700/);
+    expect(tileSource).not.toMatch(/WebkitTextStroke/);
   });
 
-  it("the number is overlaid directly on the jersey (absolutely positioned inside jerseyWrap), not inside a separate wrapper element", () => {
-    expect(tileSource).toMatch(/<span style=\{\{ \.\.\.S\.numberText/);
+  it("the number is drawn by PlayerNumber directly after the jersey wrapper, not inside it", () => {
+    expect(tileSource).toMatch(/<\/div>\s*<PlayerNumber value=\{player\.number\} fontSize=\{resolvedNumberFontSize\} \/>/);
   });
 });
 
@@ -199,18 +199,13 @@ describe("ProTaggerLineupJerseyTile — final number positioning tune (size + ve
     expect(starterJerseySize).toBe(26);
   });
 
-  it("the starter number shrank a modest amount further (15 -> 13), not a large jump", () => {
-    expect(starterNumberFontSize).toBe(13);
+  it("the starter number is 12px — 1px below the earlier 13px, now that it sits below the shirt", () => {
+    expect(starterNumberFontSize).toBe(12);
   });
 
-  it("the number's top offset was moved down from its prior 44% so it sits in the shirt body, not the collar/shoulders", () => {
-    const topMatch = tileSource.match(/numberText:\s*\{[\s\S]*?top:\s*["'](\d+)%["']/);
-    expect(topMatch).not.toBeNull();
-    const topPercent = Number(topMatch![1]);
-    expect(topPercent).toBeGreaterThan(44);
-    // Still comfortably short of the hem — centred in the body, not at the
-    // very bottom of the jersey.
-    expect(topPercent).toBeLessThanOrEqual(65);
+  it("Jersey Designer V2: the number sits directly below the jersey, not overlaid on the shirt", () => {
+    expect(tileSource).not.toMatch(/position:\s*["']absolute["']/);
+    expect(tileSource).toMatch(/<\/div>\s*<PlayerNumber/);
   });
 
   it("uses one shared top offset for every number — no per-digit-count or per-value special casing", () => {
@@ -218,20 +213,21 @@ describe("ProTaggerLineupJerseyTile — final number positioning tune (size + ve
     expect(tileSource).not.toMatch(/player\.number\s*[<>=]/);
   });
 
-  it("the number stays horizontally centred (unchanged left/transform) — only the vertical offset moved", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?left:\s*["']50%["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?transform:\s*["']translate\(-50%, -50%\)["']/);
+  it("the number stays horizontally centred under the jersey (centre-anchored text in a centred column)", () => {
+    expect(tileSource).toMatch(/tile:\s*\{[\s\S]*?alignItems:\s*["']center["']/);
+    expect(tileSource).toMatch(/textAnchor: "middle"/);
+    expect(tileSource).toMatch(/x: w \/ 2/);
   });
 
-  it("the outline was thinned alongside the smaller number, but contrast is still present (not removed entirely)", () => {
-    expect(tileSource).toMatch(/WebkitTextStroke:\s*["']0\.75px/);
-    expect(tileSource).toMatch(/WebkitTextStroke/); // still present, not deleted
-    expect(tileSource).toMatch(/textShadow/); // fallback contrast still present
+  it("the number keeps a thin outline (painted behind the fill) plus a faint halo for contrast on the pitch", () => {
+    expect(tileSource).toMatch(/strokeWidth=\{1\.8\}/);
+    expect(tileSource).toMatch(/paintOrder="stroke"/);
+    expect(tileSource).toMatch(/stroke="rgba\(6, 10, 16, 0\.35\)" strokeWidth=\{3\.4\}/);
   });
 
-  it("subs' own number size is untouched by this pass (not called out as oversized)", () => {
+  it("subs use the same 12px number as starters", () => {
     const subNumberFontSize = readConst(formationSource, "SUB_NUMBER_FONT_SIZE");
-    expect(subNumberFontSize).toBe(13);
+    expect(subNumberFontSize).toBe(12);
   });
 
   it("name plate, pitch, and formation code paths are all still present — this pass did not remove or restructure them", () => {

@@ -159,8 +159,8 @@ describe("ProTaggerLineupFormation — whole-pitch viewport-fit: pitch box scale
 
   it("player-tile sizing constants are untouched by this pass — the approved player-tile design stays exactly as-is", () => {
     expect(formationSource).toMatch(/STARTER_JERSEY_SIZE = 26/);
-    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 13/);
+    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 12/);
     expect(formationSource).toMatch(/SUB_JERSEY_SIZE = 22/);
-    expect(formationSource).toMatch(/SUB_NUMBER_FONT_SIZE = 13/);
+    expect(formationSource).toMatch(/SUB_NUMBER_FONT_SIZE = 12/);
   });
 });

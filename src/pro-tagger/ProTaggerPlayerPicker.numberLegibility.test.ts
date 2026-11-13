@@ -27,6 +27,10 @@
 // React rendering harness in this repo, so — as with every other
 // presentational/wiring suite this session — this exercises the exact
 // change by reading it out of both files' own source.
+//
+// Jersey Designer V2 moved the number below the jersey with one shared
+// treatment for every caller, retiring numberCrisp/livePicker; the
+// assertions below now guard that single treatment.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -36,9 +40,9 @@ const tileSource = readFileSync(fileURLToPath(new URL("./ProTaggerLineupJerseyTi
 const pickerCodeOnly = pickerSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("ProTaggerPlayerPicker — number size bumped by exactly 1px (not a big jump)", () => {
-  it("formation and bench number size are both 14 (up from 13)", () => {
-    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 14/);
-    expect(pickerSource).toMatch(/BENCH_NUMBER_FONT_SIZE = 14/);
+  it("formation and bench number size are both 13 (1px above Squad Setup's 12)", () => {
+    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 13/);
+    expect(pickerSource).toMatch(/BENCH_NUMBER_FONT_SIZE = 13/);
   });
 
   it("jersey size is completely unchanged by this pass", () => {
@@ -48,42 +52,27 @@ describe("ProTaggerPlayerPicker — number size bumped by exactly 1px (not a big
 });
 
 describe("ProTaggerPlayerPicker — opts into a simplified live-tagging jersey/number treatment", () => {
-  it("both formation and bench tiles pass livePicker (superseding the earlier numberCrisp request)", () => {
+  it("Jersey Designer V2: formation and bench tiles use the same number treatment as Squad Setup (no picker-only number flag)", () => {
     const jerseyTileCalls = pickerSource.match(/<ProTaggerLineupJerseyTile[\s\S]*?\/>/g) ?? [];
     expect(jerseyTileCalls.length).toBeGreaterThanOrEqual(1);
     for (const call of jerseyTileCalls) {
-      expect(call).toMatch(/livePicker/);
+      expect(call).not.toMatch(/livePicker|numberCrisp/);
     }
   });
 });
 
-describe("ProTaggerLineupJerseyTile — numberCrisp is still additive and default-preserving on the shared tile", () => {
-  it("numberCrisp remains optional and Squad Setup's default outline is untouched when omitted", () => {
-    expect(tileSource).toMatch(/numberCrisp\?:\s*boolean/);
-    expect(tileSource).toMatch(/numberCrisp\s*\?\s*S\.numberOutlineCrisp\s*:\s*S\.numberOutlineDefault/);
+describe("ProTaggerLineupJerseyTile — one shared, lighter number treatment", () => {
+  it("Jersey Designer V2: the shared tile has one number treatment for every caller", () => {
+    expect(tileSource).not.toMatch(/numberCrisp|livePicker|numberOutline/);
   });
 
-  it("the default outline still has the exact same values as before this pass (0.75px stroke, 5-layer shadow)", () => {
-    const defaultBlock = tileSource.match(/numberOutlineDefault:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    expect(defaultBlock).toMatch(/WebkitTextStroke:\s*["']0\.75px rgba\(6, 10, 16, 0\.9\)["']/);
-    expect(defaultBlock).toMatch(/0 1px 1px rgba\(0,0,0,0\.6\)/);
-    expect(defaultBlock).toMatch(/-1px -1px 0 rgba\(6,10,16,0\.8\)/);
-    expect(defaultBlock).toMatch(/1px -1px 0 rgba\(6,10,16,0\.8\)/);
-    expect(defaultBlock).toMatch(/-1px 1px 0 rgba\(6,10,16,0\.8\)/);
-    expect(defaultBlock).toMatch(/1px 1px 0 rgba\(6,10,16,0\.8\)/);
+  it("the number's outline is a thin SVG stroke painted behind the fill (no CSS text-stroke over the glyphs)", () => {
+    expect(tileSource).not.toMatch(/WebkitTextStroke/);
+    expect(tileSource).toMatch(/paintOrder="stroke"/);
   });
 
-  it("the crisp outline is genuinely lighter: a thinner stroke and a single shadow, not the 5-layer stack", () => {
-    const crispBlock = tileSource.match(/numberOutlineCrisp:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    const strokeMatch = crispBlock.match(/WebkitTextStroke:\s*["'](\d+(?:\.\d+)?)px/);
-    expect(strokeMatch).not.toBeNull();
-    expect(Number(strokeMatch![1])).toBeLessThan(0.75);
-
-    const shadowMatch = crispBlock.match(/textShadow:\s*["']([^"']+)["']/);
-    expect(shadowMatch).not.toBeNull();
-    // A single "offset offset blur colour" shadow, not a comma-joined stack.
-    expect(shadowMatch![1].split(",").length).toBeLessThanOrEqual(1 + 3); // "0 1px 1px rgba(...)" itself contains no top-level commas outside rgba()
-    expect(crispBlock).not.toMatch(/-1px -1px 0/); // none of the four hard diagonal copies
+  it("the number has no text shadow at all — only the outline and a faint halo", () => {
+    expect(tileSource).not.toMatch(/textShadow/);
   });
 
   it("no transform: scale(), filter blur, or animation was introduced anywhere in the tile", () => {
@@ -92,13 +81,14 @@ describe("ProTaggerLineupJerseyTile — numberCrisp is still additive and defaul
     expect(tileSource).not.toMatch(/animation/i);
   });
 
-  it("the number's centring transform and vertical position are unchanged — this pass is text-rendering only, not repositioning", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?top:\s*["']56%["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?transform:\s*["']translate\(-50%, -50%\)["']/);
+  it("the number is centred below the jersey, in flow (no absolute overlay on the shirt)", () => {
+    expect(tileSource).not.toMatch(/top:\s*["']56%["']/);
+    expect(tileSource).toMatch(/textAnchor: "middle"/);
   });
 
-  it("font weight is unchanged (already at maximum, not the cause, not touched)", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?fontWeight:\s*900/);
+  it("font weight is 700, available in every font in the stack, so no weight is synthesised", () => {
+    expect(tileSource).toMatch(/fontWeight: 700/);
+    expect(tileSource).not.toMatch(/fontWeight: 900/);
   });
 });
 
