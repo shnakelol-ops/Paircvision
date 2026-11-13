@@ -847,7 +847,10 @@ function drawSummaryStatsTable(
   const secH    = 18;
   const hdrH    = 28;
   const gap     = 3;
-  const BLOCK_H = 820;
+  // Hurling / camogie have no two-point score, so the 2-Pointers row is not
+  // drawn there and the card is one row shorter.
+  const showTwoPointers = !isPuck(sport);
+  const BLOCK_H = 820 - (showTwoPointers ? 0 : rowH);
 
   type SRow = { label: string; value: string; vColor?: string };
   type Section = { label: string; accent: string; bg: string; rows: SRow[] };
@@ -861,7 +864,7 @@ function drawSummaryStatsTable(
         rows: [
           { label: "Goals",          value: String(st.goals) },
           { label: "Points",         value: String(st.points) },
-          { label: "2-Pointers",     value: String(st.twoPointers) },
+          ...(showTwoPointers ? [{ label: "2-Pointers", value: String(st.twoPointers) }] : []),
           { label: "Total Score",    value: String(st.scoreTotal) },
           { label: "Shots",          value: String(st.shots) },
           { label: "Wides",          value: String(st.wides) },
@@ -5040,7 +5043,7 @@ export function makeOppositionFactsPage(
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals), "#f8fafc", false);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, isPuck(sport) ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score Conversion", oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false);
     oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score zone (avg position)", scoreZoneLabel, "#94a3b8", true);
   }

@@ -22,6 +22,7 @@ import {
   makeChainSummaryPage,
   makeKickoutChainPage,
   makeMomentumRunsPage,
+  makeOppositionFactsPage,
   makeOppositionOriginPage,
   makePlayerContributionsPage,
   OPP_RESTART_ORIGIN_HEADLINE,
@@ -339,6 +340,13 @@ describe("Hurling and camogie reports use puckout wording and hide football's 2-
       for (const label of TWO_POINT_BLOCK) expect(upper(eff).filter((x) => x === label.toUpperCase())).toHaveLength(2); // one per team column
       expect(eff).not.toContain("TWO_POINTER Scores");
     });
+    it(`${sport}: Match Summary keeps the 2-Pointers row; Opposition says "incl. frees & 2-pointers"`, () => {
+      const { events, report } = input(stored);
+      const summary = texts(makeSummaryPage(events, report, HOME, AWAY, undefined, 1, sport));
+      expect(summary.filter((x) => x === "2-Pointers")).toHaveLength(2); // one per team block
+      const opp = texts(makeOppositionFactsPage(events, report, HOME, AWAY, 1, 1, sport));
+      expect(opp).toContain("Points (incl. frees & 2-pointers)");
+    });
     it(`${sport}: restart labels stay "Kickout"`, () => {
       const { events, report } = input(stored);
       expect(texts(makeKickoutChainPage(report, HOME, AWAY, 1, 1, sport))).toContain(`${HOME} — Shots from Kickout`);
@@ -360,6 +368,30 @@ describe("Hurling and camogie reports use puckout wording and hide football's 2-
       const blockValues = 8; // 4 rows × 2 teams
       expect(figures(eff)).toHaveLength(footballFigures.length - blockValues);
       expect([...figures(eff)].sort()).toEqual(removeN([...footballFigures].sort(), "0", blockValues));
+    });
+    it(`${sport}: Match Summary has no 2-Pointers row and every other row and figure is unchanged`, () => {
+      const { events, report } = input(stored);
+      const summary = texts(makeSummaryPage(events, report, HOME, AWAY, undefined, 1, sport));
+      const football = texts(makeSummaryPage(events, report, HOME, AWAY, undefined, 1, "gaelic"));
+      expect(summary).not.toContain("2-Pointers");
+      expect(summary.some((x) => /2-point|two-point|2PT/i.test(x))).toBe(false);
+      // Football minus its two "2-Pointers" label/value pairs (the value is 0 here), ignoring the sport-worded labels.
+      const sportWords = /^(45|65|KICKOUTS|PUCKOUTS)$/;
+      const strip = (t: readonly string[]) => {
+        const out: string[] = [];
+        for (let i = 0; i < t.length; i++) {
+          if (t[i] === "2-Pointers") { i++; continue; } // skip label and its value
+          if (!sportWords.test(t[i])) out.push(t[i]);
+        }
+        return out;
+      };
+      expect(strip(summary)).toEqual(strip(football));
+    });
+    it(`${sport}: Opposition page says "Points (incl. frees)"`, () => {
+      const { events, report } = input(stored);
+      const opp = texts(makeOppositionFactsPage(events, report, HOME, AWAY, 1, 1, sport));
+      expect(opp).toContain("Points (incl. frees)");
+      expect(opp.some((x) => /2-pointer/i.test(x))).toBe(false);
     });
     it(`${sport}: restart labels say "Puckout"`, () => {
       const { events, report } = input(stored);
