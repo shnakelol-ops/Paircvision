@@ -3,11 +3,14 @@ import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupPitchBackground, LINEUP_PITCH_PORTRAIT_VIEWBOX } from "./ProTaggerLineupPitchBackground";
 import { LINEUP_FORMATION_POSITIONS } from "./pro-tagger-lineup-geometry";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+import type { JerseyKit } from "./jersey-kit";
 
 interface Props {
   players: readonly ProTaggerSquadPlayer[];
   primary: string;
   secondary: string;
+  /** Jersey Designer V2 kit, forwarded to every tile (starters, subs and empty slots alike). */
+  kit?: JerseyKit | null;
 }
 
 // Final player-tile tuning pass: the jersey now reads as a small
@@ -68,7 +71,7 @@ export function deriveLineupSlots(players: readonly ProTaggerSquadPlayer[]): Lin
 // data, no React) rather than being computed here, so a future non-React
 // renderer (e.g. a canvas-based share-card export) can lay out the identical
 // team sheet from that one shared source of truth — see that file's header.
-export function ProTaggerLineupFormation({ players, primary, secondary }: Props) {
+export function ProTaggerLineupFormation({ players, primary, secondary, kit }: Props) {
   const { starters, subs } = deriveLineupSlots(players);
 
   return (
@@ -90,7 +93,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
               style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%` }}
             >
               <ProTaggerLineupJerseyTile
-                player={p} primary={primary} secondary={secondary}
+                player={p} primary={primary} secondary={secondary} kit={kit}
                 size={STARTER_JERSEY_SIZE} numberFontSize={STARTER_NUMBER_FONT_SIZE}
               />
             </div>
@@ -104,7 +107,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
           <div style={S.subsRow}>
             {subs.map((p) => (
               <ProTaggerLineupJerseyTile
-                key={p.id} player={p} primary={primary} secondary={secondary}
+                key={p.id} player={p} primary={primary} secondary={secondary} kit={kit}
                 size={SUB_JERSEY_SIZE} numberFontSize={SUB_NUMBER_FONT_SIZE}
               />
             ))}

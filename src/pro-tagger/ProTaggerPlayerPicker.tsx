@@ -4,6 +4,7 @@ import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupPitchBackground } from "./ProTaggerLineupPitchBackground";
 import type { DisciplinePlayerStatus } from "./pro-tagger-discipline";
+import type { JerseyKit } from "./jersey-kit";
 
 export type SelectedPlayer = {
   playerId: string;
@@ -18,6 +19,8 @@ interface Props {
   squadId: string;
   teamColour?: string;
   secondaryColour?: string;
+  /** Jersey Designer V2 kit for this team (tiles and header icon). Omitted renders the default kit. */
+  kit?: JerseyKit | null;
   onSelect: (player: SelectedPlayer | null) => void;
   /**
    * Per-player Discipline status (derived from event history — see
@@ -53,7 +56,7 @@ const BENCH_JERSEY_SIZE = 22;
 const FORMATION_NUMBER_FONT_SIZE = 14;
 const BENCH_NUMBER_FONT_SIZE = 14;
 
-export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, disciplineStatus }: Props) {
+export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, kit, onSelect, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";
 
   // Active players in formation slots (1–15).
@@ -81,13 +84,9 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
   // colour alone) and the tile is disabled only for RED — SIN_BIN stays
   // fully tappable; that rule is unchanged.
   //
-  // Simplified tagging jersey experiment: passes livePicker to request the
-  // tile's live-tagging-only jersey variant (primary torso, secondary
-  // sleeves, no chest stripe) and its matching minimal number treatment,
-  // instead of the shared default jersey Squad Setup uses. This supersedes
-  // the previous numberCrisp request — livePicker's own number treatment
-  // is the thing being tested now. Squad Setup's own call site passes
-  // neither prop and is completely unaffected.
+  // livePicker requests the tile's minimal live-tagging NUMBER treatment
+  // only. The jersey itself is the shared ProTaggerJersey drawn from this
+  // team's `kit`, the same drawing Squad Setup shows.
   function renderTile(p: ProTaggerSquadPlayer, size: number, numberFontSize: number) {
     const status = disciplineStatus?.get(p.id);
     // Suppress the tile's own name plate when a status label must show
@@ -98,7 +97,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       <>
         <ProTaggerLineupJerseyTile
           player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
-          size={size} numberFontSize={numberFontSize} livePicker
+          kit={kit} size={size} numberFontSize={numberFontSize} livePicker
         />
         {status === "RED" && <span style={S.statusRed}>RED</span>}
         {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}
@@ -110,7 +109,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
     <div style={S.shell}>
       {/* Header */}
       <div style={{ ...S.header, borderLeft: `3px solid ${colour}` }}>
-        <ProTaggerMiniJersey primary={colour} secondary={secondaryColour ?? "#ffffff"} size={18} />
+        <ProTaggerMiniJersey primary={colour} secondary={secondaryColour ?? "#ffffff"} kit={kit} size={18} />
         <span style={S.title}>{teamLabel} — Player</span>
       </div>
 

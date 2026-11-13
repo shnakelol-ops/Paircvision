@@ -1,5 +1,6 @@
 import { SAVED_SQUADS_STORAGE_KEY } from "../core/stats/saved-match";
 import type { ProTaggerSquad, ProTaggerSquadPlayer } from "./pro-tagger-session";
+import { storedJerseyKit, type JerseyKit } from "./jersey-kit";
 
 export type SavedTeamPlayer = {
   id: string;
@@ -21,6 +22,10 @@ export type SavedTeam = {
   // Colours
   primaryColour: string;
   secondaryColour: string;
+
+  // Jersey Designer V2 — optional; absent on teams saved before it existed,
+  // which render the default kit. See jersey-kit.ts.
+  kit?: JerseyKit;
 
   // Roster
   players: SavedTeamPlayer[];
@@ -133,10 +138,11 @@ export function exportTeamAsSquad(
     teamName:       team.teamName,
     primaryColour:  team.primaryColour,
     secondaryColour: team.secondaryColour,
+    kit:            storedJerseyKit(team.kit),
   };
 }
 
-export function buildNewTeam(partial: Pick<SavedTeam, "teamName" | "primaryColour" | "secondaryColour" | "players">): SavedTeam {
+export function buildNewTeam(partial: Pick<SavedTeam, "teamName" | "primaryColour" | "secondaryColour" | "players"> & Partial<Pick<SavedTeam, "kit">>): SavedTeam {
   const now = Date.now();
   return {
     id:             newId(),

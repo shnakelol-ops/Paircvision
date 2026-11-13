@@ -1,4 +1,5 @@
 import type { MatchTargets } from "../stats/matchTargets";
+import type { JerseyKit } from "./jersey-kit";
 
 export type ProTaggerSport = "gaelic" | "ladies_football" | "hurling" | "camogie";
 
@@ -31,6 +32,12 @@ export type ProTaggerSquad = {
    * the team name. Separate from `id`, which events reference as squadId.
    */
   savedTeamId?: string;
+  /**
+   * Jersey Designer V2 — where the two colours go on the jersey
+   * (jersey-kit.ts). Presentation only; absent on every squad from before
+   * it existed, and every read falls back to DEFAULT_JERSEY_KIT.
+   */
+  kit?: JerseyKit;
 };
 
 export interface ProTaggerSession {

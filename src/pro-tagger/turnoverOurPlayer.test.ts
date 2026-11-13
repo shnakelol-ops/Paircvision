@@ -108,7 +108,10 @@ describe("Live screen wiring — picker side, unchanged tap count, Unknown kept"
 
   it("the picker's team label, squad, squadId and colours all follow resolvePickerTeamSide", () => {
     expect(live).toMatch(/const pickerTeamSide = pending \? resolvePickerTeamSide\(pending\.familyId, pending\.teamSide\) : "FOR";/);
-    expect(pickerBlock.match(/pickerTeamSide === "FOR"/g)).toHaveLength(5);
+    // 6 = team label, squad, squadId, primary, secondary, and (Jersey
+    // Designer V2) the kit — every picker prop follows the one resolved side.
+    expect(pickerBlock.match(/pickerTeamSide === "FOR"/g)).toHaveLength(6);
+    expect(pickerBlock).toMatch(/kit=\{pickerTeamSide === "FOR" \? homeKit : awayKit\}/);
     expect(pickerBlock).not.toMatch(/pending\.teamSide/);
   });
 
