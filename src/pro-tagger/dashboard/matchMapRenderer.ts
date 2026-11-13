@@ -25,7 +25,7 @@
  * Marker language (CLAUDE.md Visual Language):
  *   Goal #16a34a (larger) · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
  *   Blocked / saved: solid grey #94a3b8 · Post: grey ring with a centre dot
- *   Dropped short: grey ↓ · Other / not recorded: dashed white ring
+ *   Dropped short: burgundy #641E39 disc with a white ↓ · Other / not recorded: dashed white ring
  *   Turnover won: purple #a78bfa circle · Turnover lost: orange #f97316 diamond
  */
 
@@ -263,6 +263,7 @@ export const SHOT_MARKER_COLOURS = {
   TWO_POINT: "#fbbf24",
   WIDE: "#ef4444",
   GREY: "#94a3b8",
+  SHORT: "#641E39",
 } as const;
 export const TURNOVER_WON_COLOUR = "#a78bfa";
 export const TURNOVER_LOST_COLOUR = "#f97316";
@@ -325,20 +326,21 @@ export function drawShotMarker(ctx: CanvasRenderingContext2D, outcome: ShotOutco
       ctx.fill();
       break;
     case "SHORT": {
-      // ↓ drawn as strokes, so it never depends on a font glyph.
-      const top = y - r;
-      const bottom = y + r * 0.9;
-      for (const [colour, width] of [[MARKER_OUTLINE, r * 0.6], [SHOT_MARKER_COLOURS.GREY, r * 0.3]] as const) {
-        ctx.strokeStyle = colour;
-        ctx.lineWidth = width;
-        ctx.beginPath();
-        ctx.moveTo(x, top);
-        ctx.lineTo(x, bottom);
-        ctx.moveTo(x - r * 0.65, bottom - r * 0.65);
-        ctx.lineTo(x, bottom);
-        ctx.lineTo(x + r * 0.65, bottom - r * 0.65);
-        ctx.stroke();
-      }
+      // Burgundy disc with a white ↓ centred inside, drawn as strokes so it never depends on a font glyph.
+      disc(ctx, x, y, r, SHOT_MARKER_COLOURS.SHORT);
+      const top = y - r * 0.55;
+      const bottom = y + r * 0.55;
+      const head = r * 0.4;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = Math.max(1.5, r * 0.22);
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.moveTo(x - head, bottom - head);
+      ctx.lineTo(x, bottom);
+      ctx.lineTo(x + head, bottom - head);
+      ctx.stroke();
       break;
     }
     case "OTHER":
@@ -378,6 +380,12 @@ export function drawTurnoverMarker(ctx: CanvasRenderingContext2D, outcome: Turno
 }
 
 const MARKER_R = 15;
+/**
+ * Scoring Map shot-marker base radius: ~27% smaller than MARKER_R so a
+ * high-volume match (hurling especially) stays readable. Same for every sport.
+ * The Turnover Map keeps MARKER_R.
+ */
+export const SHOT_MARKER_R = 11;
 
 // ─── Pitch thirds overlay (Turnover Map) ─────────────────────────────────────
 //
@@ -754,7 +762,7 @@ export function drawScoringMap(ctx: CanvasRenderingContext2D, view: ScoringMapVi
   for (const m of [...view.markers].sort((a, b) => order(a.outcome) - order(b.outcome))) {
     if (!m.point) continue;
     const p = framePoint(frame, m.point);
-    drawShotMarker(ctx, m.outcome, p.x, p.y, MARKER_R);
+    drawShotMarker(ctx, m.outcome, p.x, p.y, SHOT_MARKER_R);
   }
   if (view.shooting.totalShots === 0) drawEmptyPitchMessage(ctx, frame, "No shots recorded");
   const legendBottom = drawLegend(
