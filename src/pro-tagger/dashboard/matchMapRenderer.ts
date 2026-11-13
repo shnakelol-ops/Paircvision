@@ -23,7 +23,7 @@
  * pitch until every plotted shot is inside — a shot is never cropped off.
  *
  * Marker language (CLAUDE.md Visual Language):
- *   Goal: orange #F28C28 disc (larger) · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
+ *   Goal: orange #F28C28 regular hexagon (vertices top and bottom, Point-sized) · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
  *   Blocked / saved: solid grey #94a3b8 · Post: grey ring with a centre dot
  *   Dropped short: burgundy #641E39 disc with a white ↓ · Other / not recorded: dashed white ring
  *   Turnover won: purple #a78bfa circle · Turnover lost: orange #f97316 diamond
@@ -286,7 +286,21 @@ export function drawShotMarker(ctx: CanvasRenderingContext2D, outcome: ShotOutco
   ctx.lineCap = "round";
   switch (outcome) {
     case "GOAL":
-      disc(ctx, x, y, r * 1.3, SHOT_MARKER_COLOURS.GOAL);
+      // Regular hexagon, vertices at top and bottom; circumradius r, so its footprint matches a Point.
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 3;
+        const vx = x + Math.cos(a) * r;
+        const vy = y + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = SHOT_MARKER_COLOURS.GOAL;
+      ctx.fill();
+      ctx.strokeStyle = MARKER_OUTLINE;
+      ctx.lineWidth = 3;
+      ctx.stroke();
       break;
     case "POINT":
       disc(ctx, x, y, r, SHOT_MARKER_COLOURS.POINT);
