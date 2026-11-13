@@ -40,9 +40,9 @@ const tileSource = readFileSync(fileURLToPath(new URL("./ProTaggerLineupJerseyTi
 const pickerCodeOnly = pickerSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("ProTaggerPlayerPicker — number size bumped by exactly 1px (not a big jump)", () => {
-  it("formation and bench number size are both 14 (up from 13)", () => {
-    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 14/);
-    expect(pickerSource).toMatch(/BENCH_NUMBER_FONT_SIZE = 14/);
+  it("formation and bench number size are both 13 (1px above Squad Setup's 12)", () => {
+    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 13/);
+    expect(pickerSource).toMatch(/BENCH_NUMBER_FONT_SIZE = 13/);
   });
 
   it("jersey size is completely unchanged by this pass", () => {
@@ -66,18 +66,13 @@ describe("ProTaggerLineupJerseyTile — one shared, lighter number treatment", (
     expect(tileSource).not.toMatch(/numberCrisp|livePicker|numberOutline/);
   });
 
-  it("the number's outline is a thin stroke, not the earlier heavy 0.75px stroke", () => {
-    const block = tileSource.match(/numberText:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    const strokeMatch = block.match(/WebkitTextStroke:\s*["'](\d+(?:\.\d+)?)px/);
-    expect(strokeMatch).not.toBeNull();
-    expect(Number(strokeMatch![1])).toBeLessThan(0.75);
+  it("the number's outline is a thin SVG stroke painted behind the fill (no CSS text-stroke over the glyphs)", () => {
+    expect(tileSource).not.toMatch(/WebkitTextStroke/);
+    expect(tileSource).toMatch(/paintOrder="stroke"/);
   });
 
-  it("the number's shadow is a single layer, not the earlier 5-layer stack", () => {
-    const block = tileSource.match(/numberText:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    const shadowMatch = block.match(/textShadow:\s*["']([^"']+)["']/);
-    expect(shadowMatch).not.toBeNull();
-    expect(shadowMatch![1].replace(/rgba?\([^)]*\)/g, "rgba(...)")).not.toContain(",");
+  it("the number has no text shadow at all — only the outline and a faint halo", () => {
+    expect(tileSource).not.toMatch(/textShadow/);
   });
 
   it("no transform: scale(), filter blur, or animation was introduced anywhere in the tile", () => {
@@ -87,12 +82,13 @@ describe("ProTaggerLineupJerseyTile — one shared, lighter number treatment", (
   });
 
   it("the number is centred below the jersey, in flow (no absolute overlay on the shirt)", () => {
-    expect(tileSource).not.toMatch(/numberText:\s*\{[\s\S]*?top:\s*["']56%["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?textAlign:\s*["']center["']/);
+    expect(tileSource).not.toMatch(/top:\s*["']56%["']/);
+    expect(tileSource).toMatch(/textAnchor: "middle"/);
   });
 
-  it("font weight is unchanged (already at maximum, not the cause, not touched)", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?fontWeight:\s*900/);
+  it("font weight is 700, available in every font in the stack, so no weight is synthesised", () => {
+    expect(tileSource).toMatch(/fontWeight: 700/);
+    expect(tileSource).not.toMatch(/fontWeight: 900/);
   });
 });
 

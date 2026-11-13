@@ -45,14 +45,14 @@ describe("ProTaggerLineupJerseyTile — no black circular badge (visual correcti
     expect(tileSource).not.toMatch(/rgba\(5,\s*12,\s*20/); // the old badge fill colour
   });
 
-  it("the number is bold, white, high-contrast text with an outline — not a filled shape", () => {
-    expect(tileSource).toMatch(/numberText[\s\S]*?fontWeight:\s*900/);
-    expect(tileSource).toMatch(/numberText[\s\S]*?color:\s*["']#ffffff["']/);
-    expect(tileSource).toMatch(/WebkitTextStroke/);
+  it("the number is bold, white text with a thin outline painted behind it — not a filled shape", () => {
+    expect(tileSource).toMatch(/fill="#ffffff" stroke="rgba\(6, 10, 16, 0\.9\)"[^>]*paintOrder="stroke"/);
+    expect(tileSource).toMatch(/fontWeight: 700/);
+    expect(tileSource).not.toMatch(/WebkitTextStroke/);
   });
 
-  it("the number is overlaid directly on the jersey (absolutely positioned inside jerseyWrap), not inside a separate wrapper element", () => {
-    expect(tileSource).toMatch(/<span style=\{\{ \.\.\.S\.numberText/);
+  it("the number is drawn by PlayerNumber directly after the jersey wrapper, not inside it", () => {
+    expect(tileSource).toMatch(/<\/div>\s*<PlayerNumber value=\{player\.number\} fontSize=\{resolvedNumberFontSize\} \/>/);
   });
 });
 
@@ -199,13 +199,13 @@ describe("ProTaggerLineupJerseyTile — final number positioning tune (size + ve
     expect(starterJerseySize).toBe(26);
   });
 
-  it("the starter number shrank a modest amount further (15 -> 13), not a large jump", () => {
-    expect(starterNumberFontSize).toBe(13);
+  it("the starter number is 12px — 1px below the earlier 13px, now that it sits below the shirt", () => {
+    expect(starterNumberFontSize).toBe(12);
   });
 
-  it("Jersey Designer V2: the number sits centred directly below the jersey, not overlaid on the shirt", () => {
-    expect(tileSource).not.toMatch(/numberText:\s*\{[\s\S]*?position:\s*["']absolute["']/);
-    expect(tileSource).toMatch(/<\/div>\s*<span style=\{\{ \.\.\.S\.numberText, fontSize: resolvedNumberFontSize \}\}>\{player\.number\}<\/span>/);
+  it("Jersey Designer V2: the number sits directly below the jersey, not overlaid on the shirt", () => {
+    expect(tileSource).not.toMatch(/position:\s*["']absolute["']/);
+    expect(tileSource).toMatch(/<\/div>\s*<PlayerNumber/);
   });
 
   it("uses one shared top offset for every number — no per-digit-count or per-value special casing", () => {
@@ -213,19 +213,21 @@ describe("ProTaggerLineupJerseyTile — final number positioning tune (size + ve
     expect(tileSource).not.toMatch(/player\.number\s*[<>=]/);
   });
 
-  it("the number stays horizontally centred under the jersey", () => {
+  it("the number stays horizontally centred under the jersey (centre-anchored text in a centred column)", () => {
     expect(tileSource).toMatch(/tile:\s*\{[\s\S]*?alignItems:\s*["']center["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?textAlign:\s*["']center["']/);
+    expect(tileSource).toMatch(/textAnchor: "middle"/);
+    expect(tileSource).toMatch(/x: w \/ 2/);
   });
 
-  it("the number keeps a subtle outline for contrast on the pitch (thin stroke plus one shadow, not removed)", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?WebkitTextStroke:\s*["']0\.5px/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?textShadow/);
+  it("the number keeps a thin outline (painted behind the fill) plus a faint halo for contrast on the pitch", () => {
+    expect(tileSource).toMatch(/strokeWidth=\{1\.8\}/);
+    expect(tileSource).toMatch(/paintOrder="stroke"/);
+    expect(tileSource).toMatch(/stroke="rgba\(6, 10, 16, 0\.35\)" strokeWidth=\{3\.4\}/);
   });
 
-  it("subs' own number size is untouched by this pass (not called out as oversized)", () => {
+  it("subs use the same 12px number as starters", () => {
     const subNumberFontSize = readConst(formationSource, "SUB_NUMBER_FONT_SIZE");
-    expect(subNumberFontSize).toBe(13);
+    expect(subNumberFontSize).toBe(12);
   });
 
   it("name plate, pitch, and formation code paths are all still present — this pass did not remove or restructure them", () => {

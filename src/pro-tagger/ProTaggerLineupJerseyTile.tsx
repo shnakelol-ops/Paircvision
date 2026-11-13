@@ -35,9 +35,9 @@ interface Props {
 //
 // Visual hierarchy is jersey -> number -> name, matching a real team sheet.
 // The number sits on the pitch, not on the shirt, so it reads the same on
-// every kit and pattern: bold white with a subtle dark outline, the one
-// treatment for Squads and the picker alike. No badge or shape behind it
-// (a badge read as a Tactical Slate player token, not a team sheet).
+// every kit and pattern: clean white digits with a thin dark outline, the
+// one treatment for Squads and the picker alike. No badge or shape behind
+// it (a badge read as a Tactical Slate player token, not a team sheet).
 export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, kit }: Props) {
   if (!player) {
     return (
@@ -61,9 +61,62 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
       <div style={{ ...S.jerseyWrap, width: size }}>
         <ProTaggerJersey primary={primary} secondary={secondary} kit={kit} size={size} />
       </div>
-      <span style={{ ...S.numberText, fontSize: resolvedNumberFontSize }}>{player.number}</span>
+      <PlayerNumber value={player.number} fontSize={resolvedNumberFontSize} />
       {name && <span style={S.name}>{name}</span>}
     </div>
+  );
+}
+
+// Player number, drawn as SVG text so the outline can be painted BEHIND
+// the fill (paint-order="stroke").
+//
+// Why not CSS -webkit-text-stroke: it paints centred on every glyph
+// contour ON TOP of the fill. Android's system Roboto is a variable font
+// whose digits keep overlapping internal contours (the 4's crossbar and
+// stem, the 8's two loops, the 3's middle junction, the 1's flag), so the
+// stroke drew dark lines through those digits and thinned them — the
+// distorted 8, 13 and 14 seen on Samsung. With the stroke painted first,
+// the white fill covers every interior contour and only the outer ~0.9px of
+// outline shows.
+//
+// Font: Roboto first (always present on Android), then common fallbacks.
+// Weight 700 exists in every one of them, so nothing is synthesised.
+// A faint, wider halo layer separates digits from pitch lines that pass
+// behind them; it is not a shadow and draws no shape.
+const NUMBER_FONT_FAMILY = "Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+function PlayerNumber({ value, fontSize }: { value: number; fontSize: number }) {
+  const w = Math.ceil(fontSize * 1.6);
+  const h = fontSize + 2;
+  // Alphabetic baseline placed so the digits' cap height (~0.72em) is
+  // centred in the box — consistent across fonts for figures.
+  const y = h / 2 + fontSize * 0.36;
+  const shared = {
+    x: w / 2,
+    y,
+    textAnchor: "middle" as const,
+    fontFamily: NUMBER_FONT_FAMILY,
+    fontSize,
+    fontWeight: 700,
+    style: { fontVariantNumeric: "tabular-nums" } as CSSProperties,
+  };
+  return (
+    <svg
+      width={w}
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      style={S.numberSvg}
+      role="img"
+      aria-label={String(value)}
+      data-player-number={value}
+    >
+      <text {...shared} fill="none" stroke="rgba(6, 10, 16, 0.35)" strokeWidth={3.4} strokeLinejoin="round" aria-hidden="true">
+        {value}
+      </text>
+      <text {...shared} fill="#ffffff" stroke="rgba(6, 10, 16, 0.9)" strokeWidth={1.8} strokeLinejoin="round" paintOrder="stroke">
+        {value}
+      </text>
+    </svg>
   );
 }
 
@@ -88,20 +141,10 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     filter: "drop-shadow(0 0 2px rgba(4, 8, 14, 0.55)) drop-shadow(0 1px 3px rgba(4, 8, 14, 0.5))",
   },
-  // Player number, centred below the jersey. Bold white with a subtle dark
-  // outline (a thin stroke plus one soft shadow) so it reads on the green
-  // pitch and on the picker's dark bench area alike, without the heavier
-  // multi-layer outline an on-shirt number needed.
-  numberText: {
+  // The number's box; the outline and halo may paint just outside it.
+  numberSvg: {
     display: "block",
-    fontWeight: 900,
-    color: "#ffffff",
-    fontVariantNumeric: "tabular-nums",
-    letterSpacing: "-0.3px",
-    lineHeight: 1,
-    textAlign: "center" as const,
-    WebkitTextStroke: "0.5px rgba(6, 10, 16, 0.85)",
-    textShadow: "0 1px 2px rgba(0, 0, 0, 0.7)",
+    overflow: "visible",
     pointerEvents: "none",
   },
   // A compact PáircVision name plate — a translucent navy surface just big

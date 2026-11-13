@@ -21,16 +21,13 @@ interface Props {
 // without dominating the tile. Subs shrink by the same ratio (27 -> 22,
 // 17 -> 13). Formation coordinates are untouched.
 //
-// Final number positioning tune: the approved jersey size stays put, but the
-// starter number was still slightly too large at 15px, so it drops to 13px
-// (its vertical re-centring onto the shirt body lives in
-// ProTaggerLineupJerseyTile.tsx's shared numberText style, which applies to
-// starters and subs alike). Subs' own number size is left as-is — it wasn't
-// flagged as oversized and this pass is scoped to the starter number only.
+// Jersey Designer V2: numbers sit below the jersey as compact SVG text
+// (PlayerNumber in ProTaggerLineupJerseyTile.tsx), 12px for starters and
+// subs alike — 1px smaller than the earlier on-shirt 13px.
 const STARTER_JERSEY_SIZE = 26;
-const STARTER_NUMBER_FONT_SIZE = 13;
+const STARTER_NUMBER_FONT_SIZE = 12;
 const SUB_JERSEY_SIZE = 22;
-const SUB_NUMBER_FONT_SIZE = 13;
+const SUB_NUMBER_FONT_SIZE = 12;
 
 // Player numbers sit below the jersey (Jersey Designer V2), so a tile is
 // taller than its jersey. Each slot is anchored on the JERSEY's centre, not

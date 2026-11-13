@@ -49,12 +49,14 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
 // marker rather than two different systems.
 const FORMATION_JERSEY_SIZE = 26;
 const BENCH_JERSEY_SIZE = 22;
-// Number legibility pass: real-Android screenshots showed double-digit
-// numbers (10-15) reading soft/blurry at Squad Setup's 13px. Bumped 1px
-// (13 -> 14, the smallest useful step). Squad Setup itself is untouched —
-// it still passes 13, so this is picker-local only.
-const FORMATION_NUMBER_FONT_SIZE = 14;
-const BENCH_NUMBER_FONT_SIZE = 14;
+// Number legibility: the picker stays 1px larger than Squad Setup for its
+// denser live-capture use. The earlier "soft/blurry 10-15" reports on
+// real Android traced to a CSS text stroke drawn over the system font's
+// overlapping glyph contours (see PlayerNumber in
+// ProTaggerLineupJerseyTile.tsx), now fixed, so both sizes dropped 1px
+// (picker 14 -> 13, Squad Setup 13 -> 12) with the number below the shirt.
+const FORMATION_NUMBER_FONT_SIZE = 13;
+const BENCH_NUMBER_FONT_SIZE = 13;
 
 export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, kit, onSelect, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";

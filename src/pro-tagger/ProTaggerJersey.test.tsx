@@ -129,38 +129,56 @@ describe("Six patterns stay distinguishable", () => {
 describe("ProTaggerLineupJerseyTile — number below the jersey", () => {
   function parts(container: HTMLElement) {
     const tile = container.firstElementChild as HTMLElement;
-    const [jerseyWrap, numberEl, nameEl] = [...tile.children] as HTMLElement[];
-    return { tile, jerseyWrap, numberEl, nameEl };
+    const [jerseyWrap, numberSvg, nameEl] = [...tile.children] as HTMLElement[];
+    return { tile, jerseyWrap, numberSvg, nameEl };
   }
 
-  it.each(["#16a34a", "#facc15", "#ffffff", "#111827"])("on a %s kit: the number is centred below the shirt, not on it", (primary) => {
-    const { container } = render(<ProTaggerLineupJerseyTile player={player(7, "Seán")} primary={primary} secondary="#166534" size={26} numberFontSize={13} />);
-    const { jerseyWrap, numberEl, nameEl } = parts(container);
-    expect(jerseyWrap.querySelector("svg")).not.toBeNull();
+  it.each(Array.from({ length: 15 }, (_, i) => i + 1))("number %i renders below the shirt as clean SVG text", (n) => {
+    const { container } = render(<ProTaggerLineupJerseyTile player={player(n, "Seán")} primary="#facc15" secondary="#166534" size={26} numberFontSize={12} />);
+    const { jerseyWrap, numberSvg, nameEl } = parts(container);
+    expect(jerseyWrap.querySelector("svg[data-jersey-pattern]")).not.toBeNull();
     expect(jerseyWrap.textContent).toBe(""); // nothing printed on the shirt
-    expect(numberEl.textContent).toBe("7");
-    expect(numberEl.style.position).toBe(""); // in flow below the jersey, not overlaid
-    expect(numberEl.style.textAlign).toBe("center");
+    expect(numberSvg.tagName.toLowerCase()).toBe("svg");
+    expect(numberSvg.getAttribute("data-player-number")).toBe(String(n));
+    expect(numberSvg.getAttribute("aria-label")).toBe(String(n));
+    const texts = [...numberSvg.querySelectorAll("text")];
+    expect(texts.map((t) => t.textContent)).toEqual([String(n), String(n)]); // halo + digits
+    const w = Number(numberSvg.getAttribute("width"));
+    for (const t of texts) {
+      expect(t.getAttribute("text-anchor")).toBe("middle");
+      expect(Number(t.getAttribute("x"))).toBe(w / 2); // centred for one and two digits alike
+    }
     expect(nameEl.textContent).toBe("Seán");
   });
 
-  it("one readable treatment on every kit: bold white with a subtle dark outline, no badge", () => {
-    for (const primary of ["#16a34a", "#facc15", "#ffffff"]) {
-      const { container, unmount } = render(<ProTaggerLineupJerseyTile player={player(11)} primary={primary} secondary="#000000" size={26} numberFontSize={14} />);
-      const { numberEl } = parts(container);
-      expect(numberEl.style.color).toBe("rgb(255, 255, 255)");
-      expect(numberEl.style.fontWeight).toBe("900");
-      expect(numberEl.style.fontSize).toBe("14px");
-      expect(numberEl.style.getPropertyValue("-webkit-text-stroke")).toBe("0.5px rgba(6, 10, 16, 0.85)");
-      expect(numberEl.style.background).toBe("");
-      expect(numberEl.style.borderRadius).toBe("");
-      unmount();
+  it("the outline is painted BEHIND the white fill, so it cannot draw through digit interiors", () => {
+    const { container } = render(<ProTaggerLineupJerseyTile player={player(14)} primary="#16a34a" secondary="#ffffff" size={26} numberFontSize={12} />);
+    const [halo, digits] = [...parts(container).numberSvg.querySelectorAll("text")];
+    expect(digits.getAttribute("fill")).toBe("#ffffff");
+    expect(digits.getAttribute("paint-order")).toBe("stroke");
+    expect(Number(digits.getAttribute("stroke-width"))).toBeLessThanOrEqual(2.5); // ~1px visible outline
+    expect(digits.getAttribute("stroke-linejoin")).toBe("round");
+    // The halo is a faint, unfilled layer drawn underneath — never a filled badge.
+    expect(halo.getAttribute("fill")).toBe("none");
+    expect(halo.getAttribute("aria-hidden")).toBe("true");
+    expect(halo.getAttribute("stroke")).toMatch(/rgba\(6, 10, 16, 0\.3\d?\)/);
+  });
+
+  it("restrained, consistent type: weight 700, Roboto-first stack, tabular figures, no CSS text-stroke or text-shadow", () => {
+    const { container } = render(<ProTaggerLineupJerseyTile player={player(8)} primary="#ffffff" secondary="#000000" size={26} numberFontSize={13} />);
+    const svg = parts(container).numberSvg;
+    for (const t of svg.querySelectorAll("text")) {
+      expect(t.getAttribute("font-weight")).toBe("700");
+      expect(t.getAttribute("font-size")).toBe("13");
+      expect(t.getAttribute("font-family")).toMatch(/^Roboto,/);
+      expect((t as SVGTextElement).style.fontVariantNumeric).toBe("tabular-nums");
     }
+    expect(container.innerHTML).not.toMatch(/text-stroke|text-shadow/);
   });
 
   it("an empty formation slot shows a ghost jersey with no number", () => {
     const { container } = render(<ProTaggerLineupJerseyTile player={null} primary="#16a34a" secondary="#ffffff" size={26} />);
-    expect(container.textContent).toBe("");
+    expect(container.querySelector("[data-player-number]")).toBeNull();
   });
 });
 

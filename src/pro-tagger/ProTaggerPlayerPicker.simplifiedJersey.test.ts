@@ -81,23 +81,19 @@ describe("ProTaggerLineupJerseyTile — one shared V2 jersey drawing (req. 2, 3,
 });
 
 describe("ProTaggerLineupJerseyTile — live-picker number treatment (req. 5, 6)", () => {
-  it("the number sits below the jersey, so its outline is a subtle thin stroke rather than a heavy on-shirt outline", () => {
-    const block = tileSource.match(/numberText:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    expect(block).toMatch(/WebkitTextStroke:\s*["']0\.5px/);
+  it("the number sits below the jersey with a thin outline painted behind the fill", () => {
+    expect(tileSource).toMatch(/strokeWidth=\{1\.8\}/);
+    expect(tileSource).toMatch(/paintOrder="stroke"/);
   });
 
-  it("the number uses a single shadow, not the previous multi-layer stack", () => {
-    const block = tileSource.match(/numberText:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    const shadowMatch = block.match(/textShadow:\s*["']([^"']+)["']/);
-    expect(shadowMatch).not.toBeNull();
-    const withoutColourArgs = shadowMatch![1].replace(/rgba?\([^)]*\)/g, "rgba(...)");
-    expect(withoutColourArgs).not.toContain(",");
+  it("the number uses no shadow stack at all", () => {
+    expect(tileSource).not.toMatch(/textShadow/);
   });
 
   it("the number itself is still white, bold, and centred (now below the jersey)", () => {
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?color:\s*["']#ffffff["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?fontWeight:\s*900/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?textAlign:\s*["']center["']/);
+    expect(tileSource).toMatch(/fill="#ffffff"/);
+    expect(tileSource).toMatch(/fontWeight: 700/);
+    expect(tileSource).toMatch(/textAnchor: "middle"/);
   });
 
   it("there is exactly one number treatment — no per-caller outline variants remain", () => {
@@ -121,9 +117,9 @@ describe("Squad Setup and the picker share one marker (req. 7, 8)", () => {
     expect(miniJerseySource).not.toMatch(/<path/);
   });
 
-  it("number font sizes are untouched (Squad Setup 13px, picker 14px)", () => {
-    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 13/);
-    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 14/);
+  it("number font sizes: Squad Setup 12px, picker 13px", () => {
+    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 12/);
+    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 13/);
   });
 });
 
