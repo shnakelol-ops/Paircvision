@@ -220,19 +220,18 @@ describe("Scoring Map markers", () => {
     expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(true);
   });
 
-  it("goal is an orange disc with a white six-armed starburst centred inside it", () => {
+  it("goal is a plain orange disc with a dark outline and no white starburst", () => {
     const { ctx, ops } = recordingContext();
     drawShotMarker(ctx, "GOAL", 100, 100, SHOT_MARKER_R);
     const arcs = ops.filter((o) => o.op === "arc");
     expect(arcs).toHaveLength(1);
     expect(arcs[0].args.slice(0, 3)).toEqual([100, 100, SHOT_MARKER_R * 1.3]);
     expect(ops.find((o) => o.op === "fill")!.fill).toBe("#F28C28");
-    const moves = ops.filter((o) => o.op === "moveTo");
-    expect(moves).toHaveLength(3);
-    for (const o of ops.filter((o) => o.op === "moveTo" || o.op === "lineTo")) {
-      expect(Math.hypot(o.args[0] - 100, o.args[1] - 100)).toBeLessThan(SHOT_MARKER_R * 1.3);
-    }
-    expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(true);
+    expect(ops.filter((o) => o.op === "moveTo" || o.op === "lineTo")).toHaveLength(0);
+    const strokes = ops.filter((o) => o.op === "stroke");
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0].stroke).toBe("#0b1428");
+    expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(false);
   });
 
   it("shot markers are ~25–30% smaller than turnover markers' base size", () => {
