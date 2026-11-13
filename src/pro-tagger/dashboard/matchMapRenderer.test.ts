@@ -9,6 +9,7 @@ import {
   pitchThirdRects,
   MAP_WIDTH,
   SHOT_MARKER_COLOURS,
+  SHOT_MARKER_R,
   TURNOVER_LOST_COLOUR,
   TURNOVER_WON_COLOUR,
   drawScoringMap,
@@ -146,16 +147,14 @@ function expectShotMarkersAt(view: ScoringMapView) {
   for (const m of view.markers) {
     const p = framePoint(frame, m.point!);
     if (m.outcome === "WIDE") {
-      expect(ops.some((o) => o.op === "moveTo" && near(o.args[0], p.x - 15 * 0.85) && near(o.args[1], p.y - 15 * 0.85))).toBe(true);
-    } else if (m.outcome === "SHORT") {
-      expect(ops.some((o) => o.op === "moveTo" && near(o.args[0], p.x) && near(o.args[1], p.y - 15))).toBe(true);
+      expect(ops.some((o) => o.op === "moveTo" && near(o.args[0], p.x - SHOT_MARKER_R * 0.85) && near(o.args[1], p.y - SHOT_MARKER_R * 0.85))).toBe(true);
     } else {
       const idx = ops.findIndex((o) => o.op === "arc" && near(o.args[0], p.x) && near(o.args[1], p.y));
       expect(idx).toBeGreaterThanOrEqual(0);
       const fill = ops.slice(idx).find((o) => o.op === "fill")!.fill;
       const want: Record<string, string> = {
         GOAL: SHOT_MARKER_COLOURS.GOAL, POINT: SHOT_MARKER_COLOURS.POINT, TWO_POINT: SHOT_MARKER_COLOURS.TWO_POINT,
-        BLOCKED: SHOT_MARKER_COLOURS.GREY,
+        BLOCKED: SHOT_MARKER_COLOURS.GREY, SHORT: SHOT_MARKER_COLOURS.SHORT,
       };
       if (want[m.outcome]) expect(fill).toBe(want[m.outcome]);
     }
@@ -204,6 +203,26 @@ describe("Scoring Map markers", () => {
     // Blocked: one solid grey disc.
     expect(blocked.ops.filter((o) => o.op === "arc")).toHaveLength(1);
     expect(blocked.ops.find((o) => o.op === "fill")!.fill).toBe(SHOT_MARKER_COLOURS.GREY);
+  });
+
+  it("dropped short is a burgundy disc with a white downward arrow centred inside it", () => {
+    const { ctx, ops } = recordingContext();
+    drawShotMarker(ctx, "SHORT", 100, 100, SHOT_MARKER_R);
+    const arcs = ops.filter((o) => o.op === "arc");
+    expect(arcs).toHaveLength(1);
+    expect(arcs[0].args.slice(0, 3)).toEqual([100, 100, SHOT_MARKER_R]);
+    expect(ops.find((o) => o.op === "fill")!.fill).toBe("#641E39");
+    const arrow = ops.filter((o) => o.op === "moveTo" || o.op === "lineTo");
+    expect(arrow.length).toBeGreaterThan(0);
+    for (const o of arrow) {
+      expect(Math.hypot(o.args[0] - 100, o.args[1] - 100)).toBeLessThan(SHOT_MARKER_R);
+    }
+    expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(true);
+  });
+
+  it("shot markers are ~25–30% smaller than turnover markers' base size", () => {
+    expect(SHOT_MARKER_R / 15).toBeGreaterThanOrEqual(0.7);
+    expect(SHOT_MARKER_R / 15).toBeLessThanOrEqual(0.75);
   });
 });
 
