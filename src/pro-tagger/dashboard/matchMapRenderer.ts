@@ -23,7 +23,7 @@
  * pitch until every plotted shot is inside — a shot is never cropped off.
  *
  * Marker language (CLAUDE.md Visual Language):
- *   Goal: orange #F28C28 disc (larger) with a white ✱ · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
+ *   Goal: orange #F28C28 regular hexagon (vertices top and bottom, Point-sized) · Point #4ade80 · Two-pointer #FFDF00 · Wide red ✕
  *   Blocked / saved: solid grey #94a3b8 · Post: grey ring with a centre dot
  *   Dropped short: burgundy #641E39 disc with a white ↓ · Other / not recorded: dashed white ring
  *   Turnover won: purple #a78bfa circle · Turnover lost: orange #f97316 diamond
@@ -260,7 +260,7 @@ export function drawPortraitPitch(ctx: CanvasRenderingContext2D, sport: ProTagge
 export const SHOT_MARKER_COLOURS = {
   GOAL: "#F28C28",
   POINT: "#4ade80",
-  TWO_POINT: "#fbbf24",
+  TWO_POINT: "#FFDF00",
   WIDE: "#ef4444",
   GREY: "#94a3b8",
   SHORT: "#641E39",
@@ -285,23 +285,23 @@ export function drawShotMarker(ctx: CanvasRenderingContext2D, outcome: ShotOutco
   ctx.setLineDash([]);
   ctx.lineCap = "round";
   switch (outcome) {
-    case "GOAL": {
-      // Orange disc with a white six-armed ✱, drawn as strokes so it never depends on a font or emoji glyph.
-      const R = r * 1.3;
-      disc(ctx, x, y, R, SHOT_MARKER_COLOURS.GOAL);
-      const arm = R * 0.58;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = Math.max(1.5, R * 0.2);
+    case "GOAL":
+      // Regular hexagon, vertices at top and bottom; circumradius r, so its footprint matches a Point.
       ctx.beginPath();
-      for (const a of [Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6]) {
-        const dx = Math.cos(a) * arm;
-        const dy = Math.sin(a) * arm;
-        ctx.moveTo(x - dx, y - dy);
-        ctx.lineTo(x + dx, y + dy);
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 3;
+        const vx = x + Math.cos(a) * r;
+        const vy = y + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
       }
+      ctx.closePath();
+      ctx.fillStyle = SHOT_MARKER_COLOURS.GOAL;
+      ctx.fill();
+      ctx.strokeStyle = MARKER_OUTLINE;
+      ctx.lineWidth = 3;
       ctx.stroke();
       break;
-    }
     case "POINT":
       disc(ctx, x, y, r, SHOT_MARKER_COLOURS.POINT);
       break;

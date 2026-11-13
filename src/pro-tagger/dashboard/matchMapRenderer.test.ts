@@ -75,6 +75,7 @@ function recordingContext() {
     arc: record("arc"),
     fillRect: record("fillRect"),
     moveTo: record("moveTo"),
+    lineTo: record("lineTo"),
     fill: record("fill"),
     stroke: record("stroke"),
     transform: record("transform"),
@@ -148,6 +149,11 @@ function expectShotMarkersAt(view: ScoringMapView) {
     const p = framePoint(frame, m.point!);
     if (m.outcome === "WIDE") {
       expect(ops.some((o) => o.op === "moveTo" && near(o.args[0], p.x - SHOT_MARKER_R * 0.85) && near(o.args[1], p.y - SHOT_MARKER_R * 0.85))).toBe(true);
+    } else if (m.outcome === "GOAL") {
+      // Hexagon: first vertex straight above the goal's centre, at the base radius.
+      const idx = ops.findIndex((o) => o.op === "moveTo" && near(o.args[0], p.x) && near(o.args[1], p.y - SHOT_MARKER_R));
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(ops.slice(idx).find((o) => o.op === "fill")!.fill).toBe(SHOT_MARKER_COLOURS.GOAL);
     } else {
       const idx = ops.findIndex((o) => o.op === "arc" && near(o.args[0], p.x) && near(o.args[1], p.y));
       expect(idx).toBeGreaterThanOrEqual(0);
@@ -220,19 +226,41 @@ describe("Scoring Map markers", () => {
     expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(true);
   });
 
-  it("goal is an orange disc with a white six-armed starburst centred inside it", () => {
+  it("goal is a plain orange regular hexagon, vertices top and bottom, Point-sized, centred, dark outline", () => {
     const { ctx, ops } = recordingContext();
     drawShotMarker(ctx, "GOAL", 100, 100, SHOT_MARKER_R);
+    expect(ops.filter((o) => o.op === "arc")).toHaveLength(0);
+    const verts = ops.filter((o) => o.op === "moveTo" || o.op === "lineTo").map((o) => [o.args[0], o.args[1]]);
+    expect(verts).toHaveLength(6);
+    expect(ops.filter((o) => o.op === "moveTo")).toHaveLength(1);
+    // Every vertex on the Point marker's radius (same footprint as a Point, 1.0×), 60° apart.
+    for (const [vx, vy] of verts) expect(Math.hypot(vx - 100, vy - 100)).toBeCloseTo(SHOT_MARKER_R, 9);
+    // Vertices at top and bottom.
+    expect(verts[0][0]).toBeCloseTo(100, 9);
+    expect(verts[0][1]).toBeCloseTo(100 - SHOT_MARKER_R, 9);
+    expect(verts[3][0]).toBeCloseTo(100, 9);
+    expect(verts[3][1]).toBeCloseTo(100 + SHOT_MARKER_R, 9);
+    // Centred on the goal's coordinates.
+    expect(verts.reduce((a, v) => a + v[0], 0) / 6).toBeCloseTo(100, 9);
+    expect(verts.reduce((a, v) => a + v[1], 0) / 6).toBeCloseTo(100, 9);
+    const fills = ops.filter((o) => o.op === "fill");
+    expect(fills).toHaveLength(1);
+    expect(fills[0].fill).toBe("#F28C28");
+    const strokes = ops.filter((o) => o.op === "stroke");
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0].stroke).toBe("#0b1428");
+    expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(false);
+  });
+
+  it("two-pointer is a bright yellow #FFDF00 disc at the base radius with the dark outline", () => {
+    const { ctx, ops } = recordingContext();
+    drawShotMarker(ctx, "TWO_POINT", 100, 100, SHOT_MARKER_R);
     const arcs = ops.filter((o) => o.op === "arc");
     expect(arcs).toHaveLength(1);
-    expect(arcs[0].args.slice(0, 3)).toEqual([100, 100, SHOT_MARKER_R * 1.3]);
-    expect(ops.find((o) => o.op === "fill")!.fill).toBe("#F28C28");
-    const moves = ops.filter((o) => o.op === "moveTo");
-    expect(moves).toHaveLength(3);
-    for (const o of ops.filter((o) => o.op === "moveTo" || o.op === "lineTo")) {
-      expect(Math.hypot(o.args[0] - 100, o.args[1] - 100)).toBeLessThan(SHOT_MARKER_R * 1.3);
-    }
-    expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(true);
+    expect(arcs[0].args.slice(0, 3)).toEqual([100, 100, SHOT_MARKER_R]);
+    expect(ops.find((o) => o.op === "fill")!.fill).toBe("#FFDF00");
+    expect(ops.find((o) => o.op === "stroke")!.stroke).toBe("#0b1428");
+    expect(SHOT_MARKER_COLOURS.TWO_POINT).not.toBe(SHOT_MARKER_COLOURS.GOAL);
   });
 
   it("shot markers are ~25–30% smaller than turnover markers' base size", () => {
