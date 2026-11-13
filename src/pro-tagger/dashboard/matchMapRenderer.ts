@@ -23,7 +23,7 @@
  * pitch until every plotted shot is inside — a shot is never cropped off.
  *
  * Marker language (CLAUDE.md Visual Language):
- *   Goal #16a34a (larger) · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
+ *   Goal: orange #F28C28 disc (larger) with a white ✱ · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
  *   Blocked / saved: solid grey #94a3b8 · Post: grey ring with a centre dot
  *   Dropped short: burgundy #641E39 disc with a white ↓ · Other / not recorded: dashed white ring
  *   Turnover won: purple #a78bfa circle · Turnover lost: orange #f97316 diamond
@@ -258,7 +258,7 @@ export function drawPortraitPitch(ctx: CanvasRenderingContext2D, sport: ProTagge
 // ─── Markers ──────────────────────────────────────────────────────────────────
 
 export const SHOT_MARKER_COLOURS = {
-  GOAL: "#16a34a",
+  GOAL: "#F28C28",
   POINT: "#4ade80",
   TWO_POINT: "#fbbf24",
   WIDE: "#ef4444",
@@ -285,9 +285,23 @@ export function drawShotMarker(ctx: CanvasRenderingContext2D, outcome: ShotOutco
   ctx.setLineDash([]);
   ctx.lineCap = "round";
   switch (outcome) {
-    case "GOAL":
-      disc(ctx, x, y, r * 1.3, SHOT_MARKER_COLOURS.GOAL, "#ffffff", 3);
+    case "GOAL": {
+      // Orange disc with a white six-armed ✱, drawn as strokes so it never depends on a font or emoji glyph.
+      const R = r * 1.3;
+      disc(ctx, x, y, R, SHOT_MARKER_COLOURS.GOAL);
+      const arm = R * 0.58;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = Math.max(1.5, R * 0.2);
+      ctx.beginPath();
+      for (const a of [Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6]) {
+        const dx = Math.cos(a) * arm;
+        const dy = Math.sin(a) * arm;
+        ctx.moveTo(x - dx, y - dy);
+        ctx.lineTo(x + dx, y + dy);
+      }
+      ctx.stroke();
       break;
+    }
     case "POINT":
       disc(ctx, x, y, r, SHOT_MARKER_COLOURS.POINT);
       break;
