@@ -1,0 +1,415 @@
+{
+ "window": 90,
+ "matches": {
+  "A": {
+   "R0 current: next restart or window only": {
+    "credited": 23,
+    "correct": 16,
+    "wrong": {
+     "FREE (placed)": 2,
+     "SIDELINE": 1,
+     "TURNOVER": 1,
+     "FREE": 2,
+     "FORTY_FIVE (placed)": 1
+    },
+    "truthRestartScores": 16,
+    "missed": 0,
+    "possession": {
+     "truth": 22,
+     "correct": 22,
+     "wrong": 1,
+     "missed": 0
+    }
+   },
+   "R1 + any turnover ends it": {
+    "credited": 22,
+    "correct": 16,
+    "wrong": {
+     "FREE (placed)": 2,
+     "SIDELINE": 1,
+     "FREE": 2,
+     "FORTY_FIVE (placed)": 1
+    },
+    "truthRestartScores": 16,
+    "missed": 0,
+    "possession": {
+     "truth": 22,
+     "correct": 22,
+     "wrong": 0,
+     "missed": 0
+    }
+   },
+   "R2 + any free / sideline / 45-65 award ends it": {
+    "credited": 16,
+    "correct": 16,
+    "wrong": {},
+    "truthRestartScores": 16,
+    "missed": 0,
+    "possession": {
+     "truth": 22,
+     "correct": 16,
+     "wrong": 0,
+     "missed": 6
+    }
+   },
+   "R3 + an opposition attempt ends it (they had the ball)": {
+    "credited": 16,
+    "correct": 16,
+    "wrong": {},
+    "truthRestartScores": 16,
+    "missed": 0,
+    "possession": {
+     "truth": 22,
+     "correct": 16,
+     "wrong": 0,
+     "missed": 6
+    }
+   },
+   "P possession change ends it (awards to the same team do not)": {
+    "credited": 21,
+    "correct": 16,
+    "wrong": {
+     "FREE (placed)": 2,
+     "SIDELINE": 1,
+     "FREE": 1,
+     "FORTY_FIVE (placed)": 1
+    },
+    "truthRestartScores": 16,
+    "missed": 0,
+    "possession": {
+     "truth": 22,
+     "correct": 21,
+     "wrong": 0,
+     "missed": 1
+    }
+   },
+   "R4 + the winner's own wide or non-scoring shot ends it": {
+    "credited": 16,
+    "correct": 16,
+    "wrong": {},
+    "truthRestartScores": 16,
+    "missed": 0,
+    "possession": {
+     "truth": 22,
+     "correct": 16,
+     "wrong": 0,
+     "missed": 6
+    }
+   },
+   "T-current (F-03): any turnover ends it; acting team's first attempt is the outcome": {
+    "credited": 8,
+    "correct": 6,
+    "wrong": {
+     "FREE (placed)": 2
+    },
+    "truthTurnoverScores": 6,
+    "missed": 0,
+    "possession": {
+     "truth": 10,
+     "correct": 8,
+     "wrong": 0,
+     "missed": 2
+    }
+   },
+   "T-P: possession change ends it; acting team's first attempt is the outcome": {
+    "credited": 8,
+    "correct": 6,
+    "wrong": {
+     "FREE (placed)": 2
+    },
+    "truthTurnoverScores": 6,
+    "missed": 0,
+    "possession": {
+     "truth": 10,
+     "correct": 8,
+     "wrong": 0,
+     "missed": 2
+    }
+   },
+   "T-authoritative: + restart / free / sideline / 45-65 award / opposition attempt ends it": {
+    "credited": 6,
+    "correct": 6,
+    "wrong": {},
+    "truthTurnoverScores": 6,
+    "missed": 0,
+    "possession": {
+     "truth": 10,
+     "correct": 6,
+     "wrong": 0,
+     "missed": 4
+    }
+   }
+  },
+  "B": {
+   "R0 current: next restart or window only": {
+    "credited": 29,
+    "correct": 10,
+    "wrong": {
+     "FREE (placed)": 8,
+     "TURNOVER": 6,
+     "FREE": 4,
+     "SIDELINE": 1
+    },
+    "truthRestartScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 17,
+     "correct": 17,
+     "wrong": 12,
+     "missed": 0
+    }
+   },
+   "R1 + any turnover ends it": {
+    "credited": 17,
+    "correct": 10,
+    "wrong": {
+     "FREE (placed)": 6,
+     "FREE": 1
+    },
+    "truthRestartScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 17,
+     "correct": 17,
+     "wrong": 0,
+     "missed": 0
+    }
+   },
+   "R2 + any free / sideline / 45-65 award ends it": {
+    "credited": 10,
+    "correct": 10,
+    "wrong": {},
+    "truthRestartScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 17,
+     "correct": 10,
+     "wrong": 0,
+     "missed": 7
+    }
+   },
+   "R3 + an opposition attempt ends it (they had the ball)": {
+    "credited": 10,
+    "correct": 10,
+    "wrong": {},
+    "truthRestartScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 17,
+     "correct": 10,
+     "wrong": 0,
+     "missed": 7
+    }
+   },
+   "P possession change ends it (awards to the same team do not)": {
+    "credited": 17,
+    "correct": 10,
+    "wrong": {
+     "FREE (placed)": 6,
+     "FREE": 1
+    },
+    "truthRestartScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 17,
+     "correct": 17,
+     "wrong": 0,
+     "missed": 0
+    }
+   },
+   "R4 + the winner's own wide or non-scoring shot ends it": {
+    "credited": 10,
+    "correct": 10,
+    "wrong": {},
+    "truthRestartScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 17,
+     "correct": 10,
+     "wrong": 0,
+     "missed": 7
+    }
+   },
+   "T-current (F-03): any turnover ends it; acting team's first attempt is the outcome": {
+    "credited": 29,
+    "correct": 18,
+    "wrong": {
+     "FREE (placed)": 6,
+     "FREE": 3,
+     "SIDELINE": 2
+    },
+    "truthTurnoverScores": 18,
+    "missed": 0,
+    "possession": {
+     "truth": 30,
+     "correct": 29,
+     "wrong": 0,
+     "missed": 1
+    }
+   },
+   "T-P: possession change ends it; acting team's first attempt is the outcome": {
+    "credited": 29,
+    "correct": 18,
+    "wrong": {
+     "FREE (placed)": 6,
+     "FREE": 3,
+     "SIDELINE": 2
+    },
+    "truthTurnoverScores": 18,
+    "missed": 0,
+    "possession": {
+     "truth": 30,
+     "correct": 29,
+     "wrong": 0,
+     "missed": 1
+    }
+   },
+   "T-authoritative: + restart / free / sideline / 45-65 award / opposition attempt ends it": {
+    "credited": 18,
+    "correct": 18,
+    "wrong": {},
+    "truthTurnoverScores": 18,
+    "missed": 0,
+    "possession": {
+     "truth": 30,
+     "correct": 18,
+     "wrong": 0,
+     "missed": 12
+    }
+   }
+  },
+  "C": {
+   "R0 current: next restart or window only": {
+    "credited": 22,
+    "correct": 14,
+    "wrong": {
+     "FREE (placed)": 5,
+     "TURNOVER": 1,
+     "FREE": 2
+    },
+    "truthRestartScores": 14,
+    "missed": 0,
+    "possession": {
+     "truth": 21,
+     "correct": 21,
+     "wrong": 1,
+     "missed": 0
+    }
+   },
+   "R1 + any turnover ends it": {
+    "credited": 21,
+    "correct": 14,
+    "wrong": {
+     "FREE (placed)": 5,
+     "FREE": 2
+    },
+    "truthRestartScores": 14,
+    "missed": 0,
+    "possession": {
+     "truth": 21,
+     "correct": 21,
+     "wrong": 0,
+     "missed": 0
+    }
+   },
+   "R2 + any free / sideline / 45-65 award ends it": {
+    "credited": 14,
+    "correct": 14,
+    "wrong": {},
+    "truthRestartScores": 14,
+    "missed": 0,
+    "possession": {
+     "truth": 21,
+     "correct": 14,
+     "wrong": 0,
+     "missed": 7
+    }
+   },
+   "R3 + an opposition attempt ends it (they had the ball)": {
+    "credited": 14,
+    "correct": 14,
+    "wrong": {},
+    "truthRestartScores": 14,
+    "missed": 0,
+    "possession": {
+     "truth": 21,
+     "correct": 14,
+     "wrong": 0,
+     "missed": 7
+    }
+   },
+   "P possession change ends it (awards to the same team do not)": {
+    "credited": 21,
+    "correct": 14,
+    "wrong": {
+     "FREE (placed)": 5,
+     "FREE": 2
+    },
+    "truthRestartScores": 14,
+    "missed": 0,
+    "possession": {
+     "truth": 21,
+     "correct": 21,
+     "wrong": 0,
+     "missed": 0
+    }
+   },
+   "R4 + the winner's own wide or non-scoring shot ends it": {
+    "credited": 14,
+    "correct": 14,
+    "wrong": {},
+    "truthRestartScores": 14,
+    "missed": 0,
+    "possession": {
+     "truth": 21,
+     "correct": 14,
+     "wrong": 0,
+     "missed": 7
+    }
+   },
+   "T-current (F-03): any turnover ends it; acting team's first attempt is the outcome": {
+    "credited": 12,
+    "correct": 10,
+    "wrong": {
+     "FREE (placed)": 2
+    },
+    "truthTurnoverScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 16,
+     "correct": 12,
+     "wrong": 0,
+     "missed": 4
+    }
+   },
+   "T-P: possession change ends it; acting team's first attempt is the outcome": {
+    "credited": 12,
+    "correct": 10,
+    "wrong": {
+     "FREE (placed)": 2
+    },
+    "truthTurnoverScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 16,
+     "correct": 12,
+     "wrong": 0,
+     "missed": 4
+    }
+   },
+   "T-authoritative: + restart / free / sideline / 45-65 award / opposition attempt ends it": {
+    "credited": 10,
+    "correct": 10,
+    "wrong": {},
+    "truthTurnoverScores": 10,
+    "missed": 0,
+    "possession": {
+     "truth": 16,
+     "correct": 10,
+     "wrong": 0,
+     "missed": 6
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,284 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Full-Time Dashboard
+ 1896    38  1 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  496   118  Kilmacud Crokes
+ 1424   118  St Brigid's
+  960   150  v
+  496   190  2-23 (29)
+ 1424   190  2-34 (40)
+  960   244  St Brigid's lead by 11
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Kilmacud Crokes
+  540   394  21/39
+  994   394  18/37
+ 1448   402  47
+   86   416  22/43
+  540   446  54%
+  994   446  49%
+   86   452  51%
+ 1448   470  Lost
+  540   490  Lost 18/39
+  994   490  Lost 19/37
+ 1448   514  46
+   86   534  St Brigid's
+   86   576  31/41
+   86   612  76%
+   46   928  Kilmacud Crokes placed balls
+  992   928  St Brigid's placed balls
+   46   956  7/10 scored
+  992   956  8/11 scored
+ 1896  1060  306 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   54   125  22 scores from 43 shots · 51% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+ 1463   630  ↓
+ 1464   632  ↓
+ 1498   697  ↓
+ 1499   699  ↓
+   46   972  Kilmacud… shots: 22 scored from 43 attempts · …
+  676   972  Kilmacud…: 7 placed-ball scores · 3 placed-ball …
+ 1306   972  Kilmacud… best zone: Attacking Centre (13)
+ 1896  1060  43 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   54   125  31 scores from 41 shots · 76% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+ 1562   409  ↓
+ 1563   411  ↓
+   46   972  St Brigid's shots: 31 scored from 41 attempts · 1…
+  676   972  St Brigid's: 8 placed-ball scores · 3 placed-ball …
+ 1306   972  St Brigid's best scoring zone: Attacking Centre (…
+ 1896  1060  41 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Kilmacud Crokes Kickouts
+ 1434   118  St Brigid's Kickouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Kilmacud Crokes Kickouts
+  992   928  St Brigid's Kickouts
+   46   956  Kilmacud… retained 14/18 (78%)
+  992   956  St Brigid's retained 10/16 (63%)
+ 1896  1060  34 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Restart Battle – Second Half
+ 1896    38  5 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  486    95  2nd Half
+ 1434    95  2nd Half
+  486   118  Kilmacud Crokes Kickouts
+ 1434   118  St Brigid's Kickouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Kilmacud Crokes Kickouts
+  992   928  St Brigid's Kickouts
+   46   956  Kilmacud… retained 7/21 (33%)
+  992   956  St Brigid's retained 8/21 (38%)
+ 1896  1060  42 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Turnover & Territory – First Half
+ 1896    38  6 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's · Kilmacud Crokes attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 28 · Lost 32 (47% won)
+  676   972  Attacking Centre
+ 1306   972  Middle Centre
+ 1896  1060  60 events
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Turnover & Territory – Second Half
+ 1896    38  7 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's · Kilmacud Crokes attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 19 · Lost 14 (58% won)
+  676   972  Attacking Centre
+ 1306   972  Middle Centre
+ 1896  1060  33 events
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  8 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   38   104  FOR — KILMACUD CROKES
+  982   104  OPP — ST BRIGID'S
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  43
+  982   172  Attempts
+ 1884   172  41
+   38   204  Scores
+  940   204  22
+  982   204  Scores
+ 1884   204  31
+   38   236  Conversion
+  940   236  51%
+  982   236  Conversion
+ 1884   236  76%
+   38   268  Wides
+  940   268  15
+  982   268  Wides
+ 1884   268  8
+   38   300  Blocked / Saved
+  940   300  6
+  982   300  Blocked / Saved
+ 1884   300  2
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  27
+  664   400  15
+  780   400  12
+  940   400  56%
+  982   400  Open Play
+ 1488   400  27
+ 1608   400  22
+ 1724   400  5
+ 1884   400  81%
+   38   432  Free
+  544   432  8
+  664   432  6
+  780   432  2
+  940   432  75%
+  982   432  Free
+ 1488   432  10
+ 1608   432  8
+ 1724   432  2
+ 1884   432  80%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  2
+  664   496  1
+  780   496  1
+  940   496  50%
+  982   496  45
+ 1488   496  1
+ 1608   496  —
+ 1724   496  1
+ 1884   496  0%
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  6
+  664   560  —
+  780   560  6
+  940   560  0%
+  982   560  Unclassified
+ 1488   560  3
+ 1608   560  1
+ 1724   560  2
+ 1884   560  33%
+   38   587  6 shots logged without a source
+  982   587  3 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  2
+  982   660  TWO_POINTER Scores
+ 1884   660  5
+   38   692  45+2 Scores
+  940   692  1
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  3
+  982   724  Total 2PT Scores
+ 1884   724  5
+   38   756  Total 2PT Pts Value
+  940   756  6
+  982   756  Total 2PT Pts Value
+ 1884   756  10
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  7
+  982   834  Placed Scored
+ 1884   834  8
+   38   866  Placed Missed
+  940   866  3
+  982   866  Placed Missed
+ 1884   866  3
+   38   898  Placed Conv %
+  940   898  70%
+  982   898  Placed Conv %
+ 1884   898  73%
+ 1896  1060  306 events

@@ -1,0 +1,20 @@
+[C] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[C] match started 
+[C] substitution {"team":"OPP","out":6,"in":18,"pass":true}
+[C] captured Quick Review HT {"countsRows":18,"panes":3}
+[C] exported HT-snapshot-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-HT-snapshot-live.pdf","suggested":"Kilmallock_v_Ballygunner_ht_snapshot.pdf","pages":5}
+[C] second half started 
+[C] substitution {"team":"FOR","out":11,"in":16,"pass":true}
+[C] substitution {"team":"OPP","out":14,"in":19,"pass":true}
+[C] substitution {"team":"FOR","out":13,"in":17,"pass":true}
+[C] captured Quick Review FT {"countsRows":18,"panes":3}
+[C] exported FT-snapshot-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-FT-snapshot-live.pdf","suggested":"Kilmallock_v_Ballygunner_ft_snapshot.pdf","pages":8}
+[C] exported FullReview-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-FullReview-live.pdf","suggested":"Kilmallock_v_Ballygunner_review.pdf","pages":30}
+[C] full time + saved 
+[C] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[C] exported HT-snapshot-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-HT-snapshot-reopened.pdf","suggested":"Kilmallock_v_Ballygunner_ht_snapshot.pdf","pages":5}
+[C] exported FT-snapshot-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-FT-snapshot-reopened.pdf","suggested":"Kilmallock_v_Ballygunner_ft_snapshot.pdf","pages":8}
+[C] exported FullReview-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-FullReview-reopened.pdf","suggested":"Kilmallock_v_Ballygunner_review.pdf","pages":30}
+[C] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[C] exported FT-snapshot-reopened2 {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/C/pdf/C-FT-snapshot-reopened2.pdf","suggested":"Kilmallock_v_Ballygunner_ft_snapshot.pdf","pages":8}
+[C] done 

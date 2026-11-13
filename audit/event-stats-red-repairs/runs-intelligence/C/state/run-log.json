@@ -1,0 +1,345 @@
+[
+ {
+  "t": "2026-10-24T09:14:22.222Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "The script has an unsupported MIME type ('text/html')."
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:22.559Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:22.783Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:25.742Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderBottomColor borderBottom"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:26.370Z",
+  "msg": "match started"
+ },
+ {
+  "t": "2026-10-24T09:14:29.914Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:32.589Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:39.256Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:44.261Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:46.925Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:51.258Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:14:56.369Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:09.304Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:11.893Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:16.403Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:18.345Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:21.907Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:23.149Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:26.235Z",
+  "msg": "captured Quick Review HT",
+  "extra": {
+   "countsRows": 18,
+   "panes": 3
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:27.143Z",
+  "msg": "exported HT-snapshot-live",
+  "extra": {
+   "file": "runs/C/pdf/C-HT-snapshot-live.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_ht_snapshot.pdf",
+   "pages": 5
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:27.258Z",
+  "msg": "second half started"
+ },
+ {
+  "t": "2026-10-24T09:15:30.137Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:31.484Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:32.922Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:36.186Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:43.661Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:47.468Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:51.534Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:53.969Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:15:59.005Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:07.909Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:11.853Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:18.363Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:21.271Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:24.301Z",
+  "msg": "captured Quick Review FT",
+  "extra": {
+   "countsRows": 18,
+   "panes": 3
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:25.537Z",
+  "msg": "exported FT-snapshot-live",
+  "extra": {
+   "file": "runs/C/pdf/C-FT-snapshot-live.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_ft_snapshot.pdf",
+   "pages": 8
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:28.196Z",
+  "msg": "exported FullReview-live",
+  "extra": {
+   "file": "runs/C/pdf/C-FullReview-live.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_review.pdf",
+   "pages": 30
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:28.265Z",
+  "msg": "full time + saved"
+ },
+ {
+  "t": "2026-10-24T09:16:29.216Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "The script has an unsupported MIME type ('text/html')."
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:30.890Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:30.986Z",
+  "msg": "exported HT-snapshot-reopened",
+  "extra": {
+   "file": "runs/C/pdf/C-HT-snapshot-reopened.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_ht_snapshot.pdf",
+   "pages": 5
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:31.385Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:31.501Z",
+  "msg": "exported FT-snapshot-reopened",
+  "extra": {
+   "file": "runs/C/pdf/C-FT-snapshot-reopened.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_ft_snapshot.pdf",
+   "pages": 8
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:32.805Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:33.509Z",
+  "msg": "exported FullReview-reopened",
+  "extra": {
+   "file": "runs/C/pdf/C-FullReview-reopened.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_review.pdf",
+   "pages": 30
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:34.419Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "The script has an unsupported MIME type ('text/html')."
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:35.428Z",
+  "msg": "CONSOLE ERROR",
+  "extra": {
+   "text": "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border"
+  }
+ },
+ {
+  "t": "2026-10-24T09:16:35.561Z",
+  "msg": "exported FT-snapshot-reopened2",
+  "extra": {
+   "file": "runs/C/pdf/C-FT-snapshot-reopened2.pdf",
+   "suggested": "Ballyhale_Shamrocks_v_Na_Piarsaigh_ft_snapshot.pdf",
+   "pages": 8
+  }
+ }
+]

@@ -1,0 +1,107 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Half-Time Dashboard
+ 1896    38  1 / 5
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  496   118  Corofin
+ 1424   118  Moycullen
+  960   150  v
+  496   190  0-14 (14)
+ 1424   190  0-12 (12)
+  960   244  Corofin lead by 2
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Corofin
+  540   394  16/21
+  994   394  7/17
+ 1448   402  25
+   86   416  11/21
+  540   446  76%
+  994   446  41%
+   86   452  52%
+ 1448   470  Lost
+  540   490  Lost 5/21
+  994   490  Lost 10/17
+ 1448   514  36
+   86   534  Moycullen
+   86   576  11/23
+   86   612  48%
+   46   928  Corofin placed balls
+  992   928  Moycullen placed balls
+   46   956  3/4 scored
+  992   956  2/4 scored
+ 1896  1060  168 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 5
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   54   125  11 scores from 21 shots · 52% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+   46   972  Corofin shots: 11 scored from 21 attempts · 10 …
+  676   972  Corofin: 3 placed-ball scores · 1 placed-ball wide
+ 1306   972  Corofin best zone: Attacking Centre (8)
+ 1896  1060  21 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 5
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   54   125  11 scores from 23 shots · 48% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+ 1535   437  ↓
+ 1537   439  ↓
+   46   972  Moycullen shots: 11 scored from 23 attempts · 1…
+  676   972  Moycullen: 2 placed-ball scores · 2 placed-ball …
+ 1306   972  Moycullen best scoring zone: Attacking Centre (6)
+ 1896  1060  23 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 5
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Corofin Kickouts
+ 1434   118  Moycullen Kickouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Corofin Kickouts
+  992   928  Moycullen Kickouts
+   46   956  Corofin retained 16/21 (76%)
+  992   956  Moycullen retained 7/17 (41%)
+ 1896  1060  38 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Turnover & Territory
+ 1896    38  5 / 5
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen · Corofin attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 25 · Lost 36 (41% won)
+  676   972  Middle Centre
+ 1306   972  Middle Centre
+ 1896  1060  61 events

@@ -1,0 +1,98 @@
+{
+ "t1_t2_killAfterEvent": [
+  {
+   "killAfterMs": 0,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 2,
+   "lost": 0
+  },
+  {
+   "killAfterMs": 250,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 2,
+   "lost": 0
+  },
+  {
+   "killAfterMs": 500,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 2,
+   "lost": 0
+  },
+  {
+   "killAfterMs": 750,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 2,
+   "lost": 0
+  },
+  {
+   "killAfterMs": 1000,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 2,
+   "lost": 0
+  }
+ ],
+ "t3_fiveRapidEvents": [
+  {
+   "gapBetweenEventsMs": 800,
+   "eventsInApp": 6,
+   "stored": 6,
+   "lost": 0,
+   "duplicateIds": 0
+  },
+  {
+   "gapBetweenEventsMs": 1000,
+   "eventsInApp": 6,
+   "stored": 6,
+   "lost": 0,
+   "duplicateIds": 0
+  }
+ ],
+ "t4_killAfterUndo": {
+  "eventsBeforeUndo": 2,
+  "eventsAfterUndoInApp": 1,
+  "stored": 1
+ },
+ "t5_t6_killAfterHtFt": {
+  "error": "TimeoutError: locator.click: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Resume in-progress match')\u001b[22m\n"
+ },
+ "t7_backgroundWhileRunning": {
+  "clockWhenBackgrounded": "08:03",
+  "storedEvents": 2,
+  "expectedEvents": 2,
+  "storedClockSeconds": 483,
+  "reopenPausedAt": "08:03"
+ },
+ "t7b_staleClockNoEvents": {
+  "clockWhenBackgrounded": "08:03",
+  "storedClockSeconds": 483,
+  "reopenPausedAt": "08:03"
+ },
+ "t8_backgroundWhilePaused": {
+  "clockAtPause": "01:32",
+  "clockAfterPausedWait": "01:32",
+  "storedClockSeconds": 92,
+  "storedEvents": 1,
+  "reopensAs": "MATCH REOPENED",
+  "reopenPausedAt": "01:32"
+ },
+ "t9_storageFailure": {
+  "pitchFooterOnFailure": "Save failed — storage unavailable.",
+  "stripWarning": "Save failed — storage unavailable.",
+  "pitchFooterAfterRecovery": "✓ Event saved",
+  "eventsInApp": 3,
+  "storedAfterRecovery": 3
+ },
+ "t10_reloadAndResume": {
+  "clockBeforeReload": "00:53",
+  "reopened": {
+   "text": "MATCH REOPENED",
+   "pausedAt": "00:53"
+  },
+  "storedMatches": 1,
+  "storedEvents": 5,
+  "expectedEvents": 5,
+  "eventCount": 5,
+  "duplicateIds": 0,
+  "score": "Home FC 0-02 (2) v Away FC 0-00 (0)"
+ }
+}

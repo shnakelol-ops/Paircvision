@@ -1,0 +1,595 @@
+# Match C — every automated check
+
+PASS 531 · FAIL 33 · MISSING 4 · UNVERIFIED 20 · LIMITATION 1 (total 589)
+
+| Status | Surface | Page | Scope | Statistic | Team | Expected | Actual | Note |
+|---|---|---|---|---|---|---|---|---|
+| FAIL | Quick Review p2 (Counts) | HT | 1H | terminology: no 'Kickout' label in hurling |  | 0 | 2 | rows labelled Kickout |
+| FAIL | Quick Review p2 (Counts) | HT | 1H | Sin Bins row absent in hurling (no sanction) |  | 0 | 1 |  |
+| FAIL | Quick Review p1 (Overview) | HT | 1H | terminology: hurling overview never says KICKOUTS |  | 0 | 2 |  |
+| FAIL | Quick Review p2 (Counts) | FT | FULL | terminology: no 'Kickout' label in hurling |  | 0 | 2 | rows labelled Kickout |
+| FAIL | Quick Review p2 (Counts) | FT | FULL | Sin Bins row absent in hurling (no sanction) |  | 0 | 1 |  |
+| FAIL | Quick Review p1 (Overview) | FT | FULL | terminology: hurling overview never says KICKOUTS |  | 0 | 2 |  |
+| FAIL | Snapshot HT PDF | p1 Dashboard | 1H | terminology: our restart panel heading |  | OUR PUCKOUTS | OUR KICKOUTS |  |
+| FAIL | Snapshot HT PDF | p1 Dashboard | 1H | terminology: their restart panel heading |  | THEIR PUCKOUTS | THEIR KICKOUTS |  |
+| FAIL | Snapshot FT PDF | p1 Dashboard | FULL | terminology: our restart panel heading |  | OUR PUCKOUTS | OUR KICKOUTS |  |
+| FAIL | Snapshot FT PDF | p1 Dashboard | FULL | terminology: their restart panel heading |  | THEIR PUCKOUTS | THEIR KICKOUTS |  |
+| FAIL | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | 2-POINT PROFILE absent in hurling | FOR | 0 | 8 |  |
+| FAIL | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | 2-POINT PROFILE absent in hurling | OPP | 0 | 8 |  |
+| FAIL | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | raw enum label 'TWO_POINTER' not shown to coaches |  | 0 | 2 |  |
+| FAIL | Full Review PDF (live) | p1 Match Summary | FULL | terminology: shot-detail row says '65' in hurling | FOR | 65 | 45 |  |
+| FAIL | Full Review PDF (live) | p1 Match Summary | FULL | 65 (row) | FOR | 1 | 0 | shots that went out for a 45/65 — recorded by the 45/65 family |
+| FAIL | Full Review PDF (live) | p1 Match Summary | FULL | terminology: shot-detail row says '65' in hurling | OPP | 65 | 45 |  |
+| FAIL | Full Review PDF (live) | p1 Match Summary | FULL | 65 (row) | OPP | 3 | 0 | shots that went out for a 45/65 — recorded by the 45/65 family |
+| FAIL | Full Review PDF (live) | p1 Match Summary | FULL | terminology: KICKOUTS section heading in hurling |  | 0 | 2 |  |
+| FAIL | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | 2-POINT PROFILE absent in hurling | FOR | 0 | 8 |  |
+| FAIL | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | 2-POINT PROFILE absent in hurling | OPP | 0 | 8 |  |
+| FAIL | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | raw enum label 'TWO_POINTER' not shown to coaches |  | 0 | 2 |  |
+| FAIL | Full Review PDF (live) | Restart Analysis | FULL | Avg secs to score (won) | FOR | 30s | 36s | mean seconds restart→score over restarts won that produced a score |
+| FAIL | Full Review PDF (live) | Restart Analysis | FULL | terminology: 'kickout' words on hurling page |  | 0 | 1 | expected puckout |
+| FAIL | Full Review PDF (live) | Chain Intelligence | FULL | turnovers: Won → Shot (label) vs shot-without-score value | FOR | 11 (79%) | 3 (21%) | label says 'Won → Shot' |
+| FAIL | PDF HT Snapshot | all pages | — | overlapping text boxes (>25% of smaller box) |  | 0 | 7 | [{"page":1,"title":"Half-Time Dashboard","a":"PáircVision","b":"STATISTICS"},{"page":2,"title":"Our Shot Profile","a":"PáircVision","b":"STATISTICS"},{"page":3, |
+| FAIL | PDF HT Snapshot | all pages | — | terminology: 'kickout' in a hurling report |  | 0 | 2 |  |
+| FAIL | PDF FT Snapshot | all pages | — | overlapping text boxes (>25% of smaller box) |  | 0 | 10 | [{"page":1,"title":"Full-Time Dashboard","a":"PáircVision","b":"STATISTICS"},{"page":2,"title":"Our Shot Profile","a":"PáircVision","b":"STATISTICS"},{"page":3, |
+| FAIL | PDF FT Snapshot | all pages | — | internal enum names shown |  | 0 | 2 | [{"page":8,"title":"Shot & Scoring Efficiency","text":"TWO_POINTER Scores"},{"page":8,"title":"Shot & Scoring Efficiency","text":"TWO_POINTER Scores"}] |
+| FAIL | PDF FT Snapshot | all pages | — | terminology: 'kickout' in a hurling report |  | 0 | 2 |  |
+| FAIL | PDF Full Review | all pages | — | text running off the page edge |  | 0 | 3 | [{"page":18,"title":"Restart Analysis","text":"Origin possessions include 5 placed frees won during kickout-origin possessions (Ballyhale Sham 1 · Na Piarsaigh  |
+| FAIL | PDF Full Review | all pages | — | overlapping text boxes (>25% of smaller box) |  | 0 | 26 | [{"page":1,"title":"Match Summary","a":"0","b":"176 total events"},{"page":4,"title":"Scoring Breakdown","a":"PáircVision","b":"STATISTICS"},{"page":5,"title":" |
+| FAIL | PDF Full Review | all pages | — | internal enum names shown |  | 0 | 2 | [{"page":12,"title":"Shot & Scoring Efficiency","text":"TWO_POINTER Scores"},{"page":12,"title":"Shot & Scoring Efficiency","text":"TWO_POINTER Scores"}] |
+| FAIL | PDF Full Review | all pages | — | terminology: 'kickout' in a hurling report |  | 0 | 12 |  |
+| MISSING | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source 65: ATT\|SC\|MISS\|CONV | FOR | 1 \| 1 \| 0 \| 100% | (not found) |  |
+| MISSING | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source 65: ATT\|SC\|MISS\|CONV | OPP | 3 \| 3 \| 0 \| 100% | (not found) |  |
+| MISSING | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source 65: ATT\|SC\|MISS\|CONV | FOR | 1 \| 1 \| 0 \| 100% | (not found) |  |
+| MISSING | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source 65: ATT\|SC\|MISS\|CONV | OPP | 3 \| 3 \| 0 \| 100% | (not found) |  |
+| LIMITATION | Full Review PDF (live) | Player Contributions | FULL | row present | FOR #6 | present | not shown | page renders only the top 12 players per team (ranked.slice(0, 12)) with no '+N more' indicator |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #3 | — | +2 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #5 | — | -1 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #7 | — | +1 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #8 | — | +4 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #9 | — | +9 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #10 | — | +2 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #11 | — | +2 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #12 | — | +2 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #13 | — | -1 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #14 | — | -1 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | FOR #15 | — | -5 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #8 | — | +5 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #9 | — | +15 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #10 | — | +1 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #11 | — | +1 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #12 | — | +2 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #13 | — | 0 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #14 | — | 0 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Player Contributions | FULL | NET BALL | OPP #15 | — | 0 | formula not documented on the page |
+| UNVERIFIED | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — chain rule matches | OPP | — | — | rule matches anchor on TURNOVER_WON / KICKOUT_WON kinds only |
+| PASS | Capture | store@FT | FULL | stored events after undo of erroneous taps |  | 176 | 176 |  |
+| PASS | Capture | store@final | FULL | stored events after review edits/deletes |  | 176 | 176 |  |
+| PASS | Capture | store@FT | FULL | events with exact match-clock second |  | 0 | 0 | count of mismatches |
+| PASS | Capture | store@FT | FULL | events in correct half |  | 0 | 0 | count of mismatches |
+| PASS | Capture | store@FT | FULL | player number recorded as tapped (incl. Unknown) |  | 0 | 0 | count of mismatches |
+| PASS | Capture | store@FT | FULL | pitch position within 0.01 |  | 0 | 0 | count of mismatches |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Goals | FOR | 0 | 0 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Points | FOR | 9 | 9 | count of 1-point scores |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Shots | FOR | 15 | 15 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Wides | FOR | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Turnover Won | FOR | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Turnover Lost | FOR | 7 | 7 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Puckout Won | FOR | 11 | 11 | [row shown as 'Kickout Won'] |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Puckout Lost | FOR | 16 | 16 | [row shown as 'Kickout Lost'] |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Free Won | FOR | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Free Conceded | FOR | 6 | 6 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | 65 Won | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | 65 Lost | FOR | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Sideline Won | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Sideline Lost | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Yellow Cards | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Red Cards | FOR | 0 | 0 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Goals | OPP | 0 | 0 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Points | OPP | 10 | 10 | count of 1-point scores |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Shots | OPP | 20 | 20 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Wides | OPP | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Turnover Won | OPP | 7 | 7 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Turnover Lost | OPP | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Puckout Won | OPP | 16 | 16 | [row shown as 'Kickout Won'] |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Puckout Lost | OPP | 11 | 11 | [row shown as 'Kickout Lost'] |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Free Won | OPP | 6 | 6 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Free Conceded | OPP | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | 65 Won | OPP | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | 65 Lost | OPP | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Sideline Won | OPP | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Sideline Lost | OPP | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Yellow Cards | OPP | 0 | 0 |  |
+| PASS | Quick Review p2 (Counts) | HT | 1H | Red Cards | OPP | 0 | 0 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | score | FOR | 0-09 | 0-09 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | score | OPP | 0-10 | 0-10 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | shooting | FOR | 9/15 (60%) | 9/15 (60%) |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | shooting | OPP | 10/20 (50%) | 10/20 (50%) |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | longest scoring run (scores) | FOR | 2 | 2 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | longest scoring run (scores) | OPP | 3 | 3 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | OUR PUCKOUTS retained | FOR | 7/14 retained (50%) | 7/14 retained (50%) |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | THEIR PUCKOUTS retained | OPP | 9/13 retained (69%) | 9/13 retained (69%) |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | restarts won → shots (possession) | FOR | 5 shots | 5 shots |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | restarts won → scores (possession) | FOR | 3 scores | 3 scores |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | restarts lost → shots against | FOR | 9 shots against | 9 shots against |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | restarts lost → scores against | FOR | 5 scores against | 5 scores against |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | turnovers won (count) | FOR | 4 | 4 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | turnovers won → shots | FOR | 2 shots | 2 shots |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | turnovers won → scores | FOR | 2 scores | 2 scores |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | turnovers lost (count) | FOR | 7 | 7 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | turnovers lost → shots against | FOR | 6 shots against | 6 shots against |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | turnovers lost → scores against | FOR | 2 scores against | 2 scores against |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | frees won | FOR | 2 | 2 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | frees conceded | FOR | 6 | 6 |  |
+| PASS | Quick Review p1 (Overview) | HT | 1H | placed balls | FOR | 1/2 scored | 1/2 scored |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | score | FOR | 0-02 \| 0-03 \| 0-04 | 0-02 \| 0-03 \| 0-04 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | shots (attempts) | FOR | 4 \| 4 \| 7 | 4 \| 4 \| 7 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | wides | FOR | 1 \| 1 \| 2 | 1 \| 1 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers won | FOR | 1 \| 1 \| 2 | 1 \| 1 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers won — own half | FOR | 0 \| 0 \| 2 | 0 \| 0 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers won — opposition half | FOR | 1 \| 1 \| 0 | 1 \| 1 \| 0 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers lost | FOR | 1 \| 2 \| 4 | 1 \| 2 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers lost — own half | FOR | 1 \| 2 \| 3 | 1 \| 2 \| 3 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers lost — opposition half | FOR | 0 \| 0 \| 1 | 0 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | own kickouts retained/taken | FOR | 0/3 \| 3/5 \| 4/6 | 0/3 \| 3/5 \| 4/6 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | score | OPP | 0-03 \| 0-05 \| 0-02 | 0-03 \| 0-05 \| 0-02 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | shots (attempts) | OPP | 5 \| 8 \| 7 | 5 \| 8 \| 7 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | wides | OPP | 0 \| 0 \| 4 | 0 \| 0 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers won | OPP | 1 \| 2 \| 4 | 1 \| 2 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers won — own half | OPP | 0 \| 0 \| 1 | 0 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers won — opposition half | OPP | 1 \| 2 \| 3 | 1 \| 2 \| 3 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers lost | OPP | 1 \| 1 \| 2 | 1 \| 1 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers lost — own half | OPP | 1 \| 1 \| 0 | 1 \| 1 \| 0 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | turnovers lost — opposition half | OPP | 0 \| 0 \| 2 | 0 \| 0 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | HT | 1H E/M/L | own kickouts retained/taken | OPP | 1/3 \| 4/4 \| 4/6 | 1/3 \| 4/4 \| 4/6 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Goals | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Points | FOR | 19 | 19 | count of 1-point scores |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Shots | FOR | 30 | 30 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Wides | FOR | 7 | 7 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Turnover Won | FOR | 14 | 14 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Turnover Lost | FOR | 15 | 15 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Puckout Won | FOR | 24 | 24 | [row shown as 'Kickout Won'] |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Puckout Lost | FOR | 30 | 30 | [row shown as 'Kickout Lost'] |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Free Won | FOR | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Free Conceded | FOR | 10 | 10 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | 65 Won | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | 65 Lost | FOR | 3 | 3 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Sideline Won | FOR | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Sideline Lost | FOR | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Yellow Cards | FOR | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Red Cards | FOR | 0 | 0 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Goals | OPP | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Points | OPP | 21 | 21 | count of 1-point scores |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Shots | OPP | 36 | 36 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Wides | OPP | 5 | 5 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Turnover Won | OPP | 15 | 15 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Turnover Lost | OPP | 14 | 14 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Puckout Won | OPP | 30 | 30 | [row shown as 'Kickout Won'] |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Puckout Lost | OPP | 24 | 24 | [row shown as 'Kickout Lost'] |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Free Won | OPP | 10 | 10 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Free Conceded | OPP | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | 65 Won | OPP | 3 | 3 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | 65 Lost | OPP | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Sideline Won | OPP | 4 | 4 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Sideline Lost | OPP | 2 | 2 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Yellow Cards | OPP | 1 | 1 |  |
+| PASS | Quick Review p2 (Counts) | FT | FULL | Red Cards | OPP | 1 | 1 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | score | FOR | 1-19 | 1-19 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | score | OPP | 2-21 | 2-21 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | shooting | FOR | 20/30 (67%) | 20/30 (67%) |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | shooting | OPP | 23/36 (64%) | 23/36 (64%) |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | longest scoring run (scores) | FOR | 2 | 2 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | longest scoring run (scores) | OPP | 3 | 3 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | OUR PUCKOUTS retained | FOR | 12/28 retained (43%) | 12/28 retained (43%) |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | THEIR PUCKOUTS retained | OPP | 14/26 retained (54%) | 14/26 retained (54%) |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | restarts won → shots (possession) | FOR | 10 shots | 10 shots |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | restarts won → scores (possession) | FOR | 5 scores | 5 scores |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | restarts lost → shots against | FOR | 15 shots against | 15 shots against |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | restarts lost → scores against | FOR | 10 scores against | 10 scores against |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | turnovers won (count) | FOR | 14 | 14 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | turnovers won → shots | FOR | 9 shots | 9 shots |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | turnovers won → scores | FOR | 7 scores | 7 scores |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | turnovers lost (count) | FOR | 15 | 15 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | turnovers lost → shots against | FOR | 9 shots against | 9 shots against |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | turnovers lost → scores against | FOR | 4 scores against | 4 scores against |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | frees won | FOR | 4 | 4 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | frees conceded | FOR | 10 | 10 |  |
+| PASS | Quick Review p1 (Overview) | FT | FULL | placed balls | FOR | 4/5 scored | 4/5 scored |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | score | FOR | 0-02 \| 0-03 \| 0-04 | 0-02 \| 0-03 \| 0-04 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | shots (attempts) | FOR | 4 \| 4 \| 7 | 4 \| 4 \| 7 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | wides | FOR | 1 \| 1 \| 2 | 1 \| 1 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers won | FOR | 1 \| 1 \| 2 | 1 \| 1 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers won — own half | FOR | 0 \| 0 \| 2 | 0 \| 0 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers won — opposition half | FOR | 1 \| 1 \| 0 | 1 \| 1 \| 0 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers lost | FOR | 1 \| 2 \| 4 | 1 \| 2 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers lost — own half | FOR | 1 \| 2 \| 3 | 1 \| 2 \| 3 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers lost — opposition half | FOR | 0 \| 0 \| 1 | 0 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | own kickouts retained/taken | FOR | 0/3 \| 3/5 \| 4/6 | 0/3 \| 3/5 \| 4/6 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | score | OPP | 0-03 \| 0-05 \| 0-02 | 0-03 \| 0-05 \| 0-02 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | shots (attempts) | OPP | 5 \| 8 \| 7 | 5 \| 8 \| 7 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | wides | OPP | 0 \| 0 \| 4 | 0 \| 0 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers won | OPP | 1 \| 2 \| 4 | 1 \| 2 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers won — own half | OPP | 0 \| 0 \| 1 | 0 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers won — opposition half | OPP | 1 \| 2 \| 3 | 1 \| 2 \| 3 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers lost | OPP | 1 \| 1 \| 2 | 1 \| 1 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers lost — own half | OPP | 1 \| 1 \| 0 | 1 \| 1 \| 0 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | turnovers lost — opposition half | OPP | 0 \| 0 \| 2 | 0 \| 0 \| 2 |  |
+| PASS | Quick Review p3 (Segments) | FT | 1H E/M/L | own kickouts retained/taken | OPP | 1/3 \| 4/4 \| 4/6 | 1/3 \| 4/4 \| 4/6 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | score | FOR | 0-03 \| 0-04 \| 1-03 | 0-03 \| 0-04 \| 1-03 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | shots (attempts) | FOR | 4 \| 5 \| 6 | 4 \| 5 \| 6 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | wides | FOR | 1 \| 1 \| 1 | 1 \| 1 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers won | FOR | 1 \| 2 \| 7 | 1 \| 2 \| 7 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers won — own half | FOR | 0 \| 1 \| 3 | 0 \| 1 \| 3 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers won — opposition half | FOR | 1 \| 1 \| 4 | 1 \| 1 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers lost | FOR | 1 \| 2 \| 5 | 1 \| 2 \| 5 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers lost — own half | FOR | 0 \| 2 \| 4 | 0 \| 2 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers lost — opposition half | FOR | 1 \| 0 \| 1 | 1 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | own kickouts retained/taken | FOR | 1/5 \| 2/4 \| 2/5 | 1/5 \| 2/4 \| 2/5 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | score | OPP | 0-05 \| 0-04 \| 2-02 | 0-05 \| 0-04 \| 2-02 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | shots (attempts) | OPP | 6 \| 4 \| 6 | 6 \| 4 \| 6 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | wides | OPP | 0 \| 0 \| 1 | 0 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers won | OPP | 1 \| 2 \| 5 | 1 \| 2 \| 5 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers won — own half | OPP | 1 \| 0 \| 1 | 1 \| 0 \| 1 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers won — opposition half | OPP | 0 \| 2 \| 4 | 0 \| 2 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers lost | OPP | 1 \| 2 \| 7 | 1 \| 2 \| 7 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers lost — own half | OPP | 1 \| 1 \| 4 | 1 \| 1 \| 4 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | turnovers lost — opposition half | OPP | 0 \| 1 \| 3 | 0 \| 1 \| 3 |  |
+| PASS | Quick Review p3 (Segments) | FT | 2H E/M/L | own kickouts retained/taken | OPP | 1/4 \| 2/4 \| 2/5 | 1/4 \| 2/4 \| 2/5 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | title |  | Half-Time Dashboard | Half-Time Dashboard |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | score | FOR | 0-09 (9) | 0-09 (9) |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | score | OPP | 0-10 (10) | 0-10 (10) |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | margin label |  | Na Piarsaigh lead by 1 | Na Piarsaigh lead by 1 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | shooting scores/attempts | FOR | 9/15 | 9/15 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | shooting % | FOR | 60% | 60% |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | shooting scores/attempts | OPP | 10/20 | 10/20 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | shooting % | OPP | 50% | 50% |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | own restarts retained/taken | FOR | 7/14 | 7/14 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | own restart retention % | FOR | 50% | 50% |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | own restarts lost | FOR | Lost 7/14 | Lost 7/14 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | own restarts retained/taken | OPP | 9/13 | 9/13 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | own restart retention % | OPP | 69% | 69% |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | own restarts lost | OPP | Lost 4/13 | Lost 4/13 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | turnovers won | FOR | 4 | 4 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | turnovers lost | FOR | 7 | 7 |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | placed balls | FOR | 1/2 scored | 1/2 scored |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | placed balls | OPP | 5/5 scored | 5/5 scored |  |
+| PASS | Snapshot HT PDF | p1 Dashboard | 1H | event count footer |  | 87 events | 87 events |  |
+| PASS | Snapshot HT PDF | p2 Our Shot Profile | 1H | summary | FOR | 9 scores from 15 shots · 60% efficiency | 9 scores from 15 shots · 60% efficiency |  |
+| PASS | Snapshot HT PDF | p2 Our Shot Profile | 1H | placed-ball scores | FOR | 1 placed-ball score | 1 placed-ball score |  |
+| PASS | Snapshot HT PDF | p3 Their Shot Profile | 1H | summary | OPP | 10 scores from 20 shots · 50% efficiency | 10 scores from 20 shots · 50% efficiency |  |
+| PASS | Snapshot HT PDF | Restart Battle 1H | 1H | own restarts retained | FOR | retained 7/14 (50%) | retained 7/14 (50%) |  |
+| PASS | Snapshot HT PDF | Restart Battle 1H | 1H | own restarts retained | OPP | retained 9/13 (69%) | retained 9/13 (69%) |  |
+| PASS | Snapshot HT PDF | Restart Battle 1H | 1H | terminology: 'Kickout' words on hurling page |  | 0 | 0 |  |
+| PASS | Snapshot HT PDF | Turnover & Territory 1H | 1H | turnovers won/lost | FOR | Won 4 · Lost 7 (36% won) | Won 4 · Lost 7 (36% won) |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | title |  | Full-Time Dashboard | Full-Time Dashboard |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | score | FOR | 1-19 (22) | 1-19 (22) |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | score | OPP | 2-21 (27) | 2-21 (27) |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | margin label |  | Na Piarsaigh lead by 5 | Na Piarsaigh lead by 5 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | shooting scores/attempts | FOR | 20/30 | 20/30 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | shooting % | FOR | 67% | 67% |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | shooting scores/attempts | OPP | 23/36 | 23/36 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | shooting % | OPP | 64% | 64% |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | own restarts retained/taken | FOR | 12/28 | 12/28 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | own restart retention % | FOR | 43% | 43% |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | own restarts lost | FOR | Lost 16/28 | Lost 16/28 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | own restarts retained/taken | OPP | 14/26 | 14/26 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | own restart retention % | OPP | 54% | 54% |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | own restarts lost | OPP | Lost 12/26 | Lost 12/26 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | turnovers won | FOR | 14 | 14 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | turnovers lost | FOR | 15 | 15 |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | placed balls | FOR | 4/5 scored | 4/5 scored |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | placed balls | OPP | 9/9 scored | 9/9 scored |  |
+| PASS | Snapshot FT PDF | p1 Dashboard | FULL | event count footer |  | 176 events | 176 events |  |
+| PASS | Snapshot FT PDF | p2 Our Shot Profile | FULL | summary | FOR | 20 scores from 30 shots · 67% efficiency | 20 scores from 30 shots · 67% efficiency |  |
+| PASS | Snapshot FT PDF | p2 Our Shot Profile | FULL | placed-ball scores | FOR | 4 placed-ball scores | 4 placed-ball scores |  |
+| PASS | Snapshot FT PDF | p3 Their Shot Profile | FULL | summary | OPP | 23 scores from 36 shots · 64% efficiency | 23 scores from 36 shots · 64% efficiency |  |
+| PASS | Snapshot FT PDF | Restart Battle 1H | 1H | own restarts retained | FOR | retained 7/14 (50%) | retained 7/14 (50%) |  |
+| PASS | Snapshot FT PDF | Restart Battle 1H | 1H | own restarts retained | OPP | retained 9/13 (69%) | retained 9/13 (69%) |  |
+| PASS | Snapshot FT PDF | Restart Battle 1H | 1H | terminology: 'Kickout' words on hurling page |  | 0 | 0 |  |
+| PASS | Snapshot FT PDF | Restart Battle 2H | 2H | own restarts retained | FOR | retained 5/14 (36%) | retained 5/14 (36%) |  |
+| PASS | Snapshot FT PDF | Restart Battle 2H | 2H | own restarts retained | OPP | retained 5/13 (38%) | retained 5/13 (38%) |  |
+| PASS | Snapshot FT PDF | Restart Battle 2H | 2H | terminology: 'Kickout' words on hurling page |  | 0 | 0 |  |
+| PASS | Snapshot FT PDF | Turnover & Territory 1H | 1H | turnovers won/lost | FOR | Won 4 · Lost 7 (36% won) | Won 4 · Lost 7 (36% won) |  |
+| PASS | Snapshot FT PDF | Turnover & Territory 2H | 2H | turnovers won/lost | FOR | Won 10 · Lost 8 (56% won) | Won 10 · Lost 8 (56% won) |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | attempts | FOR | 30 | 30 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | scores | FOR | 20 | 20 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | conversion | FOR | 67% | 67% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | wides | FOR | 7 | 7 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | blocked / saved | FOR | 2 | 2 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Open Play: ATT\|SC\|MISS\|CONV | FOR | 22 \| 16 \| 6 \| 73% | 22 \| 16 \| 6 \| 73% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Free: ATT\|SC\|MISS\|CONV | FOR | 3 \| 2 \| 1 \| 67% | 3 \| 2 \| 1 \| 67% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Mark: ATT\|SC\|MISS\|CONV | FOR | — \| — \| — \| — | — \| — \| — \| — |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Penalty: ATT\|SC\|MISS\|CONV | FOR | 1 \| 1 \| 0 \| 100% | 1 \| 1 \| 0 \| 100% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Unclassified: ATT\|SC\|MISS\|CONV | FOR | 3 \| — \| 3 \| 0% | 3 \| — \| 3 \| 0% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | placed scored | FOR | 4 | 4 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | placed missed | FOR | 1 | 1 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | placed conv % | FOR | 80% | 80% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | attempts | OPP | 36 | 36 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | scores | OPP | 23 | 23 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | conversion | OPP | 64% | 64% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | wides | OPP | 5 | 5 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | blocked / saved | OPP | 3 | 3 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Open Play: ATT\|SC\|MISS\|CONV | OPP | 19 \| 14 \| 5 \| 74% | 19 \| 14 \| 5 \| 74% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Free: ATT\|SC\|MISS\|CONV | OPP | 6 \| 6 \| 0 \| 100% | 6 \| 6 \| 0 \| 100% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Mark: ATT\|SC\|MISS\|CONV | OPP | — \| — \| — \| — | — \| — \| — \| — |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Penalty: ATT\|SC\|MISS\|CONV | OPP | — \| — \| — \| — | — \| — \| — \| — |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | source Unclassified: ATT\|SC\|MISS\|CONV | OPP | 8 \| — \| 8 \| 0% | 8 \| — \| 8 \| 0% |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | placed scored | OPP | 9 | 9 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | placed missed | OPP | 0 | 0 |  |
+| PASS | Snapshot FT PDF | p8 Shot & Scoring Efficiency | FULL | placed conv % | OPP | 100% | 100% |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | score | FOR | 1-19 (22) | 1-19 (22) |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | score | OPP | 2-21 (27) | 2-21 (27) |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Goals | FOR | 1 | 1 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Points | FOR | 19 | 19 | points value incl. 2-pointers |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Total Score | FOR | 22 | 22 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Shots | FOR | 30 | 30 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Wides | FOR | 7 | 7 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Conversion | FOR | 67% | 67% |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Short | FOR | 0 | 0 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Post | FOR | 1 | 1 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Block / Save | FOR | 2 | 2 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Restart Share Won | FOR | 24 | 24 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Restart Share Conceded | FOR | 30 | 30 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Restart Share | FOR | 44% | 44% |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Clean Won | FOR | 7 | 7 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Break Won | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Foul Won | FOR | 2 | 2 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Clean Lost | FOR | 11 | 11 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Break Lost | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Foul Conceded | FOR | 4 | 4 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | T/O Won | FOR | 14 | 14 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | T/O Lost | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Net T/O | FOR | -1 | -1 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Tackle / Press | FOR | 5 | 5 | won by tackle |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Swarm / Int. | FOR | 3 | 3 | won by interception |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Slack KP / HP | FOR | 7 | 7 | lost through hand-pass / kick-pass errors |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | OC / Stripped | FOR | 0 | 0 | lost through over-carrying |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Frees Won | FOR | 4 | 4 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Frees Conceded | FOR | 10 | 10 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Attempts | FOR | 5 | 5 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Scores | FOR | 4 | 4 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Points | FOR | 6 | 6 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Misses | FOR | 1 | 1 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Goals | OPP | 2 | 2 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Points | OPP | 21 | 21 | points value incl. 2-pointers |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Total Score | OPP | 27 | 27 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Shots | OPP | 36 | 36 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Wides | OPP | 5 | 5 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Conversion | OPP | 64% | 64% |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Short | OPP | 2 | 2 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Post | OPP | 3 | 3 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Block / Save | OPP | 3 | 3 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Restart Share Won | OPP | 30 | 30 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Restart Share Conceded | OPP | 24 | 24 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Restart Share | OPP | 56% | 56% |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Clean Won | OPP | 11 | 11 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Break Won | OPP | 15 | 15 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Foul Won | OPP | 4 | 4 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Clean Lost | OPP | 7 | 7 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Break Lost | OPP | 15 | 15 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Foul Conceded | OPP | 2 | 2 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | T/O Won | OPP | 15 | 15 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | T/O Lost | OPP | 14 | 14 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Net T/O | OPP | +1 | +1 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Tackle / Press | OPP | 5 | 5 | won by tackle |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Swarm / Int. | OPP | 3 | 3 | won by interception |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Slack KP / HP | OPP | 5 | 5 | lost through hand-pass / kick-pass errors |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | OC / Stripped | OPP | 1 | 1 | lost through over-carrying |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Frees Won | OPP | 10 | 10 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Frees Conceded | OPP | 4 | 4 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Attempts | OPP | 9 | 9 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Scores | OPP | 9 | 9 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Points | OPP | 9 | 9 |  |
+| PASS | Full Review PDF (live) | p1 Match Summary | FULL | Placed Misses | OPP | 0 | 0 |  |
+| PASS | Full Review PDF (live) | p4 Scoring Breakdown | FULL | from general play | FOR | 0-16 (16 pts) | 0-16 (16 pts) |  |
+| PASS | Full Review PDF (live) | p4 Scoring Breakdown | FULL | placed balls | FOR | 4/5 scored · 6 pts | 4/5 scored · 6 pts |  |
+| PASS | Full Review PDF (live) | p4 Scoring Breakdown | FULL | from general play | OPP | 2-12 (18 pts) | 2-12 (18 pts) |  |
+| PASS | Full Review PDF (live) | p4 Scoring Breakdown | FULL | placed balls | OPP | 9/9 scored · 9 pts | 9/9 scored · 9 pts |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 1 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | FOR | 0-02 (2) \| 4 / 1 \| 2-4 \| +0 \| 1 / 3 | 0-02 (2) \| 4 / 1 \| 2-4 \| +0 \| 1 / 3 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 1 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | OPP | 0-03 (3) \| 5 / 0 \| 4-2 \| +0 \| 3 / 1 | 0-03 (3) \| 5 / 0 \| 4-2 \| +0 \| 3 / 1 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 2 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | FOR | 0-03 (3) \| 4 / 1 \| 3-6 \| -1 \| 0 / 1 | 0-03 (3) \| 4 / 1 \| 3-6 \| -1 \| 0 / 1 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 2 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | OPP | 0-05 (5) \| 8 / 0 \| 6-3 \| +1 \| 1 / 0 | 0-05 (5) \| 8 / 0 \| 6-3 \| +1 \| 1 / 0 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 3 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | FOR | 0-04 (4) \| 7 / 2 \| 6-6 \| -2 \| 1 / 2 | 0-04 (4) \| 7 / 2 \| 6-6 \| -2 \| 1 / 2 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 3 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | OPP | 0-02 (2) \| 7 / 4 \| 6-6 \| +2 \| 2 / 1 | 0-02 (2) \| 7 / 4 \| 6-6 \| +2 \| 2 / 1 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 4 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | FOR | 0-03 (3) \| 4 / 1 \| 4-5 \| +0 \| 0 / 2 | 0-03 (3) \| 4 / 1 \| 4-5 \| +0 \| 0 / 2 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 4 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | OPP | 0-05 (5) \| 6 / 0 \| 5-4 \| +0 \| 2 / 0 | 0-05 (5) \| 6 / 0 \| 5-4 \| +0 \| 2 / 0 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 5 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | FOR | 0-04 (4) \| 5 / 1 \| 4-4 \| +0 \| 2 / 2 | 0-04 (4) \| 5 / 1 \| 4-4 \| +0 \| 2 / 2 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 5 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | OPP | 0-04 (4) \| 4 / 0 \| 4-4 \| +0 \| 2 / 2 | 0-04 (4) \| 4 / 0 \| 4-4 \| +0 \| 2 / 2 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 6 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | FOR | 1-03 (6) \| 6 / 1 \| 5-5 \| +2 \| 0 / 0 | 1-03 (6) \| 6 / 1 \| 5-5 \| +2 \| 0 / 0 |  |
+| PASS | Full Review PDF (live) | p6 Game Segments | seg 6 | Score \| Shots/W \| KO W-L \| Net T/O \| Frees W/C | OPP | 2-02 (8) \| 6 / 1 \| 5-5 \| -2 \| 0 / 0 | 2-02 (8) \| 6 / 1 \| 5-5 \| -2 \| 0 / 0 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #3 | 0-00 (0) \| 0 \| 0 \| 4 \| 0 \| +4 \| 0 \| 0 \| 0 \| 2 \| 6 | 0-00 (0) \| 0 \| 0 \| 4 \| 0 \| +4 \| 0 \| 0 \| 0 \| 2 \| 6 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #4 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 1 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 1 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #5 | 0-00 (0) \| 0 \| 0 \| 1 \| 0 \| +1 \| 0 \| 0 \| 0 \| 2 \| 3 | 0-00 (0) \| 0 \| 0 \| 1 \| 0 \| +1 \| 0 \| 0 \| 0 \| 2 \| 3 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #6 | 0-00 (0) \| 0 \| 0 \| 1 \| 0 \| +1 \| 0 \| 0 \| 0 \| 2 \| 3 | 0-00 (0) \| 0 \| 0 \| 1 \| 0 \| +1 \| 0 \| 0 \| 0 \| 2 \| 3 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #7 | 0-00 (0) \| 0 \| 0 \| 3 \| 0 \| +3 \| 0 \| 0 \| 0 \| 2 \| 6 | 0-00 (0) \| 0 \| 0 \| 3 \| 0 \| +3 \| 0 \| 0 \| 0 \| 2 \| 6 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #8 | 0-01 (1) \| 2 \| 1 \| 1 \| 2 \| -1 \| 5 \| 0 \| 0 \| 0 \| 10 | 0-01 (1) \| 2 \| 1 \| 1 \| 2 \| -1 \| 5 \| 0 \| 0 \| 0 \| 10 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #9 | 0-01 (1) \| 2 \| 1 \| 3 \| 0 \| +3 \| 6 \| 0 \| 1 \| 1 \| 13 | 0-01 (1) \| 2 \| 1 \| 3 \| 0 \| +3 \| 6 \| 0 \| 1 \| 1 \| 13 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #10 | 0-01 (1) \| 2 \| 0 \| 0 \| 1 \| -1 \| 2 \| 0 \| 1 \| 0 \| 6 | 0-01 (1) \| 2 \| 0 \| 0 \| 1 \| -1 \| 2 \| 0 \| 1 \| 0 \| 6 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #11 | 0-02 (2) \| 3 \| 1 \| 0 \| 4 \| -4 \| 5 \| 0 \| 1 \| 0 \| 15 | 0-02 (2) \| 3 \| 1 \| 0 \| 4 \| -4 \| 5 \| 0 \| 1 \| 0 \| 15 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #12 | 1-04 (7) \| 6 \| 1 \| 0 \| 1 \| -1 \| 3 \| 0 \| 0 \| 0 \| 10 | 1-04 (7) \| 6 \| 1 \| 0 \| 1 \| -1 \| 3 \| 0 \| 0 \| 0 \| 10 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #13 | 0-04 (4) \| 6 \| 1 \| 0 \| 1 \| -1 \| 0 \| 0 \| 0 \| 0 \| 7 | 0-04 (4) \| 6 \| 1 \| 0 \| 1 \| -1 \| 0 \| 0 \| 0 \| 0 \| 7 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #14 | 0-02 (2) \| 4 \| 1 \| 0 \| 1 \| -1 \| 0 \| 0 \| 0 \| 0 \| 5 | 0-02 (2) \| 4 \| 1 \| 0 \| 1 \| -1 \| 0 \| 0 \| 0 \| 0 \| 5 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | FOR #15 | 0-04 (4) \| 5 \| 1 \| 0 \| 5 \| -5 \| 0 \| 0 \| 0 \| 0 \| 10 | 0-04 (4) \| 5 \| 1 \| 0 \| 5 \| -5 \| 0 \| 0 \| 0 \| 0 \| 10 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #2 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 1 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 1 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #3 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 2 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 2 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #6 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 1 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 1 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #8 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 5 \| 0 \| 0 \| 0 \| 5 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 5 \| 0 \| 0 \| 0 \| 5 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #9 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 15 \| 0 \| 0 \| 0 \| 17 | 0-00 (0) \| 0 \| 0 \| 0 \| 0 \| +0 \| 15 \| 0 \| 0 \| 0 \| 17 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #10 | 0-11 (11) \| 13 \| 1 \| 0 \| 0 \| +0 \| 1 \| 0 \| 0 \| 0 \| 14 | 0-11 (11) \| 13 \| 1 \| 0 \| 0 \| +0 \| 1 \| 0 \| 0 \| 0 \| 14 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #11 | 0-01 (1) \| 3 \| 2 \| 0 \| 0 \| +0 \| 1 \| 0 \| 0 \| 0 \| 4 | 0-01 (1) \| 3 \| 2 \| 0 \| 0 \| +0 \| 1 \| 0 \| 0 \| 0 \| 4 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #12 | 0-01 (1) \| 1 \| 0 \| 0 \| 0 \| +0 \| 2 \| 0 \| 0 \| 0 \| 3 | 0-01 (1) \| 1 \| 0 \| 0 \| 0 \| +0 \| 2 \| 0 \| 0 \| 0 \| 3 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #13 | 2-01 (7) \| 7 \| 1 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 8 | 2-01 (7) \| 7 \| 1 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 8 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #14 | 0-05 (5) \| 8 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 8 | 0-05 (5) \| 8 \| 0 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 8 |  |
+| PASS | Full Review PDF (live) | Player Breakdown | FULL | Score\|Shots\|Wides\|TO W\|TO L\|Net\|KO W\|KO L\|Frees W\|Frees C\|Actions | OPP #15 | 0-00 (0) \| 1 \| 1 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 2 | 0-00 (0) \| 1 \| 1 \| 0 \| 0 \| +0 \| 0 \| 0 \| 0 \| 0 \| 2 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #3 | 4-0 | 4-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #3 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #5 | 1-0 | 1-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #5 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #7 | 3-0 | 3-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #7 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #8 | 1-2 | 1-2 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #8 | 5-0 | 5-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #8 | 0-01 | 0-01 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #9 | 3-0 | 3-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #9 | 6-0 | 6-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #9 | 0-01 | 0-01 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #10 | 0-1 | 0-1 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #10 | 2-0 | 2-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #10 | 0-01 | 0-01 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #11 | 0-4 | 0-4 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #11 | 5-0 | 5-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #11 | 0-02 | 0-02 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #12 | 0-1 | 0-1 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #12 | 3-0 | 3-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #12 | 1-04 | 1-04 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #13 | 0-1 | 0-1 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #13 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #13 | 0-04 | 0-04 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #14 | 0-1 | 0-1 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #14 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #14 | 0-02 | 0-02 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | FOR #15 | 0-5 | 0-5 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | FOR #15 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | FOR #15 | 0-04 | 0-04 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #8 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #8 | 5-0 | 5-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #9 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #9 | 15-0 | 15-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #10 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #10 | 1-0 | 1-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | OPP #10 | 0-11 | 0-11 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #11 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #11 | 1-0 | 1-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | OPP #11 | 0-01 | 0-01 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #12 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #12 | 2-0 | 2-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | OPP #12 | 0-01 | 0-01 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #13 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #13 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | OPP #13 | 2-01 | 2-01 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #14 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #14 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | score | OPP #14 | 0-05 | 0-05 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | T/O W-L | OPP #15 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Player Contributions | FULL | KO W-L | OPP #15 | 0-0 | 0-0 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | attempts | FOR | 30 | 30 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | scores | FOR | 20 | 20 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | conversion | FOR | 67% | 67% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | wides | FOR | 7 | 7 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | blocked / saved | FOR | 2 | 2 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Open Play: ATT\|SC\|MISS\|CONV | FOR | 22 \| 16 \| 6 \| 73% | 22 \| 16 \| 6 \| 73% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Free: ATT\|SC\|MISS\|CONV | FOR | 3 \| 2 \| 1 \| 67% | 3 \| 2 \| 1 \| 67% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Mark: ATT\|SC\|MISS\|CONV | FOR | — \| — \| — \| — | — \| — \| — \| — |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Penalty: ATT\|SC\|MISS\|CONV | FOR | 1 \| 1 \| 0 \| 100% | 1 \| 1 \| 0 \| 100% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Unclassified: ATT\|SC\|MISS\|CONV | FOR | 3 \| — \| 3 \| 0% | 3 \| — \| 3 \| 0% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | placed scored | FOR | 4 | 4 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | placed missed | FOR | 1 | 1 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | placed conv % | FOR | 80% | 80% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | attempts | OPP | 36 | 36 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | scores | OPP | 23 | 23 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | conversion | OPP | 64% | 64% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | wides | OPP | 5 | 5 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | blocked / saved | OPP | 3 | 3 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Open Play: ATT\|SC\|MISS\|CONV | OPP | 19 \| 14 \| 5 \| 74% | 19 \| 14 \| 5 \| 74% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Free: ATT\|SC\|MISS\|CONV | OPP | 6 \| 6 \| 0 \| 100% | 6 \| 6 \| 0 \| 100% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Mark: ATT\|SC\|MISS\|CONV | OPP | — \| — \| — \| — | — \| — \| — \| — |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Penalty: ATT\|SC\|MISS\|CONV | OPP | — \| — \| — \| — | — \| — \| — \| — |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | source Unclassified: ATT\|SC\|MISS\|CONV | OPP | 8 \| — \| 8 \| 0% | 8 \| — \| 8 \| 0% |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | placed scored | OPP | 9 | 9 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | placed missed | OPP | 0 | 0 |  |
+| PASS | Full Review PDF (live) | Shot & Scoring Efficiency | FULL | placed conv % | OPP | 100% | 100% |  |
+| PASS | Full Review PDF (live) | Zone Analysis | FULL | Scores | FOR | 20 | 20 |  |
+| PASS | Full Review PDF (live) | Zone Analysis | FULL | Turnovers Won | FOR | 14 | 14 |  |
+| PASS | Full Review PDF (live) | Zone Analysis | FULL | Scores Against | FOR | 23 | 23 |  |
+| PASS | Full Review PDF (live) | Zone Analysis | FULL | Opposition Gains | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | 1H Pitch Overview | 1H | all events |  | 87 | 87 |  |
+| PASS | Full Review PDF (live) | 1H Pitch Overview | 1H | scores |  | 19 | 19 |  |
+| PASS | Full Review PDF (live) | 1H Pitch Overview | 1H | shots | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | 1H Pitch Overview | 1H | shots | OPP | 20 | 20 |  |
+| PASS | Full Review PDF (live) | 2H Pitch Overview | 2H | all events |  | 89 | 89 |  |
+| PASS | Full Review PDF (live) | 2H Pitch Overview | 2H | scores |  | 24 | 24 |  |
+| PASS | Full Review PDF (live) | 2H Pitch Overview | 2H | shots | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | 2H Pitch Overview | 2H | shots | OPP | 16 | 16 |  |
+| PASS | Full Review PDF (live) | Opposition Facts | FULL | OPP full-match score | OPP | 2-21 (27) | 2-21 (27) |  |
+| PASS | Full Review PDF (live) | Opposition Facts | 1H | OPP 1st half | OPP | 0-10 (10) | 0-10 (10) |  |
+| PASS | Full Review PDF (live) | Opposition Facts | 2H | OPP 2nd half | OPP | 2-11 (17) | 2-11 (17) |  |
+| PASS | Full Review PDF (live) | Opposition Facts | FULL | OPP goals | OPP | 2 | 2 |  |
+| PASS | Full Review PDF (live) | Opposition Facts | FULL | OPP points value | OPP | 21 | 21 |  |
+| PASS | Full Review PDF (live) | Opposition Facts | FULL | OPP conversion | OPP | 64% | 64% |  |
+| PASS | Full Review PDF (live) | Opposition Facts | FULL | restart share won by OPP | OPP | 30 of 54 | 30 of 54 |  |
+| PASS | Full Review PDF (live) | Opposition Facts | FULL | turnovers gifted to OPP | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | restarts won of total | FOR | Ballyhale Shamrocks won 24 of 54 restarts | Ballyhale Shamrocks won 24 of 54 restarts |  |
+| PASS | Full Review PDF (live) | Restart Analysis | 1H/2H | won–lost by half | FOR | H1: 11–16 / H2: 13–14 | H1: 11–16 / H2: 13–14 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | restarts won of total | OPP | Na Piarsaigh won 30 of 54 restarts | Na Piarsaigh won 30 of 54 restarts |  |
+| PASS | Full Review PDF (live) | Restart Analysis | 1H/2H | won–lost by half | OPP | H1: 16–11 / H2: 14–13 | H1: 16–11 / H2: 14–13 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Won → Score (origin) | FOR | 7 (29%) | 7 (29%) |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Won → Shot attempt | FOR | 13 (54%) | 13 (54%) |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Won → No shot | FOR | 11 | 11 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Lost → Score against (origin) | FOR | 15 (50%) | 15 (50%) |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Lost → No score | FOR | 15 | 15 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Restart Share | FOR | 44% (24 of 54) | 44% (24 of 54) |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | Own Puckout Retention | FOR | 43% (12 of 28) | 43% (12 of 28) |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | HOW WON — Clean Won (own restarts retained clean) | FOR | 4 | 4 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | HOW WON — Break Won (own restarts retained on the break) | FOR | 7 | 7 |  |
+| PASS | Full Review PDF (live) | Restart Analysis | FULL | HOW WON — Foul Won (own restarts retained via foul) | FOR | 1 | 1 |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | turnovers won | FOR | Won 14 turnovers | Won 14 turnovers |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | turnovers won by opposition | OPP | Opposition won 15 turnovers | Opposition won 15 turnovers |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | won → score | FOR | 8 led to scores | 8 led to scores |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | won → shots | FOR | 11 led to shots | 11 led to shots |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | lost → scores conceded | FOR | 4 scores conceded | 4 scores conceded |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | lost → shots against | FOR | 10 shots against | 10 shots against |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | HOW WON — Tackle / Press | FOR | 5 | 5 |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | HOW WON — Swarm / Intercept | FOR | 3 | 3 |  |
+| PASS | Full Review PDF (live) | Turnover Analysis | FULL | HOW WON — Unforced error + Slack pass (opposition HP/KP errors) | FOR | 5 | 5 | Event Stats 'Opposition HP Error' + 'Opposition KP Error' rows |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | possession frees won | FOR | Won 4 possession frees | Won 4 possession frees |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | possession frees won by opposition | OPP | Opposition won 10 possession frees | Opposition won 10 possession frees |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | direct placed-ball scoring | FOR | Direct placed-ball scoring: 4/5 scored | Direct placed-ball scoring: 4/5 scored |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | direct placed-ball scoring | OPP | Direct placed-ball scoring: 9/9 scored | Direct placed-ball scoring: 9/9 scored |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | all placed balls scored |  | 13 | 13 |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | all placed balls missed |  | 1 | 1 |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | overall placed conversion |  | 93% | 93% |  |
+| PASS | Full Review PDF (live) | Free Kick Analysis | FULL | free advantage | FOR | -6 | -6 |  |
+| PASS | Full Review PDF (live) | Scoring Possession Origins | FULL | restart-origin scores | FOR | 7 Points (7 pts) | 7 Points (7 pts) |  |
+| PASS | Full Review PDF (live) | Scoring Possession Origins | FULL | turnover-origin scores | FOR | 8 Points (8 pts) | 8 Points (8 pts) |  |
+| PASS | Full Review PDF (live) | Scoring Possession Origins | FULL | restart-origin scores | OPP | 1 Goal, 13 Points (16 pts) | 1 Goal, 13 Points (16 pts) |  |
+| PASS | Full Review PDF (live) | Scoring Possession Origins | FULL | turnover-origin scores | OPP | 1 Goal, 3 Points (6 pts) | 1 Goal, 3 Points (6 pts) |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | restart-origin scores for OPP | OPP | 1 Goal, 13 Points (16 pts) | 1 Goal, 13 Points (16 pts) |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | restart-origin scores conceded | OPP | 1 Goal, 14 Points (17 pts) (50%) | 1 Goal, 14 Points (17 pts) (50%) | same quantity as the row above — consistency check |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | restart-origin scores from our kickout losses | OPP | 1 Goal, 6 Points (9 pts) | 1 Goal, 6 Points (9 pts) |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | turnover-origin scores for OPP | OPP | 1 Goal, 3 Points (6 pts) | 1 Goal, 3 Points (6 pts) |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | turnover-origin scores conceded | OPP | 4 | 4 |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | turnover-origin punishment rate | OPP | 27% | 27% |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | longest unanswered run (scores) | OPP | 3 scores | 3 scores |  |
+| PASS | Full Review PDF (live) | Opposition Origin | FULL | OPP runs ≥ 2 | OPP | 5 | 5 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | restart share | FOR | 44% | 44% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | kickout wins → origin score | FOR | 29% | 29% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | kickout losses → origin score against | FOR | 50% | 50% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | net kickout advantage (%pt) | FOR | -21 %pt | -21 %pt |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | turnover wins → origin score | FOR | 57% | 57% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | turnover wins → shot, no score | FOR | 21% | 21% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | turnover losses → origin score against | FOR | 27% | 27% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | Ballyhale Shamrocks longest burst | FOR | 2 scores | 2 scores |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | Na Piarsaigh longest burst | OPP | 3 scores | 3 scores |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — Yellow cards | FOR | 1 | 1 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — Yellow cards | OPP | 1 | 1 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — Sin bins | FOR | 0 | 0 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — Sin bins | OPP | 0 | 0 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — Red cards | FOR | 0 | 0 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — Red cards | OPP | 1 | 1 |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — turnover conversion rate | OPP | 27% | 27% |  |
+| PASS | Full Review PDF (live) | Intelligence Summary | FULL | team comparison — restart share | OPP | 56% | 56% |  |
+| PASS | Full Review PDF (live) | Chain Intelligence | FULL | total puckouts |  | 54 | 54 |  |
+| PASS | Full Review PDF (live) | Chain Intelligence | FULL | Won → Origin score | FOR | 7 (29%) | 7 (29%) |  |
+| PASS | PDF HT Snapshot | all pages | — | text running off the page edge |  | 0 | 0 | [] |
+| PASS | PDF HT Snapshot | all pages | — | internal enum names shown |  | 0 | 0 | [] |
+| PASS | PDF HT Snapshot | all pages | — | undefined/NaN/null text |  | 0 | 0 | [] |
+| PASS | PDF HT Snapshot | all pages | — | page header team names |  | 0 | 0 | [] |
+| PASS | PDF FT Snapshot | all pages | — | text running off the page edge |  | 0 | 0 | [] |
+| PASS | PDF FT Snapshot | all pages | — | undefined/NaN/null text |  | 0 | 0 | [] |
+| PASS | PDF FT Snapshot | all pages | — | page header team names |  | 0 | 0 | [] |
+| PASS | PDF Full Review | all pages | — | undefined/NaN/null text |  | 0 | 0 | [] |
+| PASS | PDF Full Review | all pages | — | page header team names |  | 0 | 0 | [] |
+| PASS | Reopen | HT Snapshot live vs reopened | — | identical page text after save → reload → reopen |  | identical | identical |  |
+| PASS | Reopen | FT Snapshot live vs reopened | — | identical page text after save → reload → reopen |  | identical | identical |  |
+| PASS | Reopen | Full Review live vs reopened | — | identical page text after save → reload → reopen |  | identical | identical |  |
+| PASS | Reopen | FT Snapshot reopened vs reopened again | — | identical page text after save → reload → reopen |  | identical | identical |  |
+| PASS | Cross-page | Match Summary vs Shot Efficiency | FULL | Ballyhale Shamrocks blocked/saved shots agree | FOR | 2 | 2 |  |

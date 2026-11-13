@@ -1,0 +1,53 @@
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] match started 
+[B] pause/resume {"before":233,"afterPause":233,"realSeconds":150}
+[B] undo {"undoes":"B-022-WRONG"}
+[B] undo {"undoes":"B-024-WRONG"}
+[B] undo {"undoes":"B-040-WRONG"}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] reload + resume {"clockBefore":553,"clockAfter":553,"events":43}
+[B] undo {"undoes":"B-049-WRONG"}
+[B] pause/resume {"before":817,"afterPause":817,"realSeconds":90}
+[B] storage writes now fail {"stored":92}
+[B] undo {"undoes":"B-093-WRONG"}
+[B] storage restored {"storedWhileFailing":92,"strip":"Save failed — storage full. Back up and delete old matches.","leaveDialog":true}
+[B] substitution {"team":"FOR","out":7,"in":16,"pass":true}
+[B] captured Quick Review HT {"countsRows":19,"panes":3}
+[B] exported HT-snapshot-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-HT-snapshot-live.pdf","suggested":"Corofin_v_Moycullen_ht_snapshot.pdf","pages":5}
+[B] second half started 
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] reload + resume {"clockBefore":1,"clockAfter":1,"events":169}
+[B] substitution {"team":"FOR","out":13,"in":17,"pass":true}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] reload + resume {"clockBefore":423,"clockAfter":423,"events":200}
+[B] pause/resume {"before":767,"afterPause":768,"realSeconds":200}
+[B] substitution {"team":"OPP","out":11,"in":19,"pass":true}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] tab closed + app reopened {"clockBefore":1200,"clockAfter":1200,"stored":260}
+[B] substitution {"team":"FOR","out":8,"in":18,"pass":true}
+[B] captured Quick Review FT {"countsRows":19,"panes":3}
+[B] exported FT-snapshot-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-FT-snapshot-live.pdf","suggested":"Corofin_v_Moycullen_ft_snapshot.pdf","pages":8}
+[B] exported FullReview-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-FullReview-live.pdf","suggested":"Corofin_v_Moycullen_review.pdf","pages":30}
+[B] full time + saved 
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] review edit applied {"targetId":"B-170","kind":"WIDE","newKind":"POINT"}
+[B] review edit applied {"targetId":"B-183","kind":"KICKOUT_WON","newKind":"KICKOUT_CONCEDED"}
+[B] review edit applied {"targetId":"B-026","kind":"SHOT","newKind":"POINT"}
+[B] review edit applied {"targetId":"B-001","kind":"TURNOVER_WON","newKind":"TURNOVER_LOST"}
+[B] review edit applied {"targetId":"B-194","kind":"FREE_WON","newKind":"FREE_CONCEDED"}
+[B] REVIEW OP: could not open target marker {"op":{"op":"edit","targetId":"B-059","newKind":"SIN_BIN","truthAfter":{"action":"card","card":"Sin Bin"}},"target":{"id":"debb0e42-3dcc-4671-9911-dbd545b33a38","kind":"YELLOW_CARD","nx":0.4780000198719113,"ny":0.5839999886446221}}
+[B] REVIEW OP: could not open target marker {"op":{"op":"edit","targetId":"B-007","newKind":"WIDE","truthAfter":{"action":"wide"}},"target":{"id":"3b9f4819-a7d1-4f7d-a6f6-1288ccc38e90","kind":"POINT","nx":0.9050000212913336,"ny":0.4390000099359556}}
+[B] review edit applied {"targetId":"B-022","kind":"KICKOUT_WON","newKind":"KICKOUT_CONCEDED"}
+[B] review delete applied {"targetId":"B-006","kind":"SIDELINE_WON","newKind":null}
+[B] review delete applied {"targetId":"B-203","kind":"POINT","newKind":null}
+[B] review probe {"op":"probe","targetId":"B-002","kind":"TURNOVER_LOST","expect":"notOffered","optionsOffered":["TURNOVER_WON","TURNOVER_LOST"],"offeredButShouldNotBe":[],"pass":true,"storedUnchanged":true}
+[B] review probe applied {"targetId":"B-002","kind":"TURNOVER_LOST","newKind":null}
+[B] REVIEW OP: could not open target marker {"op":{"op":"probe","expect":"notOffered","targetId":"B-009","attemptKinds":["SHOT","TURNOVER_WON","FORTY_FIVE_TWO_POINT","FREE_SCORED"]},"target":{"id":"3a6213f2-b6fc-4482-bb41-c1f4507c12ac","kind":"POINT","nx":0.18700000851653345,"ny":0.6160000113553779}}
+[B] REVIEW OP: could not open target marker {"op":{"op":"probe","expect":"notOffered","targetId":"B-027","attemptKinds":["FORTY_FIVE_CONCEDED","POINT"]},"target":{"id":"fe49b9a3-1e78-4a59-a3b3-3893749ae9a6","kind":"FORTY_FIVE_WON","nx":0.6899999574173329,"ny":0.5}}
+[B] REVIEW OP: could not open target marker {"op":{"op":"probe","expect":"refused","targetId":"B-008","attemptKind":"KICKOUT_CONCEDED","reason":"Clear the player before changing who won the restart"},"target":{"id":"1da5fb11-9d99-4822-9e96-910bb781ce6f","kind":"KICKOUT_WON","nx":0.5600000425826671,"ny":0.32699996593386627}}
+[B] exported HT-snapshot-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-HT-snapshot-reopened.pdf","suggested":"Corofin_v_Moycullen_ht_snapshot.pdf","pages":5}
+[B] exported FT-snapshot-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-FT-snapshot-reopened.pdf","suggested":"Corofin_v_Moycullen_ft_snapshot.pdf","pages":8}
+[B] exported FullReview-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-FullReview-reopened.pdf","suggested":"Corofin_v_Moycullen_review.pdf","pages":30}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] exported FT-snapshot-reopened2 {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/B/pdf/B-FT-snapshot-reopened2.pdf","suggested":"Corofin_v_Moycullen_ft_snapshot.pdf","pages":8}
+[B] done 

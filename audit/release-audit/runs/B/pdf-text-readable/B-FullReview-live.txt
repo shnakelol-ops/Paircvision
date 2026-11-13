@@ -1,0 +1,2404 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Match Summary
+ 1896    38  1 / 30
+   24    62  PáircVision Report  ·  Pearse Stadium
+  496   118  Corofin
+ 1424   118  Moycullen
+  960   158  v
+  496   198  3-26 (35)
+ 1424   198  1-22 (25)
+   88   258  Corofin
+  960   258  v
+ 1016   258  Moycullen
+   88   284  SCORING
+ 1016   284  SCORING
+   84   303  Goals
+  910   303  3
+ 1012   303  Goals
+ 1838   303  1
+   84   322  Points
+  910   322  26
+ 1012   322  Points
+ 1838   322  22
+   84   341  2-Pointers
+  910   341  4
+ 1012   341  2-Pointers
+ 1838   341  3
+   84   360  Total Score
+  910   360  35
+ 1012   360  Total Score
+ 1838   360  25
+   84   379  Shots
+  910   379  48
+ 1012   379  Shots
+ 1838   379  42
+   84   398  Wides
+  910   398  15
+ 1012   398  Wides
+ 1838   398  17
+   84   417  Conversion
+  910   417  52%
+ 1012   417  Conversion
+ 1838   417  48%
+   88   438  SHOT DETAIL
+ 1016   438  SHOT DETAIL
+   84   457  Short
+  910   457  3
+ 1012   457  Short
+ 1838   457  2
+   84   476  Post
+  910   476  4
+ 1012   476  Post
+ 1838   476  1
+   84   495  45
+  910   495  1
+ 1012   495  45
+ 1838   495  1
+   84   514  Block / Save
+  910   514  1
+ 1012   514  Block / Save
+ 1838   514  2
+   88   535  KICKOUTS
+ 1016   535  KICKOUTS
+   84   554  Restart Share Won
+  910   554  41
+ 1012   554  Restart Share Won
+ 1838   554  36
+   84   573  Restart Share Conceded
+  910   573  36
+ 1012   573  Restart Share Conceded
+ 1838   573  41
+   84   592  Restart Share
+  910   592  53%
+ 1012   592  Restart Share
+ 1838   592  47%
+   84   611  Restart Share — Clean Won
+  910   611  19
+ 1012   611  Restart Share — Clean Won
+ 1838   611  13
+   84   630  Restart Share — Break Won
+  910   630  19
+ 1012   630  Restart Share — Break Won
+ 1838   630  19
+   84   649  Restart Share — Foul Won
+  910   649  3
+ 1012   649  Restart Share — Foul Won
+ 1838   649  4
+   84   668  Dead Ball Won
+  910   668  0
+ 1012   668  Dead Ball Won
+ 1838   668  0
+   84   687  Restart Share — Clean Lost
+  910   687  13
+ 1012   687  Restart Share — Clean Lost
+ 1838   687  19
+   84   706  Restart Share — Break Lost
+  910   706  19
+ 1012   706  Restart Share — Break Lost
+ 1838   706  19
+   84   725  Restart Share — Foul Conceded
+  910   725  4
+ 1012   725  Restart Share — Foul Conceded
+ 1838   725  3
+   84   744  Kicked Dead
+  910   744  0
+ 1012   744  Kicked Dead
+ 1838   744  0
+   88   765  TURNOVERS
+ 1016   765  TURNOVERS
+   84   784  T/O Won
+  910   784  56
+ 1012   784  T/O Won
+ 1838   784  59
+   84   803  T/O Lost
+  910   803  59
+ 1012   803  T/O Lost
+ 1838   803  56
+   84   822  Net T/O
+  910   822  -3
+ 1012   822  Net T/O
+ 1838   822  +3
+   84   841  Tackle / Press
+  910   841  20
+ 1012   841  Tackle / Press
+ 1838   841  16
+   84   860  Swarm / Int.
+  910   860  16
+ 1012   860  Swarm / Int.
+ 1838   860  7
+   84   879  Unforced
+  910   879  0
+ 1012   879  Unforced
+ 1838   879  0
+   84   898  Slack KP / HP
+  910   898  31
+ 1012   898  Slack KP / HP
+ 1838   898  16
+   84   917  OC / Stripped
+  910   917  5
+ 1012   917  OC / Stripped
+ 1838   917  4
+   88   938  FREES
+ 1016   938  FREES
+   84   957  Frees Won
+  910   957  14
+ 1012   957  Frees Won
+ 1838   957  15
+   84   976  Frees Conceded
+  910   976  15
+ 1012   976  Frees Conceded
+ 1838   976  14
+   84   995  Placed Attempts
+  910   995  9
+ 1012   995  Placed Attempts
+ 1838   995  10
+   84  1014  Placed Scores
+  910  1014  5
+ 1012  1014  Placed Scores
+ 1838  1014  5
+   84  1033  Placed Points
+  910  1033  5
+ 1012  1033  Placed Points
+ 1838  1033  6
+   84  1052  Placed Misses
+  910  1052  4
+ 1012  1052  Placed Misses
+ 1838  1052  5
+ 1896  1060  331 total events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Understanding PáircVision Analytics
+ 1896    38  2 / 30
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  112   152  PART 1 — MATCH FACTS
+  702   152  PART 2 — POSSESSION FACTS
+ 1292   152  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+  112   188  What happened?
+  702   188  What did we win/lose and where?
+ 1292   188  What happened after those possessions
+ 1292   216  began?
+  112   244  "Raw match events, exactly as they were recorded."
+  702   244  "Every restart, turnover and free is followed to its
+  702   268  immediate outcome."
+ 1292   272  "Where did the possessions that eventually produced
+  112   282  Scores, shots, kickouts, turnovers and frees — the
+ 1292   296  scores begin?"
+  112   304  numbers you would record on a clipboard.
+  702   306  Each possession is tracked from its start to its immediate
+  702   328  result — a score, a wide, or possession lost. This is the
+ 1292   334  A chain traces a full attack, even when it spans multiple
+  702   350  official source of truth for what we won or lost, and where.
+ 1292   356  possessions. A turnover → free won → score is one chain.
+  112   366  FOUND IN THIS REPORT
+ 1292   378  This layer shows where scoring possessions began — it
+  112   390  · Scoring Breakdown
+ 1292   400  does not establish tactical causation. If a restart isn't logged
+  112   412  · Match Swing Timeline
+  702   412  FOUND IN THIS REPORT
+ 1292   422  live, the next score attributes to From General Play —
+  112   434  · Game Segments
+  702   436  · Opposition Facts
+ 1292   444  origin chains only know what was captured.
+  112   456  · Player Breakdown
+  702   458  · Restart Analysis
+  112   478  · Shot Pitch Maps
+  702   480  · Turnover Analysis
+  112   500  · Shot Efficiency
+  702   502  · Free Kick Analysis
+ 1292   506  FOUND IN THIS REPORT
+  112   522  · Zone Analysis
+ 1292   530  · Scoring Possession Origins
+  112   544  · Pitch Overviews
+ 1292   552  · Player Chain Involvement
+ 1292   574  · Opposition Origin & Chain Analysis
+ 1292   596  · Intelligence Summary
+ 1292   618  · Match Markers
+ 1292   640  · Chain Intelligence
+ 1292   662  · Restart Chain Analysis
+ 1292   684  · Turnover Chain Analysis
+ 1292   706  · Scoring Momentum
+  960  1022  Restart-origin counts every score in a possession that began with a kickout, including frees won during it. Direct restart scores attribute placed balls separately, so ledger sources sum to the final margin.
+  960  1044  Restart Share counts every kickout in the game. Own Kickout Retention counts only our own.
+
+===== PAGE 3 (1920x1080) =====
+ 1896    38  3 / 30
+   80   180  CHAPTER 1
+   80   230  PART 1 — MATCH FACTS
+   80   318  What happened?
+   80   398  "Raw match events and direct event-source classification exactly as they were recorded."
+   80   448  Coach question answered: "What happened?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Breakdown
+   80   564  · Match Swing Timeline
+   80   592  · Game Segments
+   80   620  · Player Breakdown
+   80   648  · Player Contributions
+   80   676  · Shot Pitch Maps
+   80   704  · Shot & Scoring Efficiency
+   80   732  · Zone Analysis
+   80   760  · 1H & 2H Pitch Overviews
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Scoring Breakdown
+ 1896    38  4 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24    86  How was the score recorded? Direct event classification only — no restart or turnover attribution.
+  960   150  Corofin  3-26 (35)   v   1-22 (25)  Moycullen
+  960   200  Corofin by 10
+  234   273  SOURCE
+  900   273  COROFIN
+ 1260   273  MOYCULLEN
+ 1575   273  NET
+  234   327  From general play
+  900   327  3-21 (30 pts)
+ 1260   327  1-16 (19 pts)
+ 1575   327  +11
+  234   389  Placed balls
+  900   389  5/9 scored · 5 pts
+ 1260   389  5/10 scored · 6 pts
+ 1575   389  -1
+ 1710   450  Source nets sum to the final margin: +10
+ 1710   472  Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).
+ 1896  1060  331 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Match Swing Timeline
+ 1896    38  5 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40   104  FIRST HALF
+  984   104  SECOND HALF
+  132   145  Moycullen took the lead — 0-00 v 0-01
+ 1076   145  Moycullen converted 2 kickouts into scores
+  104   155  1H 1'
+ 1048   155  2H 14'
+  132   167  LEAD CHANGE
+ 1076   167  KICKOUT
+  132   210  Corofin converted 4 kickouts into scores
+ 1076   210  Moycullen scored 3 unanswered
+  104   220  1H 1'
+ 1048   220  2H 14'–18'
+  132   232  KICKOUT
+ 1076   232  SCORING RUN
+  132   275  Corofin scored 5 unanswered
+ 1076   275  Scores level — 0-16 v 1-13
+  104   285  1H 1'–7'
+ 1048   285  2H 14'
+  132   297  SCORING RUN
+ 1076   297  EQUALISED
+  132   340  Scores level — 0-01 v 0-01
+ 1076   340  Moycullen took the lead — 0-16 v 1-14
+  104   350  1H 1'
+ 1048   350  2H 15'
+  132   362  EQUALISED
+ 1076   362  LEAD CHANGE
+  132   405  Corofin took the lead — 0-03 v 0-01
+ 1076   405  Corofin converted 2 kickouts into scores
+  104   415  1H 3'
+ 1048   415  2H 18'
+  132   427  LEAD CHANGE
+ 1076   427  KICKOUT
+  132   470  Moycullen turnovers led to scores
+ 1076   470  Corofin scored 2 unanswered
+  104   480  1H 17'
+ 1048   480  2H 18'–19'
+  132   492  TURNOVER
+ 1076   492  SCORING RUN
+  132   535  Moycullen scored 5 unanswered
+ 1076   535  Corofin turnovers led to scores
+  104   545  1H 17'–25'
+ 1048   545  2H 22'
+  132   557  SCORING RUN
+ 1076   557  TURNOVER
+  132   600  Scores level — 0-08 v 0-08
+ 1076   600  Corofin took the lead — 1-18 v 1-17
+  104   610  1H 25'
+ 1048   610  2H 22'
+  132   622  EQUALISED
+ 1076   622  LEAD CHANGE
+  132   665  Corofin took the lead — 0-09 v 0-08
+ 1076   665  Scores level — 1-18 v 1-18
+  104   675  1H 26'
+ 1048   675  2H 22'
+  132   687  LEAD CHANGE
+ 1076   687  EQUALISED
+  132   730  Moycullen took the lead — 0-09 v 0-10
+ 1076   730  Corofin scored 3 unanswered
+  104   740  1H 30'
+ 1048   740  2H 23'–25'
+  132   752  LEAD CHANGE
+ 1076   752  SCORING RUN
+  132   795  Corofin scored 3 unanswered
+ 1076   795  Corofin took the lead — 1-19 v 1-18
+  104   805  1H 30'–33'
+ 1048   805  2H 23'
+  132   817  SCORING RUN
+ 1076   817  LEAD CHANGE
+  132   860  Scores level — 0-10 v 0-10
+ 1076   860  Corofin turnovers led to scores
+  104   870  1H 30'
+ 1048   870  2H 28'
+  132   882  EQUALISED
+ 1076   882  TURNOVER
+  132   925  Corofin took the lead — 0-12 v 0-10
+ 1076   925  Corofin scored 3 unanswered
+  104   935  1H 32'
+ 1048   935  2H 32'–33'
+  132   947  LEAD CHANGE
+ 1076   947  SCORING RUN
+ 1896  1060  331 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Game Segments Breakdown
+ 1896    38  6 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+  298    99  FIRST HALF
+  290   130  SEGMENT
+  740   130  Corofin
+ 1340   130  Moycullen
+  525   157  Score
+  665   157  Shots/W
+  780   157  Kickout W-L
+  880   157  Net T/O
+  980   157  Frees W/C
+ 1125   157  Score
+ 1265   157  Shots/W
+ 1380   157  Kickout W-L
+ 1480   157  Net T/O
+ 1580   157  Frees W/C
+  290   197  Early (0–10)
+  525   197  0-06 (6)
+  665   197  8 / 2
+  780   197  8-4
+  880   197  -1
+  980   197  2 / 0
+ 1125   197  0-02 (2)
+ 1265   197  6 / 3
+ 1380   197  4-8
+ 1480   197  +1
+ 1580   197  0 / 2
+  290   251  Mid  (11–20)
+  525   251  0-02 (2)
+  665   251  4 / 1
+  780   251  5-4
+  880   251  -2
+  980   251  2 / 1
+ 1125   251  0-03 (3)
+ 1265   251  6 / 3
+ 1380   251  4-5
+ 1480   251  +2
+ 1580   251  1 / 2
+  290   305  Late (21–30+)
+  525   305  0-06 (6)
+  665   305  9 / 3
+  780   305  12-5
+  880   305  -6
+  980   305  2 / 4
+ 1125   305  0-06 (6)
+ 1265   305  11 / 5
+ 1380   305  5-12
+ 1480   305  +6
+ 1580   305  4 / 2
+  290   359  TOTAL
+  525   359  0-14 (14)
+  665   359  21 / 6
+  780   359  25-13
+  880   359  -9
+  980   359  6 / 5
+ 1125   359  0-11 (11)
+ 1265   359  23 / 11
+ 1380   359  13-25
+ 1480   359  +9
+ 1580   359  5 / 6
+  298   453  SECOND HALF
+  290   484  SEGMENT
+  740   484  Corofin
+ 1340   484  Moycullen
+  525   511  Score
+  665   511  Shots/W
+  780   511  Kickout W-L
+  880   511  Net T/O
+  980   511  Frees W/C
+ 1125   511  Score
+ 1265   511  Shots/W
+ 1380   511  Kickout W-L
+ 1480   511  Net T/O
+ 1580   511  Frees W/C
+  290   551  Early (0–10)
+  525   551  0-00 (0)
+  665   551  7 / 5
+  780   551  3-7
+  880   551  +3
+  980   551  1 / 6
+ 1125   551  0-01 (1)
+ 1265   551  6 / 5
+ 1380   551  7-3
+ 1480   551  -3
+ 1580   551  6 / 1
+  290   605  Mid  (11–20)
+  525   605  0-04 (4)
+  665   605  7 / 2
+  780   605  4-6
+  880   605  +1
+  980   605  3 / 2
+ 1125   605  1-04 (7)
+ 1265   605  5 / 0
+ 1380   605  6-4
+ 1480   605  -1
+ 1580   605  2 / 3
+  290   659  Late (21–30+)
+  525   659  3-08 (17)
+  665   659  13 / 2
+  780   659  9-10
+  880   659  +2
+  980   659  4 / 2
+ 1125   659  0-06 (6)
+ 1265   659  8 / 1
+ 1380   659  10-9
+ 1480   659  -2
+ 1580   659  2 / 4
+  290   713  TOTAL
+  525   713  3-12 (21)
+  665   713  27 / 9
+  780   713  16-23
+  880   713  +6
+  980   713  8 / 10
+ 1125   713  1-11 (14)
+ 1265   713  19 / 6
+ 1380   713  23-16
+ 1480   713  -6
+ 1580   713  10 / 8
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  7 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Corofin
+  278   245  #1
+  343   245  Shane O'Rourke
+  640   245  —
+  765   245  —
+  853   245  —
+  940   245  —
+ 1040   245  —
+ 1130   245  —
+ 1220   245  —
+ 1320   245  —
+ 1415   245  —
+ 1505   245  —
+ 1600   245  —
+  278   303  #2
+  343   303  Dan O'Brien
+  640   303  0-00 (0)
+  765   303  0
+  853   303  0
+  940   303  0
+ 1040   303  0
+ 1130   303  +0
+ 1220   303  0
+ 1320   303  0
+ 1415   303  0
+ 1505   303  1
+ 1600   303  1
+  278   361  #3
+  343   361  Rory O'Carroll
+  640   361  0-00 (0)
+  765   361  0
+  853   361  0
+  940   361  4
+ 1040   361  0
+ 1130   361  +4
+ 1220   361  0
+ 1320   361  0
+ 1415   361  0
+ 1505   361  1
+ 1600   361  5
+  278   419  #4
+  343   419  Andrew McGowan
+  640   419  0-00 (0)
+  765   419  0
+  853   419  0
+  940   419  4
+ 1040   419  0
+ 1130   419  +4
+ 1220   419  0
+ 1320   419  0
+ 1415   419  0
+ 1505   419  0
+ 1600   419  4
+  278   477  #5
+  343   477  Theo Clancy
+  640   477  0-00 (0)
+  765   477  0
+  853   477  0
+  940   477  10
+ 1040   477  0
+ 1130   477  +10
+ 1220   477  0
+ 1320   477  0
+ 1415   477  0
+ 1505   477  2
+ 1600   477  13
+  278   535  #6
+  343   535  Dara Mullin
+  640   535  0-00 (0)
+  765   535  0
+  853   535  0
+  940   535  6
+ 1040   535  0
+ 1130   535  +6
+ 1220   535  0
+ 1320   535  0
+ 1415   535  0
+ 1505   535  1
+ 1600   535  7
+  278   593  #7
+  343   593  Paul Mannion
+  640   593  0-00 (0)
+  765   593  0
+  853   593  0
+  940   593  3
+ 1040   593  0
+ 1130   593  +3
+ 1220   593  0
+ 1320   593  0
+ 1415   593  0
+ 1505   593  0
+ 1600   593  4
+  278   651  #8
+  343   651  Craig Dias
+  640   651  0-01 (1)
+  765   651  2
+  853   651  0
+  940   651  3
+ 1040   651  1
+ 1130   651  +2
+ 1220   651  7
+ 1320   651  0
+ 1415   651  0
+ 1505   651  2
+ 1600   651  15
+  278   709  #9
+  343   709  Ben Shovlin
+  640   709  0-00 (0)
+  765   709  1
+  853   709  1
+  940   709  4
+ 1040   709  2
+ 1130   709  +2
+ 1220   709  9
+ 1320   709  0
+ 1415   709  2
+ 1505   709  1
+ 1600   709  20
+  278   767  #10
+  343   767  Shane Walsh
+  640   767  0-01 (1)
+  765   767  1
+  853   767  0
+  940   767  0
+ 1040   767  0
+ 1130   767  +0
+ 1220   767  4
+ 1320   767  0
+ 1415   767  0
+ 1505   767  0
+ 1600   767  6
+  278   825  #11
+  343   825  Tom Fox
+  640   825  0-04 (4)
+  765   825  6
+  853   825  1
+  940   825  0
+ 1040   825  9
+ 1130   825  -9
+ 1220   825  4
+ 1320   825  0
+ 1415   825  1
+ 1505   825  0
+ 1600   825  22
+  278   883  #12
+  343   883  Aidan Jones
+  640   883  0-05 (5)
+  765   883  9
+  853   883  4
+  940   883  0
+ 1040   883  3
+ 1130   883  -3
+ 1220   883  2
+ 1320   883  0
+ 1415   883  0
+ 1505   883  0
+ 1600   883  15
+  278   941  #13
+  343   941  Pat Burke
+  640   941  0-04 (4)
+  765   941  4
+  853   941  1
+  940   941  0
+ 1040   941  4
+ 1130   941  -4
+ 1220   941  0
+ 1320   941  0
+ 1415   941  0
+ 1505   941  0
+ 1600   941  10
+  278   999  #14
+  343   999  Callum Pearson
+  640   999  0-03 (3)
+  765   999  10
+  853   999  4
+  940   999  0
+ 1040   999  4
+ 1130   999  -4
+ 1220   999  0
+ 1320   999  0
+ 1415   999  4
+ 1505   999  0
+ 1600   999  18
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  8 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Corofin
+  278   245  #15
+  343   245  Hugh Kenny
+  640   245  1-03 (6)
+  765   245  6
+  853   245  2
+  940   245  0
+ 1040   245  12
+ 1130   245  -12
+ 1220   245  0
+ 1320   245  0
+ 1415   245  0
+ 1505   245  0
+ 1600   245  18
+  278   303  #16
+  343   303  #16
+  640   303  0-00 (0)
+  765   303  0
+  853   303  0
+  940   303  3
+ 1040   303  0
+ 1130   303  +3
+ 1220   303  0
+ 1320   303  0
+ 1415   303  0
+ 1505   303  3
+ 1600   303  6
+  278   361  #17
+  343   361  #17
+  640   361  1-01 (4)
+  765   361  2
+  853   361  0
+  940   361  0
+ 1040   361  1
+ 1130   361  -1
+ 1220   361  0
+ 1320   361  0
+ 1415   361  2
+ 1505   361  0
+ 1600   361  5
+  278   419  #18
+  343   419  #18
+  640   419  0-00 (0)
+  765   419  0
+  853   419  0
+  940   419  0
+ 1040   419  0
+ 1130   419  +0
+ 1220   419  1
+ 1320   419  0
+ 1415   419  0
+ 1505   419  0
+ 1600   419  1
+  282   466  Moycullen
+  278   513  #4
+  343   513  #4
+  640   513  0-00 (0)
+  765   513  0
+  853   513  0
+  940   513  0
+ 1040   513  0
+ 1130   513  +0
+ 1220   513  0
+ 1320   513  0
+ 1415   513  0
+ 1505   513  0
+ 1600   513  3
+  278   571  #6
+  343   571  #6
+  640   571  0-00 (0)
+  765   571  0
+  853   571  0
+  940   571  0
+ 1040   571  0
+ 1130   571  +0
+ 1220   571  0
+ 1320   571  0
+ 1415   571  0
+ 1505   571  0
+ 1600   571  2
+  278   629  #8
+  343   629  #8
+  640   629  0-00 (0)
+  765   629  1
+  853   629  1
+  940   629  0
+ 1040   629  0
+ 1130   629  +0
+ 1220   629  5
+ 1320   629  0
+ 1415   629  0
+ 1505   629  0
+ 1600   629  6
+  278   687  #9
+  343   687  #9
+  640   687  0-03 (3)
+  765   687  2
+  853   687  0
+  940   687  0
+ 1040   687  0
+ 1130   687  +0
+ 1220   687  11
+ 1320   687  0
+ 1415   687  0
+ 1505   687  0
+ 1600   687  13
+  278   745  #10
+  343   745  #10
+  640   745  0-00 (0)
+  765   745  1
+  853   745  1
+  940   745  0
+ 1040   745  0
+ 1130   745  +0
+ 1220   745  1
+ 1320   745  0
+ 1415   745  0
+ 1505   745  0
+ 1600   745  2
+  278   803  #11
+  343   803  #11
+  640   803  0-03 (3)
+  765   803  7
+  853   803  5
+  940   803  0
+ 1040   803  0
+ 1130   803  +0
+ 1220   803  3
+ 1320   803  0
+ 1415   803  0
+ 1505   803  0
+ 1600   803  11
+  278   861  #12
+  343   861  #12
+  640   861  0-00 (0)
+  765   861  1
+  853   861  1
+  940   861  0
+ 1040   861  0
+ 1130   861  +0
+ 1220   861  0
+ 1320   861  0
+ 1415   861  0
+ 1505   861  0
+ 1600   861  1
+  278   919  #13
+  343   919  #13
+  640   919  0-03 (3)
+  765   919  5
+  853   919  2
+  940   919  0
+ 1040   919  0
+ 1130   919  +0
+ 1220   919  0
+ 1320   919  0
+ 1415   919  0
+ 1505   919  0
+ 1600   919  7
+  278   977  #14
+  343   977  #14
+  640   977  1-01 (4)
+  765   977  5
+  853   977  2
+  940   977  0
+ 1040   977  0
+ 1130   977  +0
+ 1220   977  0
+ 1320   977  0
+ 1415   977  0
+ 1505   977  0
+ 1600   977  5
+
+===== PAGE 9 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  9 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Moycullen
+  278   245  #15
+  343   245  #15
+  640   245  0-02 (2)
+  765   245  8
+  853   245  2
+  940   245  0
+ 1040   245  0
+ 1130   245  +0
+ 1220   245  0
+ 1320   245  0
+ 1415   245  0
+ 1505   245  0
+ 1600   245  8
+  278   303  #19
+  343   303  #19
+  640   303  0-03 (3)
+  765   303  3
+  853   303  0
+  940   303  0
+ 1040   303  0
+ 1130   303  +0
+ 1220   303  1
+ 1320   303  0
+ 1415   303  0
+ 1505   303  0
+ 1600   303  4
+
+===== PAGE 10 (1920x1080) =====
+   24    38  Player Contributions
+ 1896    38  10 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24    86  Raw per-player counts — scoring, shooting, restarts, turnovers and frees. Ranked by score value.
+   38   124  COROFIN
+  982   124  MOYCULLEN
+   38   163  PLAYER
+  338   163  SCORE
+  438   163  SHARE
+  538   163  SHOTS
+  658   163  T/O W-L
+  778   163  KO W-L
+  898   163  NET BALL
+  982   163  PLAYER
+ 1282   163  SCORE
+ 1382   163  SHARE
+ 1482   163  SHOTS
+ 1602   163  T/O W-L
+ 1722   163  KO W-L
+ 1842   163  NET BALL
+   38   191  Hugh Kenny
+  338   191  1-03
+  438   191  17%
+  538   191  3/6
+  658   191  0-12
+  778   191  0-0
+  898   191  -12
+  982   191  #14
+ 1282   191  1-01
+ 1382   191  16%
+ 1482   191  2/5
+ 1602   191  0-0
+ 1722   191  0-0
+ 1842   191  0
+   38   221  Aidan Jones
+  338   221  0-05
+  438   221  14%
+  538   221  5/9
+  658   221  0-3
+  778   221  2-0
+  898   221  -1
+  982   221  #9
+ 1282   221  0-03
+ 1382   221  12%
+ 1482   221  2/2
+ 1602   221  0-0
+ 1722   221  11-0
+ 1842   221  +11
+   38   251  #17
+  338   251  1-01
+  438   251  11%
+  538   251  2/2
+  658   251  0-1
+  778   251  0-0
+  898   251  +1
+  982   251  #11
+ 1282   251  0-03
+ 1382   251  12%
+ 1482   251  2/7
+ 1602   251  0-0
+ 1722   251  3-0
+ 1842   251  +3
+   38   281  Tom Fox
+  338   281  0-04
+  438   281  11%
+  538   281  4/6
+  658   281  0-9
+  778   281  4-0
+  898   281  -4
+  982   281  #19
+ 1282   281  0-03
+ 1382   281  12%
+ 1482   281  3/3
+ 1602   281  0-0
+ 1722   281  1-0
+ 1842   281  +1
+   38   311  Pat Burke
+  338   311  0-04
+  438   311  11%
+  538   311  2/4
+  658   311  0-4
+  778   311  0-0
+  898   311  -4
+  982   311  #13
+ 1282   311  0-03
+ 1382   311  12%
+ 1482   311  3/5
+ 1602   311  0-0
+ 1722   311  0-0
+ 1842   311  0
+   38   341  Callum Pearson
+  338   341  0-03
+  438   341  9%
+  538   341  2/10
+  658   341  0-4
+  778   341  0-0
+  898   341  0
+  982   341  #15
+ 1282   341  0-02
+ 1382   341  8%
+ 1482   341  2/8
+ 1602   341  0-0
+ 1722   341  0-0
+ 1842   341  0
+   38   371  Craig Dias
+  338   371  0-01
+  438   371  3%
+  538   371  1/2
+  658   371  3-1
+  778   371  7-0
+  898   371  +7
+  982   371  #8
+ 1282   371  —
+ 1382   371  —
+ 1482   371  0/1
+ 1602   371  0-0
+ 1722   371  5-0
+ 1842   371  +5
+   38   401  Shane Walsh
+  338   401  0-01
+  438   401  3%
+  538   401  1/1
+  658   401  0-0
+  778   401  4-0
+  898   401  +4
+  982   401  #10
+ 1282   401  —
+ 1382   401  —
+ 1482   401  0/1
+ 1602   401  0-0
+ 1722   401  1-0
+ 1842   401  +1
+   38   431  Ben Shovlin
+  338   431  —
+  438   431  —
+  538   431  0/1
+  658   431  4-2
+  778   431  9-0
+  898   431  +12
+  982   431  #4
+ 1282   431  —
+ 1382   431  —
+ 1482   431  —
+ 1602   431  0-0
+ 1722   431  0-0
+ 1842   431  0
+   38   461  Theo Clancy
+  338   461  —
+  438   461  —
+  538   461  —
+  658   461  10-0
+  778   461  0-0
+  898   461  +8
+  982   461  #6
+ 1282   461  —
+ 1382   461  —
+ 1482   461  —
+ 1602   461  0-0
+ 1722   461  0-0
+ 1842   461  0
+   38   491  Dara Mullin
+  338   491  —
+  438   491  —
+  538   491  —
+  658   491  6-0
+  778   491  0-0
+  898   491  +5
+  982   491  #12
+ 1282   491  —
+ 1382   491  —
+ 1482   491  0/1
+ 1602   491  0-0
+ 1722   491  0-0
+ 1842   491  0
+   38   521  Andrew McGowan
+  338   521  —
+  438   521  —
+  538   521  —
+  658   521  4-0
+  778   521  0-0
+  898   521  +4
+   38   578  FREES CONCEDED BY PLAYER
+  982   578  FREES CONCEDED BY PLAYER
+   38   617  PLAYER
+  658   617  1H
+  778   617  2H
+  898   617  TOTAL
+  982   617  PLAYER
+ 1602   617  1H
+ 1722   617  2H
+ 1842   617  TOTAL
+   38   645  #16 #16
+  658   645  1
+  778   645  2
+  898   645  3
+  982   645  No frees conceded attributed to a Moycullen player
+   38   675  #5 Theo Clancy
+  658   675  1
+  778   675  1
+  898   675  2
+  982   675  Not attributed to a player
+ 1602   675  6
+ 1722   675  8
+ 1842   675  14
+   38   705  #8 Craig Dias
+  658   705  2
+  778   705  0
+  898   705  2
+  982   709  Moycullen total
+ 1602   709  6
+ 1722   709  8
+ 1842   709  14
+   38   735  #3 Rory O'Carroll
+  658   735  0
+  778   735  1
+  898   735  1
+   38   765  #6 Dara Mullin
+  658   765  0
+  778   765  1
+  898   765  1
+   38   795  Other players
+  658   795  1
+  778   795  1
+  898   795  2
+   38   825  Not attributed to a player
+  658   825  0
+  778   825  4
+  898   825  4
+   38   859  Corofin total
+  658   859  5
+  778   859  10
+  898   859  15
+  960  1040  Direct event counts only. Chain involvement and net influence ranking appear in Game Origin Analysis (Part 3).
+ 1896  1060  331 events
+
+===== PAGE 11 (1920x1080) =====
+   24    38  Shot Pitch Maps
+ 1896    38  11 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24   110  1H — COROFIN SHOTS
+  945   110  21
+  977   110  1H — MOYCULLEN SHOTS
+ 1898   110  23
+   24   583  2H — COROFIN SHOTS
+  945   583  27
+  977   583  2H — MOYCULLEN SHOTS
+ 1898   583  19
+ 1896  1060  90 events
+
+===== PAGE 12 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  12 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   38   104  FOR — COROFIN
+  982   104  OPP — MOYCULLEN
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  48
+  982   172  Attempts
+ 1884   172  42
+   38   204  Scores
+  940   204  25
+  982   204  Scores
+ 1884   204  20
+   38   236  Conversion
+  940   236  52%
+  982   236  Conversion
+ 1884   236  48%
+   38   268  Wides
+  940   268  15
+  982   268  Wides
+ 1884   268  17
+   38   300  Blocked / Saved
+  940   300  1
+  982   300  Blocked / Saved
+ 1884   300  2
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  31
+  664   400  20
+  780   400  11
+  940   400  65%
+  982   400  Open Play
+ 1488   400  27
+ 1608   400  15
+ 1724   400  12
+ 1884   400  56%
+   38   432  Free
+  544   432  8
+  664   432  5
+  780   432  3
+  940   432  63%
+  982   432  Free
+ 1488   432  9
+ 1608   432  5
+ 1724   432  4
+ 1884   432  56%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  1
+  664   496  —
+  780   496  1
+  940   496  0%
+  982   496  45
+ 1488   496  1
+ 1608   496  —
+ 1724   496  1
+ 1884   496  0%
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  8
+  664   560  —
+  780   560  8
+  940   560  0%
+  982   560  Unclassified
+ 1488   560  5
+ 1608   560  —
+ 1724   560  5
+ 1884   560  0%
+   38   587  8 shots logged without a source
+  982   587  5 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  4
+  982   660  TWO_POINTER Scores
+ 1884   660  3
+   38   692  45+2 Scores
+  940   692  0
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  4
+  982   724  Total 2PT Scores
+ 1884   724  3
+   38   756  Total 2PT Pts Value
+  940   756  8
+  982   756  Total 2PT Pts Value
+ 1884   756  6
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  5
+  982   834  Placed Scored
+ 1884   834  5
+   38   866  Placed Missed
+  940   866  4
+  982   866  Placed Missed
+ 1884   866  5
+   38   898  Placed Conv %
+  940   898  56%
+  982   898  Placed Conv %
+ 1884   898  50%
+ 1896  1060  331 events
+
+===== PAGE 13 (1920x1080) =====
+   24    38  Zone Analysis
+ 1896    38  13 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   28    95  COROFIN ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+  944    95  81 events
+  978    95  MOYCULLEN ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+ 1894    95  79 events
+   42   128  Most scoring: Attacking Centre
+  992   128  Opposition scoring: Defensive Centre
+   42   156  Turnovers won: Middle Centre
+  992   156  Opposition gains: Middle Centre
+   42   178  25 scoring events recorded
+  992   178  20 opposition scoring events
+  790   462  20
+ 1130   462  24
+  790   482  Attacking Centre
+ 1130   482  Defensive Centre
+   30   768  ZONE SUMMARY
+  663   768  KEY ZONES
+ 1296   768  ZONE INTELLIGENCE
+ 1297   796  Most scores for: Attacking Centre (15)
+  661   798  TOP SCORING ZONES — SCORES ONLY
+   28   814  Corofin  51%
+  625   814  49%  Moycullen
+  659   821  Corofin hotspot
+ 1262   821  Attacking Centre (15)
+   28   838  Corofin ACTIVITY
+  659   847  Moycullen hotspot
+ 1262   847  Defensive Centre (11)
+ 1297   852  Most turnovers won: Middle Centre (18)
+   26   861  Scores
+  629   861  25
+  661   872  TURNOVER ZONES
+   26   887  Turnovers Won
+  629   887  56
+  659   895  Corofin won in
+ 1262   895  Middle Centre (18)
+ 1297   908  Most opposition scores: Defensive Centre (11)
+   28   912  Moycullen ACTIVITY
+  659   921  Opposition gained in
+ 1262   921  Middle Centre (19)
+   26   935  Scores Against
+  629   935  20
+   26   961  Opposition Gains
+  629   961  59
+ 1297   964  Highest concentration of opposition gains: Middle Centre (19)
+ 1896  1060  331 events
+
+===== PAGE 14 (1920x1080) =====
+   24    38  1H Pitch Overview
+ 1896    38  14 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24   110  1H — ALL EVENTS
+  945   110  169
+  977   110  1H — SCORES
+ 1898   110  21
+   24   583  1H — COROFIN SHOTS
+  945   583  21
+  977   583  1H — MOYCULLEN SHOTS
+ 1898   583  23
+ 1896  1060  169 events
+
+===== PAGE 15 (1920x1080) =====
+   24    38  2H Pitch Overview
+ 1896    38  15 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24   110  2H — ALL EVENTS
+  945   110  162
+  977   110  2H — SCORES
+ 1898   110  24
+   24   583  2H — COROFIN SHOTS
+  945   583  27
+  977   583  2H — MOYCULLEN SHOTS
+ 1898   583  19
+ 1896  1060  162 events
+
+===== PAGE 16 (1920x1080) =====
+ 1896    38  16 / 30
+   80   180  CHAPTER 2
+   80   230  PART 2 — POSSESSION FACTS
+   80   318  What did we win/lose and where?
+   80   398  "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where."
+   80   448  Coach question answered: "What did we win/lose and where?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Opposition Facts
+   80   564  · Restart Analysis
+   80   592  · Turnover Analysis
+   80   620  · Free Kick Analysis
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 17 (1920x1080) =====
+   24    38  Opposition Facts
+ 1896    38  17 / 30
+ 1814    59  STATISTICS
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40   100  MOYCULLEN — SCORING PROFILE
+  984   100  KICKOUTS — RESTART SHARE
+   44   162  1-22 (25)
+  988   162  47%
+   44   179  FULL MATCH SCORE LINE
+  988   179  OPP RESTART SHARE
+   40   207  1st Half
+  938   207  0-11 (11)
+  984   207  Restart Share won by OPP
+ 1882   207  36 of 77
+   40   237  2nd Half
+  938   237  1-11 (14)
+   40   267  Goals
+  938   267  1
+   40   297  Points (incl. frees & 2-pointers)
+  938   297  22
+   40   327  Score Conversion
+  938   327  48%
+   40   357  Score zone (avg position)
+  938   357  Central
+  984   551  TURNOVERS GIFTED
+  988   613  59
+  988   630  TURNOVERS GIFTED TO OPPOSITION
+ 1896  1060  331 events
+
+===== PAGE 18 (1920x1080) =====
+   24    38  Restart Analysis
+ 1896    38  18 / 30
+ 1803    59  POSSESSION
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   28    95  RESTART POSSESSION — COROFIN
+  944    95  37 events
+  978    95  RESTART POSSESSION — MOYCULLEN
+ 1894    95  40 events
+   42   128  Corofin won 41 of 77 restarts
+  992   128  Moycullen won 36 of 77 restarts
+   42   156  Corofin: 9 Points & 3 Two-Point scores (15 pts)
+  992   156  Moycullen: 1 Goal, 6 Points & 1 Two-Point score (11 pts)
+   42   178  H1: 25–13 / H2: 16–23
+  992   178  H1: 13–25 / H2: 23–16
+   30   768  RESTART SUMMARY
+  663   768  CHAIN OUTCOMES
+ 1296   768  RESTART INTELLIGENCE
+ 1297   796  Corofin held 53% Restart Share (41 of 77) — 29% of won kickouts produced restart-origin point
+  661   798  Corofin WON POSSESSION
+ 1297   812  value (9 Points & 3 Two-Point scores (15 pts)).
+   28   814  Corofin  53%
+  625   814  47%  Moycullen
+  659   821  Won → Score (origin)
+ 1262   821  12 (29%)
+   26   839  Corofin Won
+  629   839  41 (53%)
+  659   847  Won → Shot attempt
+ 1262   847  18 (44%)
+ 1297   852  Corofin's Restart Share fell to 41% in the second half (16 of 39) from 66% in the first half (25 of
+   26   865  Moycullen Won
+  629   865  36 (47%)
+ 1297   868  38).
+  659   873  Won → No shot
+ 1262   873  23
+   28   890  BY HALF
+  661   898  Moycullen WON POSSESSION
+   26   913  H1 — Won / Lost
+  629   913  25 / 13
+  659   921  Lost → Score against (origin)
+ 1262   921  8 (22%)
+   26   939  H2 — Won / Lost
+  629   939  16 / 23
+  659   947  Lost → No score
+ 1262   947  28
+   28   964  HOW WON — OWN KICKOUTS RETAINED (23)
+  661   972  OVERALL
+   26   987  Clean Won
+  629   987  12
+  659   995  Restart Share
+ 1262   995  53% (41 of 77)
+   26  1013  Break Won
+  629  1013  10
+  659  1021  Own Kickout Retention
+ 1262  1021  62% (23 of 37)
+   26  1039  Foul Won
+  629  1039  1
+  659  1047  Avg secs to score (won)
+ 1262  1047  18s
+ 1294  1050  Origin possessions include 6 placed frees won during kickout-origin possessions (Corofin 3 · Moycullen 3) — the scoring ledger attributes those scores to placed balls.
+   26  1059  Excludes dead-ball restarts, already counted in Won above.
+ 1896  1060  77 events
+
+===== PAGE 19 (1920x1080) =====
+   24    38  Turnover Analysis
+ 1896    38  19 / 30
+ 1803    59  POSSESSION
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   28    95  TURNOVERS WON — COROFIN
+  944    95  56 events
+  978    95  TURNOVERS LOST — COROFIN
+ 1894    95  59 events
+   42   128  Won 56 turnovers
+  992   128  Opposition won 59 turnovers
+   42   156  11 led to scores
+  992   156  11 scores conceded
+   42   178  24 led to shots
+  992   178  24 shots against
+   30   768  TURNOVER SUMMARY
+  663   768  CONSEQUENCES
+ 1296   768  TURNOVER INTELLIGENCE
+ 1297   796  Corofin won 49% of turnovers (56 of 115); 20% of wins produced turnover-origin point value,
+  661   798  Corofin ATTACKED
+ 1297   812  against 19% for Moycullen.
+   28   814  Corofin  49%
+  625   814  51%  Moycullen
+  659   821  Won → Score (origin)
+ 1262   821  11 (20%)
+   26   839  Corofin Won
+  629   839  56
+  659   847  Won → Shot attempt
+ 1262   847  24 (43%)
+ 1297   852  Corofin won 56 turnovers; 32 did not lead to a shot.
+   26   865  Moycullen Won
+  629   865  59
+  659   873  Won → No shot
+ 1262   873  32
+   26   891  Net Turnover
+  629   891  -3
+  661   898  DAMAGE CONCEDED
+   28   916  HOW WON
+  659   921  Lost → Score against (origin)
+ 1262   921  11 (19%)
+   26   939  Tackle / Press
+  629   939  20
+  659   947  Lost → Shot against
+ 1262   947  24 (41%)
+   26   965  Swarm / Intercept
+  629   965  16
+  661   972  Moycullen ATTACKED
+   26   991  Unforced error
+  629   991  0
+  659   995  Won → Score (origin)
+ 1262   995  11 (19%)
+   26  1017  Slack pass
+  629  1017  16
+  659  1021  Won → Shot attempt
+ 1262  1021  24 (41%)
+ 1896  1060  115 events
+
+===== PAGE 20 (1920x1080) =====
+   24    38  Free Kick Analysis
+ 1896    38  20 / 30
+ 1803    59  POSSESSION
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   28    95  OUR FREES — COROFIN
+  944    95  22 events
+  978    95  OPPOSITION FREES — MOYCULLEN
+ 1894    95  24 events
+   42   128  Won 14 possession frees
+  992   128  Opposition won 15 possession frees
+   42   156  0 free-won → goal chains (rule match)
+  992   156  Free-won → goal chains (rule match): —
+   42   178  Direct placed-ball scoring: 5/9 scored
+  992   178  Direct placed-ball scoring: 5/10 scored
+   30   768  FREE SUMMARY
+  663   768  FREE OUTCOMES
+ 1296   768  FREE INTELLIGENCE
+  661   798  CONVERSION COMPARISON
+   28   814  Corofin  48%
+  625   814  52%  Moycullen
+  659   821  Corofin Conversion
+ 1262   821  56%
+   26   839  Corofin Frees Won
+  629   839  14
+  659   847  Moycullen Conversion
+ 1262   847  50%
+   26   865  Moycullen Frees Won
+  629   865  15
+  661   872  Moycullen PLACED BALLS
+   26   891  Advantage
+  629   891  -1
+  659   895  Placed Scored
+ 1262   895  5
+   28   916  Corofin PLACED BALLS
+  659   921  Placed Missed
+ 1262   921  5
+ 1593   922  No observation met the reporting threshold.
+   26   939  Placed Scored
+  629   939  5
+  659   947  Conversion
+ 1262   947  50%
+   26   965  Placed Missed
+  629   965  4
+  661   972  ALL FREES COMBINED
+   26   991  Conversion
+  629   991  56%
+  659   995  Total scored
+ 1262   995  10
+  659  1021  Total missed
+ 1262  1021  9
+  659  1047  Overall conv.
+ 1262  1047  53%
+ 1896  1060  46 events
+
+===== PAGE 21 (1920x1080) =====
+ 1896    38  21 / 30
+   80   180  CHAPTER 3
+   80   230  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+   80   318  What happened after those possessions began?
+   80   398  "Traces the possession beyond the initial event — where scoring possessions began, followed forward."
+   80   448  Coach question answered: "What happened after those possessions began?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Possession Origins
+   80   564  · Player Chain Involvement
+   80   592  · Opposition Origin & Chain Analysis
+   80   620  · Intelligence Summary
+   80   648  · Match Markers
+   80   676  · Chain Intelligence
+   80   704  · Restart Chain Analysis
+   80   732  · Turnover Chain Analysis
+   80   760  · Scoring Momentum
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 22 (1920x1080) =====
+   24    38  Scoring Possession Origins
+ 1896    38  22 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24    88  Game Origin Analysis looks at where a scoring possession began, not how the final score was recorded. A point scored from a free may also count here as a restart-origin score, if the possession it came from started at a kickout — the two figures are answering
+   24   110  different questions, not disagreeing with each other. Use Scoring Breakdown (Part 1) for what was scored, and Game Origin Analysis (Part 3) for where the pressure that led to it began.
+  234   185  POSSESSION ORIGIN
+  900   185  COROFIN
+ 1260   185  MOYCULLEN
+  234   242  Restart-origin scores
+  900   242  9 Points & 3 Two-Point scores (15 pts)
+ 1260   242  1 Goal, 6 Points & 1 Two-Point score (11 pts)
+  234   310  Turnover-origin scores
+  900   310  2 Goals, 8 Points & 1 Two-Point score (16 pts)
+ 1260   310  9 Points & 2 Two-Point scores (13 pts)
+  210   370  Origin possessions include 6 placed frees won during kickout-origin possessions (Corofin 3 · Moycullen 3) — the scoring ledger attributes those scores to placed balls.
+  210   402  Only restart and turnover origins are currently tracked — a score with neither origin has no row here.
+ 1896  1060  331 events
+
+===== PAGE 23 (1920x1080) =====
+   24    38  Player Chain Involvement
+ 1896    38  23 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   24    86  Scoring-chain involvement and recorded ball actions, ranked by most scoring-chain involvements.
+   38   124  COROFIN
+  982   124  MOYCULLEN
+   38   158  MOST SCORING-CHAIN INVOLVEMENTS
+  982   158  MOST SCORING-CHAIN INVOLVEMENTS
+   38   188  1. Tom Fox
+  938   188  7 of 25 chains
+  982   188  1. #9
+ 1882   188  6 of 20 chains
+   50   214  Tom Fox: 0-04 (11% of Corofin total) · from 6 shots · -4 net ball impact
+  994   214  #9: 0-03 (12% of Moycullen total) · from 2 shots · +11 net ball impact
+   38   248  2. Aidan Jones
+  938   248  5 of 25 chains
+  982   248  2. #11
+ 1882   248  4 of 20 chains
+   50   274  Aidan Jones: 0-05 (14% of Corofin total) · from 9 shots · -1 net ball impact
+  994   274  #11: 0-03 (12% of Moycullen total) · from 7 shots · +3 net ball impact
+   38   308  3. Craig Dias
+  938   308  5 of 25 chains
+  982   308  3. #13
+ 1882   308  3 of 20 chains
+   50   334  Craig Dias: 0-01 (3% of Corofin total) · from 2 shots · +7 net ball impact
+  994   334  #13: 0-03 (12% of Moycullen total) · from 5 shots
+   38   377  PLAYER
+  378   377  SCORE
+  498   377  SHARE
+  618   377  SHOTS
+  758   377  CHAIN INV
+  898   377  NET BALL
+  982   377  PLAYER
+ 1322   377  SCORE
+ 1442   377  SHARE
+ 1562   377  SHOTS
+ 1702   377  CHAIN INV
+ 1842   377  NET BALL
+   38   405  Tom Fox
+  378   405  0-04
+  498   405  11%
+  618   405  4/6
+  758   405  7/25
+  898   405  -4
+  982   405  #9
+ 1322   405  0-03
+ 1442   405  12%
+ 1562   405  2/2
+ 1702   405  6/20
+ 1842   405  +11
+   38   435  Aidan Jones
+  378   435  0-05
+  498   435  14%
+  618   435  5/9
+  758   435  5/25
+  898   435  -1
+  982   435  #11
+ 1322   435  0-03
+ 1442   435  12%
+ 1562   435  2/7
+ 1702   435  4/20
+ 1842   435  +3
+   38   465  Craig Dias
+  378   465  0-01
+  498   465  3%
+  618   465  1/2
+  758   465  5/25
+  898   465  +7
+  982   465  #13
+ 1322   465  0-03
+ 1442   465  12%
+ 1562   465  3/5
+ 1702   465  3/20
+ 1842   465  0
+   38   495  Theo Clancy
+  378   495  —
+  498   495  —
+  618   495  —
+  758   495  5/25
+  898   495  +8
+  982   495  #19
+ 1322   495  0-03
+ 1442   495  12%
+ 1562   495  3/3
+ 1702   495  3/20
+ 1842   495  +1
+   38   525  Hugh Kenny
+  378   525  1-03
+  498   525  17%
+  618   525  3/6
+  758   525  3/25
+  898   525  -12
+  982   525  #14
+ 1322   525  1-01
+ 1442   525  16%
+ 1562   525  2/5
+ 1702   525  2/20
+ 1842   525  0
+   38   555  Shane Walsh
+  378   555  0-01
+  498   555  3%
+  618   555  1/1
+  758   555  3/25
+  898   555  +4
+  982   555  #15
+ 1322   555  0-02
+ 1442   555  8%
+ 1562   555  2/8
+ 1702   555  2/20
+ 1842   555  0
+   38   585  Ben Shovlin
+  378   585  —
+  498   585  —
+  618   585  0/1
+  758   585  3/25
+  898   585  +12
+  982   585  #8
+ 1322   585  —
+ 1442   585  —
+ 1562   585  0/1
+ 1702   585  2/20
+ 1842   585  +5
+   38   615  Pat Burke
+  378   615  0-04
+  498   615  11%
+  618   615  2/4
+  758   615  2/25
+  898   615  -4
+  982   615  #10
+ 1322   615  —
+ 1442   615  —
+ 1562   615  0/1
+ 1702   615  1/20
+ 1842   615  +1
+   38   645  #17
+  378   645  1-01
+  498   645  11%
+  618   645  2/2
+  758   645  2/25
+  898   645  +1
+  982   645  #4
+ 1322   645  —
+ 1442   645  —
+ 1562   645  —
+ 1702   645  —
+ 1842   645  0
+   38   682  RECORDED PATTERNS
+  982   682  RECORDED PATTERNS
+   50   712  Corofin top scorer share was 17%.
+  994   712  Moycullen top scorer share was 16%.
+   50   746  Callum Pearson (Corofin) recorded 2 from 10 shot attempts.
+  994   746  #11 (Moycullen) recorded 2 from 7 shot attempts.
+   50   780  Theo Clancy (Corofin) appeared in 5 of 25 Corofin scoring chains without shooting.
+  994   780  #15 (Moycullen) recorded 2 from 8 shot attempts.
+  994   814  #8 (Moycullen) appeared in 2 of 20 Moycullen scoring chains without shooting.
+ 1896  1060  331 events
+
+===== PAGE 24 (1920x1080) =====
+   24    38  Opposition Origin & Chain Analysis
+ 1896    38  24 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40   100  RESTART ORIGIN (KICKOUTS)
+  984   100  MOMENTUM SPELL
+   40   131  Opposition scores from restart-origin attacks
+  938   131  1 Goal, 6 Points & 1 Two-Point score (11 pts)  (22%)
+   40   157  % = Corofin restarts lost that led to a Moycullen score (8 of 36)
+  988   162  5
+  988   179  LONGEST UNANSWERED RUN — 1H ~17'
+   40   183  Of which: from our kickout losses
+  938   183  2 Points (2 pts)
+  984   207  Total OPP runs ≥ 2
+ 1882   207  3
+  984   237  Half of peak run
+ 1882   237  1H
+  984   360  CHAIN RATE
+  988   422  —
+  988   439  CHAIN SHARE NOT SHOWN — RULE MATCHES ARE NOT UNIQUE POSSESSIONS
+  984   467  OPP rule matches — 1st Half
+ 1882   467  —
+  984   497  OPP rule matches — 2nd Half
+ 1882   497  —
+  984   527  Busiest OPP segment
+ 1882   527  —
+   40   580  TURNOVER ORIGIN
+   40   611  Turnover-origin scores for OPP
+  938   611  9 Points & 2 Two-Point scores (13 pts)
+  984   620  OPPOSITION MARKERS
+   40   641  Turnover-origin scores conceded
+  938   641  11
+   40   671  Turnover-origin punishment rate
+  938   671  19%
+  988   682  #9  0-03
+  988   699  12% OF MOYCULLEN SCORE · 2/2 SHOOTING
+   40   701  Turnover wins → shot
+  938   701  24
+  984   727  Longest unanswered run
+ 1882   727  5 scores
+  984   757  Restart-origin scoring
+ 1882   757  1 Goal, 6 Points & 1 Two-Point score (11 pts)
+  984   787  Turnover-origin scoring
+ 1882   787  9 Points & 2 Two-Point scores (13 pts)
+  984   817  Chain share
+ 1882   817  —
+ 1896  1060  331 events
+
+===== PAGE 25 (1920x1080) =====
+   24    38  Intelligence Summary
+ 1896    38  25 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40   100  KICKOUT PLATFORM
+  984   100  SCORING RUNS
+   44   162  53%
+  988   162  6 / 3
+   44   179  RESTART SHARE  (41 WON OF 77 TOTAL)
+  988   179  SCORING RUNS  (RUNS OF ≥2 CONSECUTIVE SCORES)
+   40   207  Kickout wins → origin score
+  938   207  29%
+  984   207  Corofin longest burst
+ 1882   207  5 scores
+   40   237  Kickout losses → origin score against
+  938   237  22%
+  984   237  Moycullen longest burst
+ 1882   237  5 scores
+   40   267  Net kickout advantage (%pt)
+  938   267  +7 %pt
+  984   267  Corofin max consecutive
+ 1882   267  5
+  984   297  Moycullen max consecutive
+ 1882   297  5
+   40   400  TURNOVER BATTLE
+  984   400  CHAIN SEQUENCES
+   44   462  49%
+  988   462  81
+   44   479  TURNOVER SHARE  (56 WON OF 115 TOTAL)
+  988   479  COROFIN CHAIN RULE MATCHES  (OVERLAPPING — NOT UNIQUE POSSESSIONS)
+   40   507  Turnover wins → origin score
+  938   507  20%
+  984   507  Kickout → score chains (rule match)
+ 1882   507  11
+   40   537  Turnover wins → shot, no score
+  938   537  23%
+  984   537  Turnover → score chains (rule match)
+ 1882   537  21
+   40   567  Turnover losses → origin score against
+  938   567  19%
+  984   567  Placed ball → goal chains (rule match)
+ 1882   567  0
+   40   700  MATCH INTELLIGENCE
+  984   700  TEAM COMPARISON
+   40   726  Balanced kickout contest — Corofin held 53% Restart Share; 29% of wins produced restart-origin point value (9 Points & 3 …
+  984   740  METRIC
+ 1618   740  Corofin
+ 1785   740  Moycullen
+   40   758  Corofin won 49% of turnovers (20% origin point value); 19% of Moycullen's wins produced turnover-origin point value (9 Poi…
+  984   767  Restart Share
+ 1618   767  53%
+ 1785   767  47%
+   40   790  Corofin and Moycullen each recorded a 5-score unanswered run.
+  984   797  Turnover conversion rate
+ 1618   797  20%
+ 1785   797  19%
+  984   827  Longest scoring run
+ 1618   827  5
+ 1785   827  5
+  984   857  Chain rule matches
+ 1618   857  81
+ 1785   857  —
+  984   887  Yellow cards
+ 1618   887  1
+ 1785   887  1
+  984   917  Sin bins
+ 1618   917  1
+ 1785   917  0
+  984   947  Red cards
+ 1618   947  0
+ 1785   947  1
+   50  1004  Corofin Run ≥4
+  171  1004  Moycullen Run ≥4
+ 1896  1060  331 events
+
+===== PAGE 26 (1920x1080) =====
+   24    38  Match Markers
+ 1896    38  26 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   35   101  KICKOUT  2
+  143   101  TURNOVER  2
+  264   101  MOMENTUM  2
+   47   154  KICKOUT
+  125   154  Corofin held 53% Restart Share (41 of 77) — 29% of won kickouts produced restart-origin point value (9 Points & 3 Two-Point scores (15 pts)).
+   47   228  KICKOUT
+  125   228  Corofin's Restart Share fell to 41% in the second half (16 of 39) from 66% in the first half (25 of 38).
+   47   302  TURNOVER
+  137   302  Corofin won 49% of turnovers (56 of 115); 20% of wins produced turnover-origin point value, against 19% for Moycullen.
+   47   376  TURNOVER
+  137   376  Corofin won 56 turnovers; 32 did not lead to a shot.
+   47   450  MOMENTUM
+  142   450  Moycullen recorded a 5-score unanswered run.
+   47   524  MOMENTUM
+  142   524  Corofin recorded a 5-score unanswered run.
+ 1896  1060  331 events
+
+===== PAGE 27 (1920x1080) =====
+   24    38  Chain Intelligence
+ 1896    38  27 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40    99  CHAIN PATTERNS
+  670    99  KICKOUT CHAINS
+ 1300    99  SCORING MOMENTUM
+   38   124  PATTERN
+  376   124  Corofin
+  620   124  Moycullen
+ 1298   124  Corofin — Best Run
+  668   127  Total kickouts
+ 1250   127  77
+   38   147  Kickout Won → Score (rule match)
+  376   147  11
+  620   147  11
+ 1298   147  Consecutive scores
+ 1880   147  5
+  668   153  Won
+ 1250   153  41
+   38   173  Other team lost kickout → Score (rule match)
+  376   173  8
+  620   173  4
+ 1298   173  Period / Segment
+ 1880   173  1H · Seg 1
+  668   179  Lost / Conceded
+ 1250   179  36
+   38   199  Turnover Won → Score (rule match)
+  376   199  21
+  620   199  —
+ 1298   204  Moycullen — Best Run
+  668   211  Won → Origin score
+ 1250   211  12 (29%)
+   38   225  Turnover Won → Shot
+  376   225  41
+  620   225  —
+ 1298   227  Consecutive scores
+ 1880   227  5
+  668   237  Lost → Origin score against
+ 1250   237  8 (22%)
+   38   251  Free Won → Goal
+  376   251  0
+  620   251  —
+ 1298   253  Period / Segment
+ 1880   253  1H · Seg 2
+  957   282  Possession rate: 53%
+ 1298   288  ALL SCORING RUNS (9 total)
+   38   294  TOTAL RULE MATCHES
+  376   294  81
+  620   294  —
+ 1298   311  Corofin  ×3  2H S6
+ 1880   311  3 scores
+   38   320  (rule match) counts exact rule matches. The origin panels follow the full possession.
+ 1298   337  Corofin  ×2  2H S6
+ 1880   337  2 scores
+   38   338  — not measurable: those wins were logged as the other team's loss or concession.
+ 1298   363  Corofin  ×3  2H S6
+ 1880   363  3 scores
+   38   374  SCORING RUNS (≥2 consecutive)
+ 1298   389  Corofin  ×2  2H S5
+ 1880   389  2 scores
+   38   397  Longest run (For)
+  620   397  5 scores
+ 1298   415  Moycullen  ×3  2H S5
+ 1880   415  3 scores
+   38   423  Longest run (Opp)
+  620   423  5 scores
+ 1298   441  Moycullen  ×2  1H S3
+ 1880   441  2 scores
+   38   449  Total runs detected
+  620   449  9
+ 1298   467  Corofin  ×3  1H S3
+ 1880   467  3 scores
+ 1298   493  Moycullen  ×5  1H S2
+ 1880   493  5 scores
+ 1298   519  Corofin  ×5  1H S1
+ 1880   519  5 scores
+  666   543  Origin possessions include 6 placed frees won during kickout-origin possessions (Corofin 3 · Moycullen 3) — the scoring ledger attributes those scores to placed balls.
+  670   586  TURNOVER CHAINS
+  668   614  Total turnovers
+ 1250   614  115
+  668   640  Won
+ 1250   640  56
+  668   666  Lost
+ 1250   666  59
+  668   698  Won → Origin score
+ 1250   698  11 (20%)
+  668   724  Won → Shot
+ 1250   724  13 (23%)
+  668   750  Lost → Origin score against
+ 1250   750  11
+ 1896  1060  331 events
+
+===== PAGE 28 (1920x1080) =====
+   24    38  Restart Chain Analysis
+ 1896    38  28 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40    99  KICKOUT POSSESSION OVERVIEW
+  670    99  COROFIN — KICKOUT TYPES
+ 1300    99  KICKOUT CHAIN OUTCOMES
+  668   124  OWN KICKOUTS RETAINED
+ 1298   124  CHAIN RULE MATCHES
+   36   146  Corofin 53%
+  618   146  47% Moycullen
+  668   147  Clean Won
+ 1250   147  12
+ 1298   147  Won → Score (rule match) — Corofin
+ 1880   147  11
+  668   173  Break Won
+ 1250   173  10
+ 1298   173  Won → Score (rule match) — Moycullen
+ 1880   173  11
+   38   177  Total kickout events
+  620   177  77
+  668   199  Foul Won
+ 1250   199  1
+ 1298   199  Other team lost → Score (rule match) — Corofin
+ 1880   199  8
+   38   203  Corofin won
+  620   203  41
+ 1298   225  Other team lost → Score (rule match) — Moycull…
+ 1880   225  4
+   38   229  Moycullen won
+  620   229  36
+  668   230  OWN KICKOUTS CONCEDED
+  668   253  Clean Lost
+ 1250   253  3
+ 1298   260  RESTART ORIGIN
+   38   263  Won → Score (origin)
+  620   263  12 (29%)
+ 1298   278  Scores that started from a kickout.
+  668   279  Break Lost
+ 1250   279  8
+   38   289  Lost → Score Against (origin)
+  620   289  8 (22%)
+ 1298   301  Corofin — Restart Origin
+ 1880   301  9 Points & 3 Two-Point scores (15 pts)
+  668   305  Foul Conceded
+ 1250   305  3
+   38   320  BY HALF
+ 1298   327  Corofin — Shots from Kickout
+ 1880   327  18
+  668   331  Kicked Dead
+ 1250   331  0
+   38   343  1H — Won / Lost
+  620   343  25 / 13
+ 1298   353  Moycullen — Restart Origin
+ 1880   353  1 Goal, 6 Points & 1 Two-Point score (11 pts)
+   38   369  1H — Restart Share
+  620   369  66%
+ 1298   388  Corofin POSSESSION OUTCOMES
+   38   395  1H — Won → Score (origin)
+  620   395  6
+ 1298   411  Won kickouts total
+ 1880   411  41
+   38   421  2H — Won / Lost
+  620   421  16 / 23
+ 1298   437  → Generated a shot
+ 1880   437  18 (44%)
+   38   447  2H — Restart Share
+  620   447  41%
+ 1298   463  → Restart Origin
+ 1880   463  9 Points & 3 Two-Point scores (15 pts) (29% of wins)
+   38   473  2H — Won → Score (origin)
+  620   473  6
+ 1298   489  → No shot attempt
+ 1880   489  23
+   38   507  Avg secs to score (won Kickout)
+  620   507  18s
+ 1298   523  Avg time to score (Kickout)
+ 1880   523  18s avg
+   38   532  Origin possessions include 6 placed frees won during kickout-origin possessions (Corofin 3 · Moycullen 3) — the scoring ledger attributes those scores to placed balls.
+ 1298   552  OVERALL POSSESSION RATE
+  670   586  MOYCULLEN — KICKOUT TYPES
+ 1296   592  Corofin 53%
+ 1878   592  47% Moycullen
+  668   611  OWN KICKOUTS RETAINED
+  668   634  Clean Won
+ 1250   634  10
+  668   660  Break Won
+ 1250   660  11
+  668   686  Foul Won
+ 1250   686  1
+  668   717  OWN KICKOUTS CONCEDED
+  668   740  Clean Lost
+ 1250   740  7
+  668   766  Break Lost
+ 1250   766  9
+  668   792  Foul Conceded
+ 1250   792  2
+  668   818  Kicked Dead
+ 1250   818  0
+ 1896  1060  331 events
+
+===== PAGE 29 (1920x1080) =====
+   24    38  Turnover Chain Analysis
+ 1896    38  29 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40    99  COROFIN — TURNOVER ATTACK
+  670    99  MOYCULLEN — TURNOVER ATTACK
+ 1300    99  TURNOVER PUNISHMENT SUMMARY
+ 1298   124  ORIGIN SCORES FROM WON TURNOVERS
+   38   127  Turnovers won / gained
+  620   127  56
+  668   127  Turnovers won / gained
+ 1250   127  59
+   38   153  → Origin score
+  620   153  11 (20%)
+  668   153  → Origin score
+ 1250   153  11 (19%)
+ 1296   160  Corofin 50%
+ 1878   160  50% Moycullen
+   38   179  → Shot / wide, no score
+  620   179  13 (23%)
+  668   179  → Shot / wide, no score
+ 1250   179  13 (22%)
+ 1298   191  Corofin — Won → Origin score %
+ 1880   191  20%
+   38   205  → No shot attempt
+  620   205  32 (57%)
+  668   205  → No shot attempt
+ 1250   205  35 (59%)
+ 1298   217  Moycullen — Won → Origin score %
+ 1880   217  19%
+   38   231  → Attack immediately lost
+  620   231  32 (57%)
+  668   231  → Attack immediately lost
+ 1250   231  34 (58%)
+ 1298   243  Corofin — Won → Shot %
+ 1880   243  43%
+   38   257  Avg time to outcome
+  620   257  12s
+  668   257  Avg time to outcome
+ 1250   257  13s
+ 1298   269  Moycullen — Won → Shot %
+ 1880   269  41%
+   38   288  BY HALF
+  668   288  BY HALF
+ 1298   302  CHAIN RULE MATCHES
+   38   311  1H — Turnovers won
+  620   311  26
+  668   311  1H — Turnovers won
+ 1250   311  35
+ 1298   325  T/O Won → Score (rule match) — Corofin
+ 1880   325  21
+   38   337  1H — Scored
+  620   337  4 (15%)
+  668   337  1H — Scored
+ 1250   337  7 (20%)
+ 1298   351  T/O Won → Score (rule match) — Moycullen
+ 1880   351  —
+   38   363  2H — Turnovers won
+  620   363  30
+  668   363  2H — Turnovers won
+ 1250   363  24
+ 1298   377  T/O Won → Shot   (Corofin)
+ 1880   377  41
+   38   389  2H — Scored
+  620   389  7 (23%)
+  668   389  2H — Scored
+ 1250   389  4 (17%)
+ 1298   403  T/O Won → Shot   (Moycullen)
+ 1880   403  —
+   38   420  HOW TURNOVERS WERE WON / GAINED
+  668   420  HOW TURNOVERS WERE WON / GAINED
+ 1298   436  DAMAGE CONCEDED FROM TURNOVERS LOST
+   38   443  Tackle / Press
+  620   443  20
+  668   443  Tackle / Press
+ 1250   443  16
+ 1298   459  Corofin lost → OPP scored
+ 1880   459  11 (19%)
+   38   469  Swarm / Intercept
+  620   469  16
+  668   469  Swarm / Intercept
+ 1250   469  7
+ 1298   485  Corofin lost → OPP shot
+ 1880   485  24 (41%)
+   38   495  Opposition unforced error
+  620   495  0
+  668   495  Opposition unforced error
+ 1250   495  0
+ 1298   511  Moycullen lost → FOR scored
+ 1880   511  —
+   38   521  Opposition slack pass
+  620   521  16
+  668   521  Opposition slack pass
+ 1250   521  31
+ 1298   537  Moycullen lost → FOR shot
+ 1880   537  —
+ 1298   570  NET TURNOVER PRESSURE
+ 1298   593  Score differential from T/Os
+ 1880   593  Level
+ 1298   619  Shot differential from T/Os
+ 1880   619  Level
+ 1298   652  TURNOVER OUTCOMES (BOTH TEAMS)
+ 1298   675  Total turnovers gained
+ 1880   675  115
+ 1298   701  Led to score
+ 1880   701  22 (19%)
+ 1298   727  Led to shot (no score)
+ 1880   727  26 (23%)
+ 1298   753  Attack immediately lost
+ 1880   753  66 (57%)
+ 1298   779  No shot generated
+ 1880   779  67 (58%)
+ 1298   818  POSSESSION CHAIN INSIGHTS
+ 1298   841  • Restarts Won → Scores: 12 of 41 won restarts produced restart-origin point value (9 Points & 3 Two-Point scores (15 pts), 29%)
+ 1298   867  • Conceded restarts produced restart-origin point value for the opposition (1 Goal, 6 Points & 1 Two-Point score (11 pts)) in 22% of cases (8 of 36)
+ 1298   893  • Turnover wins produced turnover-origin point value (2 Goals, 8 Points & 1 Two-Point score (16 pts), 20% conversion)
+ 1896  1060  331 events
+
+===== PAGE 30 (1920x1080) =====
+   24    38  Scoring Momentum
+ 1896    38  30 / 30
+ 1847    59  CHAIN
+   24    62  Corofin v Moycullen
+ 1896    62  PáircVision
+   40    99  UNANSWERED SCORING RUNS (≥2 CONSECUTIVE)
+  670    99  FIRST HALF — SCORING RUNS
+ 1300    99  RUN QUALITY & SEGMENT DETAIL
+   38   124  TEAM  ×SCORES  WHEN  SCORE VALUE
+ 1298   124  BEST SCORING RUNS
+  668   127  Corofin runs (≥2)
+ 1250   127  2
+   38   147  Corofin
+  214   147  ×5
+  284   147  1H 1'–7'
+  620   147  0-06 (6)
+ 1298   147  Corofin longest
+ 1880   147  ×5  1H 1'–7'  0-06 (6)
+  668   153  Corofin run-scores
+ 1250   153  8
+   38   173  Moycullen
+  214   173  ×5
+  284   173  1H 17'–25'
+  620   173  0-05 (5)
+ 1298   173  Moycullen longest
+ 1880   173  ×5  1H 17'–25'  0-05 (5)
+  668   179  Moycullen runs (≥2)
+ 1250   179  2
+   38   199  Corofin
+  214   199  ×3
+  284   199  1H 30'–33'
+  620   199  0-05 (5)
+ 1298   199  Corofin total runs
+ 1880   199  6
+  668   205  Moycullen run-scores
+ 1250   205  7
+   38   225  Moycullen
+  214   225  ×2
+  284   225  1H 34'–2H 7'
+  620   225  0-02 (2)
+ 1298   225  Moycullen total runs
+ 1880   225  3
+  668   237  Longest 1H run
+ 1250   237  Corofin ×5  1H 1'–7'
+   38   251  Moycullen
+  214   251  ×3
+  284   251  2H 14'–18'
+  620   251  1-03 (6)
+ 1298   251  Corofin total run-scores
+ 1880   251  18
+  668   263  1H momentum edge
+ 1250   263  Corofin
+   38   277  Corofin
+  214   277  ×2
+  284   277  2H 18'–19'
+  620   277  0-02 (2)
+ 1298   277  Moycullen total run-scores
+ 1880   277  10
+  668   295  1H late burst (seg 3)
+ 1250   295  Corofin: 3 scores  Moycullen: 2 scores
+   38   303  Corofin
+  214   303  ×3
+  284   303  2H 23'–25'
+  620   303  1-02 (5)
+ 1298   303  Net run-score advantage
+ 1880   303  +8 Corofin
+   38   329  Corofin
+  214   329  ×2
+  284   329  2H 29'–30'
+  620   329  1-01 (4)
+ 1298   336  RESPONSE AFTER OPPOSITION RUN
+   38   355  Corofin
+  214   355  ×3
+  284   355  2H 32'–33'
+  620   355  0-03 (3)
+ 1298   359  Corofin avg response
+ 1880   359  3m 1s
+ 1298   385  Corofin fastest response
+ 1880   385  31s
+ 1298   411  Moycullen avg response
+ 1880   411  5m 25s
+ 1298   437  Moycullen fastest response
+ 1880   437  40s
+ 1298   470  RUN-SCORES BY SEGMENT
+ 1298   493  1H Early (0–10)
+ 1880   493  Corofin +5
+ 1298   519  1H Mid   (11–20)
+ 1880   519  Moycullen +5
+ 1298   545  1H Late  (21–30+)
+ 1880   545  Corofin +1
+ 1298   571  2H Early (0–10)
+ 1880   571  No runs
+  670   586  SECOND HALF — SCORING RUNS
+ 1298   597  2H Mid   (11–20)
+ 1880   597  Moycullen +1
+  668   614  Corofin runs (≥2)
+ 1250   614  4
+ 1298   623  2H Late  (21–30+)
+ 1880   623  Corofin +8
+  668   640  Corofin run-scores
+ 1250   640  10
+  668   666  Moycullen runs (≥2)
+ 1250   666  1
+  668   692  Moycullen run-scores
+ 1250   692  3
+  668   724  Longest 2H run
+ 1250   724  Moycullen ×3  2H 14'–18'
+  668   750  2H momentum edge
+ 1250   750  Corofin
+  668   782  2H late burst (seg 6)
+ 1250   782  Corofin: 8 scores  Moycullen: 0 scores
+ 1896  1060  331 events

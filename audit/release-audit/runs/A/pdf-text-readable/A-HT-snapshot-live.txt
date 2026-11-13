@@ -1,0 +1,107 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Half-Time Dashboard
+ 1896    38  1 / 5
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+  496   118  Castlehaven
+ 1424   118  Nemo Rangers
+  960   150  v
+  496   190  0-12 (12)
+ 1424   190  2-13 (19)
+  960   244  Nemo Rangers lead by 7
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Castlehaven
+  540   394  8/13
+  994   394  7/10
+ 1448   402  1
+   86   416  9/11
+  540   446  62%
+  994   446  70%
+   86   452  82%
+ 1448   470  Lost
+  540   490  Lost 5/13
+  994   490  Lost 3/10
+ 1448   514  4
+   86   534  Nemo Rangers
+   86   576  12/15
+   86   612  80%
+   46   928  Castlehaven placed balls
+  992   928  Nemo Rangers placed balls
+   46   956  2/3 scored
+  992   956  2/2 scored
+ 1896  1060  66 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 5
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+   54   125  9 scores from 11 shots · 82% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+   46   972  Castlehaven shots: 9 scored from 11 attempts · …
+  676   972  Castlehaven: 2 placed-ball scores · 1 placed-bal…
+ 1306   972  Castlehaven best zone: Attacking Centre (4)
+ 1896  1060  11 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 5
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+   54   125  12 scores from 15 shots · 80% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+  479   627  ↓
+  480   628  ↓
+   46   972  Nemo Rangers shots: 12 scored from 15 attemp…
+  676   972  Nemo Rangers: 2 placed-ball scores
+ 1306   972  Nemo Rangers best scoring zone: Attacking Ce…
+ 1896  1060  15 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 5
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Castlehaven Kickouts
+ 1434   118  Nemo Rangers Kickouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Castlehaven Kickouts
+  992   928  Nemo Rangers Kickouts
+   46   956  Castlehaven retained 8/13 (62%)
+  992   956  Nemo Rangers retained 7/10 (70%)
+ 1896  1060  23 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Turnover & Territory
+ 1896    38  5 / 5
+ 1814    59  STATISTICS
+   24    62  Castlehaven v Nemo Rangers · Castlehaven attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 1 · Lost 4 (20% won)
+  676   972  Attacking Centre
+ 1306   972  Attacking Centre
+ 1896  1060  5 events

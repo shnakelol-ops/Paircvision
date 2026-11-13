@@ -1,0 +1,617 @@
+[
+ {
+  "afterEvent": "B-010",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-018",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-020",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-022",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-025",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-031",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-035",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-049-WRONG",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-057",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-076",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-080",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-106",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-113",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-133",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-148",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-156",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-162",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-166",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-171",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-185",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-188",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-196",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-211",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-227",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-232",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-236",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-248",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-257",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-261",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-264",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-270",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-276",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-279",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-286",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-292",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-308",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-311",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-316",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-326",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-328",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "B-330",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ }
+]

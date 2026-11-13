@@ -1,0 +1,109 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Half-Time Dashboard
+ 1896    38  1 / 5
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  496   118  Ballyhale Shamrocks
+ 1424   118  Na Piarsaigh
+  960   150  v
+  496   190  0-09 (9)
+ 1424   190  0-10 (10)
+  960   244  Na Piarsaigh lead by 1
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Ballyhale…
+  540   394  7/14
+  994   394  9/13
+ 1448   402  4
+   86   416  9/15
+  540   446  50%
+  994   446  69%
+   86   452  60%
+ 1448   470  Lost
+  540   490  Lost 7/14
+  994   490  Lost 4/13
+ 1448   514  7
+   86   534  Na Piarsaigh
+   86   576  10/20
+   86   612  50%
+   46   928  Ballyhale… placed balls
+  992   928  Na Piarsaigh placed balls
+   46   956  0/1 scored
+  992   956  3/3 scored
+ 1896  1060  87 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 5
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   54   125  9 scores from 15 shots · 60% efficiency · Best zone: Middle Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+   46   972  Ballyhale… shots: 9 scored from 15 attempts · 6…
+  676   972  Ballyhale…: 1 placed-ball wide
+ 1306   972  Ballyhale… best zone: Attacking Centre (2)
+ 1896  1060  15 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 5
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   54   125  10 scores from 20 shots · 50% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+ 1316   467  ↓
+ 1317   469  ↓
+ 1287   488  ↓
+ 1289   489  ↓
+   46   972  Na Piarsaigh shots: 10 scored from 20 attempts …
+  676   972  Na Piarsaigh: 3 placed-ball scores
+ 1306   972  Na Piarsaigh best scoring zone: Attacking Centr…
+ 1896  1060  20 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 5
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Ballyhale Shamrocks Puckouts
+ 1434   118  Na Piarsaigh Puckouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Ballyhale… Puckouts
+  992   928  Na Piarsaigh Puckouts
+   46   956  Ballyhale… retained 7/14 (50%)
+  992   956  Na Piarsaigh retained 9/13 (69%)
+ 1896  1060  27 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Turnover & Territory
+ 1896    38  5 / 5
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh · Ballyhale… attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 4 · Lost 7 (36% won)
+  676   972  Middle Centre
+ 1306   972  Middle Right
+ 1896  1060  11 events

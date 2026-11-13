@@ -1,0 +1,32 @@
+[
+ {
+  "savedFinishedMatches": 8,
+  "seededChars": 2418098,
+  "newMatchAutosaved": true,
+  "warningShown": null
+ },
+ {
+  "savedFinishedMatches": 12,
+  "seededChars": 3627156,
+  "newMatchAutosaved": true,
+  "warningShown": null
+ },
+ {
+  "savedFinishedMatches": 14,
+  "seededChars": 4231690,
+  "newMatchAutosaved": true,
+  "warningShown": null
+ },
+ {
+  "savedFinishedMatches": 16,
+  "seededChars": 4836224,
+  "newMatchAutosaved": true,
+  "warningShown": null
+ },
+ {
+  "savedFinishedMatches": 18,
+  "seededChars": "shared seed failed: QuotaExceededError",
+  "newMatchAutosaved": true,
+  "warningShown": null
+ }
+]

@@ -1,0 +1,2362 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Match Summary
+ 1896    38  1 / 29
+   24    62  PáircVision Report  ·  Glenalbyn
+  496   118  Kilmacud Crokes
+ 1424   118  St Brigid's
+  960   158  v
+  496   198  2-23 (29)
+ 1424   198  2-34 (40)
+   88   258  Kilmacud Crokes
+  960   258  v
+ 1016   258  St Brigid's
+   88   284  SCORING
+ 1016   284  SCORING
+   84   303  Goals
+  910   303  2
+ 1012   303  Goals
+ 1838   303  2
+   84   322  Points
+  910   322  23
+ 1012   322  Points
+ 1838   322  34
+   84   341  2-Pointers
+  910   341  3
+ 1012   341  2-Pointers
+ 1838   341  5
+   84   360  Total Score
+  910   360  29
+ 1012   360  Total Score
+ 1838   360  40
+   84   379  Shots
+  910   379  43
+ 1012   379  Shots
+ 1838   379  41
+   84   398  Wides
+  910   398  15
+ 1012   398  Wides
+ 1838   398  8
+   84   417  Conversion
+  910   417  51%
+ 1012   417  Conversion
+ 1838   417  76%
+   88   438  SHOT DETAIL
+ 1016   438  SHOT DETAIL
+   84   457  Short
+  910   457  2
+ 1012   457  Short
+ 1838   457  1
+   84   476  Post
+  910   476  1
+ 1012   476  Post
+ 1838   476  1
+   84   495  45
+  910   495  0
+ 1012   495  45
+ 1838   495  0
+   84   514  Block / Save
+  910   514  0
+ 1012   514  Block / Save
+ 1838   514  0
+   88   535  KICKOUTS
+ 1016   535  KICKOUTS
+   84   554  Restart Share Won
+  910   554  40
+ 1012   554  Restart Share Won
+ 1838   554  36
+   84   573  Restart Share Conceded
+  910   573  36
+ 1012   573  Restart Share Conceded
+ 1838   573  40
+   84   592  Restart Share
+  910   592  53%
+ 1012   592  Restart Share
+ 1838   592  47%
+   84   611  Clean Won
+  910   611  21
+ 1012   611  Clean Won
+ 1838   611  16
+   84   630  Break Won
+  910   630  16
+ 1012   630  Break Won
+ 1838   630  17
+   84   649  Foul Won
+  910   649  0
+ 1012   649  Foul Won
+ 1838   649  0
+   84   668  Dead Ball Won
+  910   668  0
+ 1012   668  Dead Ball Won
+ 1838   668  0
+   84   687  Clean Lost
+  910   687  16
+ 1012   687  Clean Lost
+ 1838   687  21
+   84   706  Break Lost
+  910   706  17
+ 1012   706  Break Lost
+ 1838   706  16
+   84   725  Foul Conceded
+  910   725  0
+ 1012   725  Foul Conceded
+ 1838   725  0
+   84   744  Kicked Dead
+  910   744  0
+ 1012   744  Kicked Dead
+ 1838   744  0
+   88   765  TURNOVERS
+ 1016   765  TURNOVERS
+   84   784  T/O Won
+  910   784  47
+ 1012   784  T/O Won
+ 1838   784  46
+   84   803  T/O Lost
+  910   803  46
+ 1012   803  T/O Lost
+ 1838   803  47
+   84   822  Net T/O
+  910   822  +1
+ 1012   822  Net T/O
+ 1838   822  -1
+   84   841  Tackle / Press
+  910   841  18
+ 1012   841  Tackle / Press
+ 1838   841  12
+   84   860  Swarm / Int.
+  910   860  0
+ 1012   860  Swarm / Int.
+ 1838   860  0
+   84   879  Unforced
+  910   879  0
+ 1012   879  Unforced
+ 1838   879  0
+   84   898  Slack KP / HP
+  910   898  0
+ 1012   898  Slack KP / HP
+ 1838   898  0
+   84   917  OC / Stripped
+  910   917  7
+ 1012   917  OC / Stripped
+ 1838   917  4
+   88   938  FREES
+ 1016   938  FREES
+   84   957  Frees Won
+  910   957  16
+ 1012   957  Frees Won
+ 1838   957  21
+   84   976  Frees Conceded
+  910   976  21
+ 1012   976  Frees Conceded
+ 1838   976  16
+   84   995  Placed Attempts
+  910   995  10
+ 1012   995  Placed Attempts
+ 1838   995  11
+   84  1014  Placed Scores
+  910  1014  7
+ 1012  1014  Placed Scores
+ 1838  1014  8
+   84  1033  Placed Points
+  910  1033  9
+ 1012  1033  Placed Points
+ 1838  1033  11
+   84  1052  Placed Misses
+  910  1052  3
+ 1012  1052  Placed Misses
+ 1838  1052  3
+ 1896  1060  306 total events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Understanding PáircVision Analytics
+ 1896    38  2 / 29
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  112   152  PART 1 — MATCH FACTS
+  702   152  PART 2 — POSSESSION FACTS
+ 1292   152  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+  112   188  What happened?
+  702   188  What did we win/lose and where?
+ 1292   188  What happened after those possessions
+ 1292   216  began?
+  112   244  "Raw match events, exactly as they were recorded."
+  702   244  "Every restart, turnover and free is followed to its
+  702   268  immediate outcome."
+ 1292   272  "Where did the possessions that eventually produced
+  112   282  Scores, shots, kickouts, turnovers and frees — the
+ 1292   296  scores begin?"
+  112   304  numbers you would record on a clipboard.
+  702   306  Each possession is tracked from its start to its immediate
+  702   328  result — a score, a wide, or possession lost. This is the
+ 1292   334  A chain traces a full attack, even when it spans multiple
+  702   350  official source of truth for what we won or lost, and where.
+ 1292   356  possessions. A turnover → free won → score is one chain.
+  112   366  FOUND IN THIS REPORT
+ 1292   378  This layer shows where scoring possessions began — it
+  112   390  · Scoring Breakdown
+ 1292   400  does not establish tactical causation. If a restart isn't logged
+  112   412  · Match Swing Timeline
+  702   412  FOUND IN THIS REPORT
+ 1292   422  live, the next score attributes to From General Play —
+  112   434  · Game Segments
+  702   436  · Opposition Facts
+ 1292   444  origin chains only know what was captured.
+  112   456  · Player Breakdown
+  702   458  · Restart Analysis
+  112   478  · Shot Pitch Maps
+  702   480  · Turnover Analysis
+  112   500  · Shot Efficiency
+  702   502  · Free Kick Analysis
+ 1292   506  FOUND IN THIS REPORT
+  112   522  · Zone Analysis
+ 1292   530  · Scoring Possession Origins
+  112   544  · Pitch Overviews
+ 1292   552  · Player Chain Involvement
+ 1292   574  · Opposition Origin & Chain Analysis
+ 1292   596  · Intelligence Summary
+ 1292   618  · Match Markers
+ 1292   640  · Chain Intelligence
+ 1292   662  · Restart Chain Analysis
+ 1292   684  · Turnover Chain Analysis
+ 1292   706  · Scoring Momentum
+  960  1022  Restart-origin counts every score in a possession that began with a kickout, including frees won during it. Direct restart scores attribute placed balls separately, so ledger sources sum to the final margin.
+  960  1044  Restart Share counts every kickout in the game. Own Kickout Retention counts only our own.
+
+===== PAGE 3 (1920x1080) =====
+ 1896    38  3 / 29
+   80   180  CHAPTER 1
+   80   230  PART 1 — MATCH FACTS
+   80   318  What happened?
+   80   398  "Raw match events and direct event-source classification exactly as they were recorded."
+   80   448  Coach question answered: "What happened?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Breakdown
+   80   564  · Match Swing Timeline
+   80   592  · Game Segments
+   80   620  · Player Breakdown
+   80   648  · Player Contributions
+   80   676  · Shot Pitch Maps
+   80   704  · Shot & Scoring Efficiency
+   80   732  · Zone Analysis
+   80   760  · 1H & 2H Pitch Overviews
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Scoring Breakdown
+ 1896    38  4 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24    86  How was the score recorded? Direct event classification only — no restart or turnover attribution.
+  960   150  Kilmacud Crokes  2-23 (29)   v   2-34 (40)  St Brigid's
+  960   200  St Brigid's by 11
+  234   273  SOURCE
+  900   273  KILMACUD CROKES
+ 1260   273  ST BRIGID'S
+ 1575   273  NET
+  234   327  From general play
+  900   327  2-14 (20 pts)
+ 1260   327  2-22 (28 pts)
+ 1575   327  -8
+  234   389  Placed balls
+  900   389  7/10 scored · 9 pts
+ 1260   389  8/11 scored · 11 pts
+ 1575   389  -2
+  234   451  Unattributed
+  900   451  0-00 (0 pts)
+ 1260   451  0-01 (1 pts)
+ 1575   451  -1
+ 1710   512  Source nets sum to the final margin: -11
+ 1710   534  Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).
+ 1896  1060  306 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Match Swing Timeline
+ 1896    38  5 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40   104  FIRST HALF
+  984   104  SECOND HALF
+  132   145  St Brigid's turnovers led to scores
+ 1076   145  St Brigid's converted 6 kickouts into scores
+  104   155  1H 1'
+ 1048   155  2H 4'
+  132   167  TURNOVER
+ 1076   167  KICKOUT
+  132   210  St Brigid's scored 4 unanswered
+ 1076   210  St Brigid's scored 3 unanswered
+  104   220  1H 1'–6'
+ 1048   220  2H 4'–6'
+  132   232  SCORING RUN
+ 1076   232  SCORING RUN
+  132   275  St Brigid's took the lead — 0-00 v 0-01
+ 1076   275  St Brigid's turnovers led to scores
+  104   285  1H 1'
+ 1048   285  2H 4'
+  132   297  LEAD CHANGE
+ 1076   297  TURNOVER
+  132   340  Kilmacud Crokes converted 1 kickout into score
+ 1076   340  St Brigid's scored 3 unanswered
+  104   350  1H 8'
+ 1048   350  2H 8'–10'
+  132   362  KICKOUT
+ 1076   362  SCORING RUN
+  132   405  St Brigid's converted 1 kickout into score
+ 1076   405  Kilmacud Crokes scored 2 unanswered
+  104   415  1H 9'
+ 1048   415  2H 11'–12'
+  132   427  KICKOUT
+ 1076   427  SCORING RUN
+  132   470  Kilmacud Crokes converted 1 kickout into score
+ 1076   470  St Brigid's turnovers led to scores
+  104   480  1H 10'
+ 1048   480  2H 12'
+  132   492  KICKOUT
+ 1076   492  TURNOVER
+  132   535  St Brigid's scored 2 unanswered
+ 1076   535  St Brigid's scored 3 unanswered
+  104   545  1H 12'
+ 1048   545  2H 13'–15'
+  132   557  SCORING RUN
+ 1076   557  SCORING RUN
+  132   600  Kilmacud Crokes converted 2 kickouts into scores
+ 1076   600  St Brigid's converted 4 kickouts into scores
+  104   610  1H 15'
+ 1048   610  2H 16'
+  132   622  KICKOUT
+ 1076   622  KICKOUT
+  132   665  Kilmacud Crokes scored 2 unanswered
+ 1076   665  St Brigid's scored 3 unanswered
+  104   675  1H 16'–18'
+ 1048   675  2H 17'–18'
+  132   687  SCORING RUN
+ 1076   687  SCORING RUN
+  132   730  St Brigid's converted 3 kickouts into scores
+ 1076   730  St Brigid's scored 3 unanswered
+  104   740  1H 23'
+ 1048   740  2H 22'–24'
+  132   752  KICKOUT
+ 1076   752  SCORING RUN
+  132   795  St Brigid's turnovers led to scores
+ 1076   795  Kilmacud Crokes converted 5 kickouts into scores
+  104   805  1H 24'
+ 1048   805  2H 24'
+  132   817  TURNOVER
+ 1076   817  KICKOUT
+  132   860  St Brigid's scored 2 unanswered
+ 1076   860  Kilmacud Crokes scored 4 unanswered
+  104   870  1H 24'–26'
+ 1048   870  2H 24'–27'
+  132   882  SCORING RUN
+ 1076   882  SCORING RUN
+  132   925  St Brigid's scored 2 unanswered
+ 1076   925  Kilmacud Crokes scored 3 unanswered
+  104   935  1H 33'–2H 1'
+ 1048   935  2H 29'–32'
+  132   947  SCORING RUN
+ 1076   947  SCORING RUN
+ 1896  1060  306 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Game Segments Breakdown
+ 1896    38  6 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+  298    99  FIRST HALF
+  290   130  SEGMENT
+  740   130  Kilmacud Crokes
+ 1340   130  St Brigid's
+  525   157  Score
+  665   157  Shots/W
+  780   157  Kickout W-L
+  880   157  Net T/O
+  980   157  Frees W/C
+ 1125   157  Score
+ 1265   157  Shots/W
+ 1380   157  Kickout W-L
+ 1480   157  Net T/O
+ 1580   157  Frees W/C
+  290   197  Early (0–10)
+  525   197  0-01 (1)
+  665   197  4 / 2
+  780   197  7-2
+  880   197  -7
+  980   197  3 / 2
+ 1125   197  1-04 (7)
+ 1265   197  8 / 2
+ 1380   197  2-7
+ 1480   197  +7
+ 1580   197  2 / 3
+  290   251  Mid  (11–20)
+  525   251  1-02 (5)
+  665   251  6 / 2
+  780   251  7-4
+  880   251  +0
+  980   251  1 / 4
+ 1125   251  0-03 (3)
+ 1265   251  5 / 2
+ 1380   251  4-7
+ 1480   251  +0
+ 1580   251  4 / 1
+  290   305  Late (21–30+)
+  525   305  0-03 (3)
+  665   305  8 / 5
+  780   305  6-8
+  880   305  +3
+  980   305  2 / 3
+ 1125   305  0-04 (4)
+ 1265   305  8 / 3
+ 1380   305  8-6
+ 1480   305  -3
+ 1580   305  3 / 2
+  290   359  TOTAL
+  525   359  1-06 (9)
+  665   359  18 / 9
+  780   359  20-14
+  880   359  -4
+  980   359  6 / 9
+ 1125   359  1-11 (14)
+ 1265   359  21 / 7
+ 1380   359  14-20
+ 1480   359  +4
+ 1580   359  9 / 6
+  298   453  SECOND HALF
+  290   484  SEGMENT
+  740   484  Kilmacud Crokes
+ 1340   484  St Brigid's
+  525   511  Score
+  665   511  Shots/W
+  780   511  Kickout W-L
+  880   511  Net T/O
+  980   511  Frees W/C
+ 1125   511  Score
+ 1265   511  Shots/W
+ 1380   511  Kickout W-L
+ 1480   511  Net T/O
+ 1580   511  Frees W/C
+  290   551  Early (0–10)
+  525   551  0-02 (2)
+  665   551  4 / 1
+  780   551  2-8
+  880   551  +2
+  980   551  4 / 5
+ 1125   551  0-06 (6)
+ 1265   551  6 / 1
+ 1380   551  8-2
+ 1480   551  -2
+ 1580   551  5 / 4
+  290   605  Mid  (11–20)
+  525   605  0-07 (7)
+  665   605  6 / 0
+  780   605  6-7
+  880   605  +1
+  980   605  3 / 3
+ 1125   605  0-11 (11)
+ 1265   605  8 / 0
+ 1380   605  7-6
+ 1480   605  -1
+ 1580   605  3 / 3
+  290   659  Late (21–30+)
+  525   659  1-08 (11)
+  665   659  15 / 5
+  780   659  12-7
+  880   659  +2
+  980   659  3 / 4
+ 1125   659  1-06 (9)
+ 1265   659  6 / 0
+ 1380   659  7-12
+ 1480   659  -2
+ 1580   659  4 / 3
+  290   713  TOTAL
+  525   713  1-17 (20)
+  665   713  25 / 6
+  780   713  20-22
+  880   713  +5
+  980   713  10 / 12
+ 1125   713  1-23 (26)
+ 1265   713  20 / 1
+ 1380   713  22-20
+ 1480   713  -5
+ 1580   713  12 / 10
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  7 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Kilmacud Crokes
+  278   245  #1
+  343   245  Shane O'Rourke
+  640   245  —
+  765   245  —
+  853   245  —
+  940   245  —
+ 1040   245  —
+ 1130   245  —
+ 1220   245  —
+ 1320   245  —
+ 1415   245  —
+ 1505   245  —
+ 1600   245  —
+  278   303  #2
+  343   303  Dan O'Brien
+  640   303  0-00 (0)
+  765   303  0
+  853   303  0
+  940   303  5
+ 1040   303  0
+ 1130   303  +5
+ 1220   303  0
+ 1320   303  0
+ 1415   303  0
+ 1505   303  3
+ 1600   303  8
+  278   361  #3
+  343   361  Rory O'Carroll
+  640   361  0-00 (0)
+  765   361  0
+  853   361  0
+  940   361  7
+ 1040   361  0
+ 1130   361  +7
+ 1220   361  0
+ 1320   361  0
+ 1415   361  0
+ 1505   361  4
+ 1600   361  11
+  278   419  #4
+  343   419  Andrew McGowan
+  640   419  0-00 (0)
+  765   419  0
+  853   419  0
+  940   419  3
+ 1040   419  1
+ 1130   419  +2
+ 1220   419  0
+ 1320   419  0
+ 1415   419  0
+ 1505   419  3
+ 1600   419  7
+  278   477  #5
+  343   477  Theo Clancy
+  640   477  0-00 (0)
+  765   477  0
+  853   477  0
+  940   477  8
+ 1040   477  0
+ 1130   477  +8
+ 1220   477  0
+ 1320   477  0
+ 1415   477  0
+ 1505   477  2
+ 1600   477  11
+  278   535  #6
+  343   535  Dara Mullin
+  640   535  0-00 (0)
+  765   535  0
+  853   535  0
+  940   535  5
+ 1040   535  0
+ 1130   535  +5
+ 1220   535  0
+ 1320   535  0
+ 1415   535  0
+ 1505   535  3
+ 1600   535  8
+  278   593  #7
+  343   593  Paul Mannion
+  640   593  0-00 (0)
+  765   593  0
+  853   593  0
+  940   593  1
+ 1040   593  0
+ 1130   593  +1
+ 1220   593  0
+ 1320   593  0
+ 1415   593  0
+ 1505   593  1
+ 1600   593  3
+  278   651  #8
+  343   651  Craig Dias
+  640   651  0-01 (1)
+  765   651  1
+  853   651  0
+  940   651  2
+ 1040   651  4
+ 1130   651  -2
+ 1220   651  8
+ 1320   651  1
+ 1415   651  1
+ 1505   651  0
+ 1600   651  17
+  278   709  #9
+  343   709  Ben Shovlin
+  640   709  0-00 (0)
+  765   709  1
+  853   709  1
+  940   709  3
+ 1040   709  3
+ 1130   709  +0
+ 1220   709  4
+ 1320   709  0
+ 1415   709  1
+ 1505   709  0
+ 1600   709  12
+  278   767  #10
+  343   767  Shane Walsh
+  640   767  0-02 (2)
+  765   767  3
+  853   767  1
+  940   767  0
+ 1040   767  3
+ 1130   767  -3
+ 1220   767  5
+ 1320   767  0
+ 1415   767  2
+ 1505   767  0
+ 1600   767  13
+  278   825  #11
+  343   825  Tom Fox
+  640   825  1-02 (5)
+  765   825  5
+  853   825  2
+  940   825  0
+ 1040   825  5
+ 1130   825  -5
+ 1220   825  3
+ 1320   825  0
+ 1415   825  0
+ 1505   825  0
+ 1600   825  13
+  278   883  #12
+  343   883  Aidan Jones
+  640   883  0-11 (11)
+  765   883  12
+  853   883  3
+  940   883  0
+ 1040   883  8
+ 1130   883  -8
+ 1220   883  1
+ 1320   883  0
+ 1415   883  1
+ 1505   883  0
+ 1600   883  22
+  278   941  #13
+  343   941  Pat Burke
+  640   941  0-04 (4)
+  765   941  4
+  853   941  1
+  940   941  0
+ 1040   941  4
+ 1130   941  -4
+ 1220   941  0
+ 1320   941  0
+ 1415   941  2
+ 1505   941  0
+ 1600   941  11
+  278   999  #14
+  343   999  Callum Pearson
+  640   999  1-01 (4)
+  765   999  5
+  853   999  0
+  940   999  0
+ 1040   999  4
+ 1130   999  -4
+ 1220   999  0
+ 1320   999  0
+ 1415   999  2
+ 1505   999  0
+ 1600   999  11
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  8 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Kilmacud Crokes
+  278   245  #15
+  343   245  Hugh Kenny
+  640   245  0-00 (0)
+  765   245  2
+  853   245  1
+  940   245  0
+ 1040   245  2
+ 1130   245  -2
+ 1220   245  0
+ 1320   245  0
+ 1415   245  3
+ 1505   245  0
+ 1600   245  7
+  282   292  St Brigid's
+  278   339  #4
+  343   339  #4
+  640   339  0-00 (0)
+  765   339  0
+  853   339  0
+  940   339  0
+ 1040   339  0
+ 1130   339  +0
+ 1220   339  0
+ 1320   339  0
+ 1415   339  0
+ 1505   339  0
+ 1600   339  3
+  278   397  #6
+  343   397  #6
+  640   397  0-00 (0)
+  765   397  0
+  853   397  0
+  940   397  0
+ 1040   397  0
+ 1130   397  +0
+ 1220   397  0
+ 1320   397  0
+ 1415   397  0
+ 1505   397  0
+ 1600   397  1
+  278   455  #8
+  343   455  #8
+  640   455  0-02 (2)
+  765   455  2
+  853   455  0
+  940   455  0
+ 1040   455  0
+ 1130   455  +0
+ 1220   455  11
+ 1320   455  0
+ 1415   455  0
+ 1505   455  0
+ 1600   455  15
+  278   513  #9
+  343   513  #9
+  640   513  0-02 (2)
+  765   513  2
+  853   513  0
+  940   513  0
+ 1040   513  0
+ 1130   513  +0
+ 1220   513  10
+ 1320   513  0
+ 1415   513  0
+ 1505   513  0
+ 1600   513  12
+  278   571  #10
+  343   571  #10
+  640   571  0-01 (1)
+  765   571  2
+  853   571  1
+  940   571  0
+ 1040   571  0
+ 1130   571  +0
+ 1220   571  0
+ 1320   571  0
+ 1415   571  0
+ 1505   571  0
+ 1600   571  2
+  278   629  #11
+  343   629  #11
+  640   629  1-17 (20)
+  765   629  18
+  853   629  3
+  940   629  0
+ 1040   629  0
+ 1130   629  +0
+ 1220   629  3
+ 1320   629  0
+ 1415   629  0
+ 1505   629  0
+ 1600   629  23
+  278   687  #12
+  343   687  #12
+  640   687  0-02 (2)
+  765   687  3
+  853   687  1
+  940   687  0
+ 1040   687  0
+ 1130   687  +0
+ 1220   687  1
+ 1320   687  0
+ 1415   687  0
+ 1505   687  0
+ 1600   687  4
+  278   745  #13
+  343   745  #13
+  640   745  0-00 (0)
+  765   745  1
+  853   745  1
+  940   745  0
+ 1040   745  0
+ 1130   745  +0
+ 1220   745  0
+ 1320   745  0
+ 1415   745  0
+ 1505   745  0
+ 1600   745  1
+  278   803  #14
+  343   803  #14
+  640   803  0-01 (1)
+  765   803  3
+  853   803  1
+  940   803  0
+ 1040   803  0
+ 1130   803  +0
+ 1220   803  0
+ 1320   803  0
+ 1415   803  0
+ 1505   803  0
+ 1600   803  4
+  278   861  #15
+  343   861  #15
+  640   861  0-03 (3)
+  765   861  3
+  853   861  0
+  940   861  0
+ 1040   861  0
+ 1130   861  +0
+ 1220   861  0
+ 1320   861  0
+ 1415   861  0
+ 1505   861  0
+ 1600   861  3
+
+===== PAGE 9 (1920x1080) =====
+   24    38  Player Contributions
+ 1896    38  9 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24    86  Raw per-player counts — scoring, shooting, restarts, turnovers and frees. Ranked by score value.
+   38   124  KILMACUD CROKES
+  982   124  ST BRIGID'S
+   38   163  PLAYER
+  338   163  SCORE
+  438   163  SHARE
+  538   163  SHOTS
+  658   163  T/O W-L
+  778   163  KO W-L
+  898   163  NET BALL
+  982   163  PLAYER
+ 1282   163  SCORE
+ 1382   163  SHARE
+ 1482   163  SHOTS
+ 1602   163  T/O W-L
+ 1722   163  KO W-L
+ 1842   163  NET BALL
+   38   191  Aidan Jones
+  338   191  0-11
+  438   191  38%
+  538   191  9/12
+  658   191  0-8
+  778   191  1-0
+  898   191  -6
+  982   191  #11
+ 1282   191  1-17
+ 1382   191  50%
+ 1482   191  14/18
+ 1602   191  0-0
+ 1722   191  3-0
+ 1842   191  +3
+   38   221  Tom Fox
+  338   221  1-02
+  438   221  17%
+  538   221  3/5
+  658   221  0-5
+  778   221  3-0
+  898   221  -2
+  982   221  #15
+ 1282   221  0-03
+ 1382   221  8%
+ 1482   221  3/3
+ 1602   221  0-0
+ 1722   221  0-0
+ 1842   221  0
+   38   251  Pat Burke
+  338   251  0-04
+  438   251  14%
+  538   251  3/4
+  658   251  0-4
+  778   251  0-0
+  898   251  -2
+  982   251  #8
+ 1282   251  0-02
+ 1382   251  5%
+ 1482   251  2/2
+ 1602   251  0-0
+ 1722   251  11-0
+ 1842   251  +11
+   38   281  Callum Pearson
+  338   281  1-01
+  438   281  14%
+  538   281  2/5
+  658   281  0-4
+  778   281  0-0
+  898   281  -2
+  982   281  #9
+ 1282   281  0-02
+ 1382   281  5%
+ 1482   281  2/2
+ 1602   281  0-0
+ 1722   281  10-0
+ 1842   281  +10
+   38   311  Shane Walsh
+  338   311  0-02
+  438   311  7%
+  538   311  2/3
+  658   311  0-3
+  778   311  5-0
+  898   311  +4
+  982   311  #12
+ 1282   311  0-02
+ 1382   311  5%
+ 1482   311  2/3
+ 1602   311  0-0
+ 1722   311  1-0
+ 1842   311  +1
+   38   341  Craig Dias
+  338   341  0-01
+  438   341  3%
+  538   341  1/1
+  658   341  2-4
+  778   341  8-1
+  898   341  +6
+  982   341  #10
+ 1282   341  0-01
+ 1382   341  3%
+ 1482   341  1/2
+ 1602   341  0-0
+ 1722   341  0-0
+ 1842   341  0
+   38   371  Theo Clancy
+  338   371  —
+  438   371  —
+  538   371  —
+  658   371  8-0
+  778   371  0-0
+  898   371  +6
+  982   371  #14
+ 1282   371  0-01
+ 1382   371  3%
+ 1482   371  1/3
+ 1602   371  0-0
+ 1722   371  0-0
+ 1842   371  0
+   38   401  Ben Shovlin
+  338   401  —
+  438   401  —
+  538   401  0/1
+  658   401  3-3
+  778   401  4-0
+  898   401  +5
+  982   401  #4
+ 1282   401  —
+ 1382   401  —
+ 1482   401  —
+ 1602   401  0-0
+ 1722   401  0-0
+ 1842   401  0
+   38   431  Rory O'Carroll
+  338   431  —
+  438   431  —
+  538   431  —
+  658   431  7-0
+  778   431  0-0
+  898   431  +3
+  982   431  #6
+ 1282   431  —
+ 1382   431  —
+ 1482   431  —
+ 1602   431  0-0
+ 1722   431  0-0
+ 1842   431  0
+   38   461  Dara Mullin
+  338   461  —
+  438   461  —
+  538   461  —
+  658   461  5-0
+  778   461  0-0
+  898   461  +2
+  982   461  #13
+ 1282   461  —
+ 1382   461  —
+ 1482   461  0/1
+ 1602   461  0-0
+ 1722   461  0-0
+ 1842   461  0
+   38   491  Dan O'Brien
+  338   491  —
+  438   491  —
+  538   491  —
+  658   491  5-0
+  778   491  0-0
+  898   491  +2
+   38   521  Hugh Kenny
+  338   521  —
+  438   521  —
+  538   521  0/2
+  658   521  0-2
+  778   521  0-0
+  898   521  +1
+   38   578  FREES CONCEDED BY PLAYER
+  982   578  FREES CONCEDED BY PLAYER
+   38   617  PLAYER
+  658   617  1H
+  778   617  2H
+  898   617  TOTAL
+  982   617  PLAYER
+ 1602   617  1H
+ 1722   617  2H
+ 1842   617  TOTAL
+   38   645  #3 Rory O'Carroll
+  658   645  2
+  778   645  2
+  898   645  4
+  982   645  No frees conceded attributed to a St Brigid's player
+   38   675  #4 Andrew McGowan
+  658   675  0
+  778   675  3
+  898   675  3
+  982   675  Not attributed to a player
+ 1602   675  6
+ 1722   675  10
+ 1842   675  16
+   38   705  #2 Dan O'Brien
+  658   705  1
+  778   705  2
+  898   705  3
+  982   709  St Brigid's total
+ 1602   709  6
+ 1722   709  10
+ 1842   709  16
+   38   735  #6 Dara Mullin
+  658   735  1
+  778   735  2
+  898   735  3
+   38   765  #5 Theo Clancy
+  658   765  2
+  778   765  0
+  898   765  2
+   38   795  Other players
+  658   795  1
+  778   795  0
+  898   795  1
+   38   825  Not attributed to a player
+  658   825  2
+  778   825  3
+  898   825  5
+   38   859  Kilmacud Crokes total
+  658   859  9
+  778   859  12
+  898   859  21
+  960  1040  Direct event counts only. Chain involvement and net influence ranking appear in Game Origin Analysis (Part 3).
+ 1896  1060  306 events
+
+===== PAGE 10 (1920x1080) =====
+   24    38  Shot Pitch Maps
+ 1896    38  10 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24   110  1H — KILMACUD CROKES SHOTS
+  945   110  18
+  977   110  1H — ST BRIGID'S SHOTS
+ 1898   110  21
+   24   583  2H — KILMACUD CROKES SHOTS
+  945   583  25
+  977   583  2H — ST BRIGID'S SHOTS
+ 1898   583  20
+ 1896  1060  84 events
+
+===== PAGE 11 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  11 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   38   104  FOR — KILMACUD CROKES
+  982   104  OPP — ST BRIGID'S
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  43
+  982   172  Attempts
+ 1884   172  41
+   38   204  Scores
+  940   204  22
+  982   204  Scores
+ 1884   204  31
+   38   236  Conversion
+  940   236  51%
+  982   236  Conversion
+ 1884   236  76%
+   38   268  Wides
+  940   268  15
+  982   268  Wides
+ 1884   268  8
+   38   300  Blocked / Saved
+  940   300  6
+  982   300  Blocked / Saved
+ 1884   300  2
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  27
+  664   400  15
+  780   400  12
+  940   400  56%
+  982   400  Open Play
+ 1488   400  27
+ 1608   400  22
+ 1724   400  5
+ 1884   400  81%
+   38   432  Free
+  544   432  8
+  664   432  6
+  780   432  2
+  940   432  75%
+  982   432  Free
+ 1488   432  10
+ 1608   432  8
+ 1724   432  2
+ 1884   432  80%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  2
+  664   496  1
+  780   496  1
+  940   496  50%
+  982   496  45
+ 1488   496  1
+ 1608   496  —
+ 1724   496  1
+ 1884   496  0%
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  6
+  664   560  —
+  780   560  6
+  940   560  0%
+  982   560  Unclassified
+ 1488   560  3
+ 1608   560  1
+ 1724   560  2
+ 1884   560  33%
+   38   587  6 shots logged without a source
+  982   587  3 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  2
+  982   660  TWO_POINTER Scores
+ 1884   660  5
+   38   692  45+2 Scores
+  940   692  1
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  3
+  982   724  Total 2PT Scores
+ 1884   724  5
+   38   756  Total 2PT Pts Value
+  940   756  6
+  982   756  Total 2PT Pts Value
+ 1884   756  10
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  7
+  982   834  Placed Scored
+ 1884   834  8
+   38   866  Placed Missed
+  940   866  3
+  982   866  Placed Missed
+ 1884   866  3
+   38   898  Placed Conv %
+  940   898  70%
+  982   898  Placed Conv %
+ 1884   898  73%
+ 1896  1060  306 events
+
+===== PAGE 12 (1920x1080) =====
+   24    38  Zone Analysis
+ 1896    38  12 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   28    95  KILMACUD CROKES ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+  944    95  69 events
+  978    95  ST BRIGID'S ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+ 1894    95  77 events
+   42   128  Most scoring: Attacking Centre
+  992   128  Opposition scoring: Defensive Centre
+   42   156  Turnovers won: Attacking Centre
+  992   156  Opposition gains: Middle Centre
+   42   178  22 scoring events recorded
+  992   178  31 opposition scoring events
+  790   462  26
+ 1130   462  23
+  790   482  Attacking Centre
+ 1130   482  Defensive Centre
+   30   768  ZONE SUMMARY
+  663   768  KEY ZONES
+ 1296   768  ZONE INTELLIGENCE
+ 1297   796  Most scores for: Attacking Centre (13)
+  661   798  TOP SCORING ZONES — SCORES ONLY
+   28   814  Kilmacud…  47%
+  625   814  53%  St…
+  659   821  Kilmacud… hotspot
+ 1262   821  Attacking Centre (13)
+   28   838  Kilmacud… ACTIVITY
+  659   847  St Brigid's hotspot
+ 1262   847  Defensive Centre (18)
+ 1297   852  Most turnovers won: Attacking Centre (13)
+   26   861  Scores
+  629   861  22
+  661   872  TURNOVER ZONES
+   26   887  Turnovers Won
+  629   887  47
+  659   895  Kilmacud… won in
+ 1262   895  Attacking Centre (13)
+ 1297   908  Most opposition scores: Defensive Centre (18)
+   28   912  St Brigid's ACTIVITY
+  659   921  Opposition gained in
+ 1262   921  Middle Centre (13)
+   26   935  Scores Against
+  629   935  31
+   26   961  Opposition Gains
+  629   961  46
+ 1297   964  Highest concentration of opposition gains: Middle Centre (13)
+ 1896  1060  306 events
+
+===== PAGE 13 (1920x1080) =====
+   24    38  1H Pitch Overview
+ 1896    38  13 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24   110  1H — ALL EVENTS
+  945   110  153
+  977   110  1H — SCORES
+ 1898   110  19
+   24   583  1H — KILMACUD CROKES SHOTS
+  945   583  18
+  977   583  1H — ST BRIGID'S SHOTS
+ 1898   583  21
+ 1896  1060  153 events
+
+===== PAGE 14 (1920x1080) =====
+   24    38  2H Pitch Overview
+ 1896    38  14 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24   110  2H — ALL EVENTS
+  945   110  153
+  977   110  2H — SCORES
+ 1898   110  34
+   24   583  2H — KILMACUD CROKES SHOTS
+  945   583  25
+  977   583  2H — ST BRIGID'S SHOTS
+ 1898   583  20
+ 1896  1060  153 events
+
+===== PAGE 15 (1920x1080) =====
+ 1896    38  15 / 29
+   80   180  CHAPTER 2
+   80   230  PART 2 — POSSESSION FACTS
+   80   318  What did we win/lose and where?
+   80   398  "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where."
+   80   448  Coach question answered: "What did we win/lose and where?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Opposition Facts
+   80   564  · Restart Analysis
+   80   592  · Turnover Analysis
+   80   620  · Free Kick Analysis
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 16 (1920x1080) =====
+   24    38  Opposition Facts
+ 1896    38  16 / 29
+ 1814    59  STATISTICS
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40   100  ST BRIGID'S — SCORING PROFILE
+  984   100  KICKOUTS — RESTART SHARE
+   44   162  2-34 (40)
+  988   162  47%
+   44   179  FULL MATCH SCORE LINE
+  988   179  OPP RESTART SHARE
+   40   207  1st Half
+  938   207  1-11 (14)
+  984   207  Restart Share won by OPP
+ 1882   207  36 of 76
+   40   237  2nd Half
+  938   237  1-23 (26)
+   40   267  Goals
+  938   267  2
+   40   297  Points (incl. frees & 2-pointers)
+  938   297  34
+   40   327  Score Conversion
+  938   327  76%
+   40   357  Score zone (avg position)
+  938   357  Central
+  984   551  TURNOVERS GIFTED
+  988   613  46
+  988   630  TURNOVERS GIFTED TO OPPOSITION
+ 1896  1060  306 events
+
+===== PAGE 17 (1920x1080) =====
+   24    38  Restart Analysis
+ 1896    38  17 / 29
+ 1803    59  POSSESSION
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   28    95  RESTART POSSESSION — KILMACUD CROKES
+  944    95  39 events
+  978    95  RESTART POSSESSION — ST BRIGID'S
+ 1894    95  37 events
+   42   128  Kilmacud Crokes won 40 of 76 restarts
+  992   128  St Brigid's won 36 of 76 restarts
+   42   156  Kilmacud Crokes: 2 Goals, 10 Points (16 pts)
+  992   156  St Brigid's: 2 Goals, 15 Points & 3 Two-Point scores (27 pts)
+   42   178  H1: 20–14 / H2: 20–22
+  992   178  H1: 14–20 / H2: 22–20
+   30   768  RESTART SUMMARY
+  663   768  CHAIN OUTCOMES
+ 1296   768  RESTART INTELLIGENCE
+ 1297   796  Kilmacud Crokes held 53% Restart Share (40 of 76) — 30% of won kickouts produced
+  661   798  Kilmacud… WON POSSESSION
+ 1297   812  restart-origin point value (2 Goals, 10 Points (16 pts)).
+   28   814  Kilmacud…  53%
+  625   814  47%  St…
+  659   821  Won → Score (origin)
+ 1262   821  12 (30%)
+   26   839  Kilmacud… Won
+  629   839  40 (53%)
+  659   847  Won → Shot attempt
+ 1262   847  25 (63%)
+ 1297   852  30% of Kilmacud Crokes's kickout wins produced restart-origin point value; 56% of their losses
+   26   865  St Brigid's Won
+  629   865  36 (47%)
+ 1297   868  produced restart-origin point value for St Brigid's.
+  659   873  Won → No shot
+ 1262   873  15
+   28   890  BY HALF
+  661   898  St Brigid's WON POSSESSION
+   26   913  H1 — Won / Lost
+  629   913  20 / 14
+  659   921  Lost → Score against (origin)
+ 1262   921  20 (56%)
+   26   939  H2 — Won / Lost
+  629   939  20 / 22
+  659   947  Lost → No score
+ 1262   947  16
+   28   964  HOW WON
+  661   972  OVERALL
+   26   987  Clean Won
+  629   987  24
+  659   995  Restart Share
+ 1262   995  53% (40 of 76)
+   26  1013  Break Won
+  629  1013  12
+  659  1021  Own Kickout Retention
+ 1262  1021  54% (21 of 39)
+   26  1039  Foul Won
+  629  1039  0
+  659  1047  Avg secs to score (won)
+ 1262  1047  30s
+ 1294  1050  Origin possessions include 8 placed frees won during kickout-origin possessions (Kilmacud Croke 3 · St Brigid's 5) — the scoring ledger attributes those scores to placed balls.
+   26  1059  Excludes dead-ball restarts, already counted in Won above.
+ 1896  1060  76 events
+
+===== PAGE 18 (1920x1080) =====
+   24    38  Turnover Analysis
+ 1896    38  18 / 29
+ 1803    59  POSSESSION
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   28    95  TURNOVERS WON — KILMACUD CROKES
+  944    95  47 events
+  978    95  TURNOVERS LOST — KILMACUD CROKES
+ 1894    95  46 events
+   42   128  Won 47 turnovers
+  992   128  Opposition won 46 turnovers
+   42   156  11 led to scores
+  992   156  26 scores conceded
+   42   178  23 led to shots
+  992   178  32 shots against
+   30   768  TURNOVER SUMMARY
+  663   768  CONSEQUENCES
+ 1296   768  TURNOVER INTELLIGENCE
+ 1297   796  Kilmacud Crokes won 51% of turnovers (47 of 93); 23% of wins produced turnover-origin point
+  661   798  Kilmacud… ATTACKED
+ 1297   812  value, against 57% for St Brigid's.
+   28   814  Kilmacud…  51%
+  625   814  49%  St…
+  659   821  Won → Score (origin)
+ 1262   821  11 (23%)
+   26   839  Kilmacud… Won
+  629   839  47
+  659   847  Won → Shot attempt
+ 1262   847  23 (49%)
+ 1297   852  57% of the turnovers St Brigid's won against Kilmacud Crokes produced turnover-origin point
+   26   865  St Brigid's Won
+  629   865  46
+ 1297   868  value (2 Goals, 22 Points & 2 Two-Point scores (32 pts) from 46 losses).
+  659   873  Won → No shot
+ 1262   873  24
+   26   891  Net Turnover
+  629   891  +1
+  661   898  DAMAGE CONCEDED
+ 1297   908  Kilmacud Crokes won 47 turnovers; 24 did not lead to a shot.
+   28   916  HOW WON
+  659   921  Lost → Score against (origin)
+ 1262   921  26 (57%)
+   26   939  Tackle / Press
+  629   939  18
+  659   947  Lost → Shot against
+ 1262   947  32 (70%)
+ 1297   964  Kilmacud Crokes's turnover conversion was higher in the second half (8 of 19, 42%) than in the
+   26   965  Swarm / Intercept
+  629   965  0
+  661   972  St Brigid's ATTACKED
+ 1297   980  first half (3 of 28, 11%).
+   26   991  Unforced error
+  629   991  0
+  659   995  Won → Score (origin)
+ 1262   995  26 (57%)
+   26  1017  Slack pass
+  629  1017  0
+  659  1021  Won → Shot attempt
+ 1262  1021  32 (70%)
+ 1896  1060  93 events
+
+===== PAGE 19 (1920x1080) =====
+   24    38  Free Kick Analysis
+ 1896    38  19 / 29
+ 1803    59  POSSESSION
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   28    95  OUR FREES — KILMACUD CROKES
+  944    95  24 events
+  978    95  OPPOSITION FREES — ST BRIGID'S
+ 1894    95  31 events
+   42   128  Won 16 possession frees
+  992   128  Opposition won 21 possession frees
+   42   156  0 free-won → goal chains (rule match)
+  992   156  Free-won → goal chains (rule match): —
+   42   178  Direct placed-ball scoring: 7/10 scored
+  992   178  Direct placed-ball scoring: 8/11 scored
+   30   768  FREE SUMMARY
+  663   768  FREE OUTCOMES
+ 1296   768  FREE INTELLIGENCE
+  661   798  CONVERSION COMPARISON
+   28   814  Kilmacud…  43%
+  625   814  57%  St…
+  659   821  Kilmacud… Conversion
+ 1262   821  70%
+   26   839  Kilmacud… Frees Won
+  629   839  16
+  659   847  St Brigid's Conversion
+ 1262   847  73%
+   26   865  St Brigid's Frees Won
+  629   865  21
+  661   872  St Brigid's PLACED BALLS
+   26   891  Advantage
+  629   891  -5
+  659   895  Placed Scored
+ 1262   895  8
+   28   916  Kilmacud… PLACED BALLS
+  659   921  Placed Missed
+ 1262   921  3
+ 1593   922  No observation met the reporting threshold.
+   26   939  Placed Scored
+  629   939  7
+  659   947  Conversion
+ 1262   947  73%
+   26   965  Placed Missed
+  629   965  3
+  661   972  ALL FREES COMBINED
+   26   991  Conversion
+  629   991  70%
+  659   995  Total scored
+ 1262   995  15
+  659  1021  Total missed
+ 1262  1021  6
+  659  1047  Overall conv.
+ 1262  1047  71%
+ 1896  1060  55 events
+
+===== PAGE 20 (1920x1080) =====
+ 1896    38  20 / 29
+   80   180  CHAPTER 3
+   80   230  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+   80   318  What happened after those possessions began?
+   80   398  "Traces the possession beyond the initial event — where scoring possessions began, followed forward."
+   80   448  Coach question answered: "What happened after those possessions began?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Possession Origins
+   80   564  · Player Chain Involvement
+   80   592  · Opposition Origin & Chain Analysis
+   80   620  · Intelligence Summary
+   80   648  · Match Markers
+   80   676  · Chain Intelligence
+   80   704  · Restart Chain Analysis
+   80   732  · Turnover Chain Analysis
+   80   760  · Scoring Momentum
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 21 (1920x1080) =====
+   24    38  Scoring Possession Origins
+ 1896    38  21 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24    88  Game Origin Analysis looks at where a scoring possession began, not how the final score was recorded. A point scored from a free may also count here as a restart-origin score, if the possession it came from started at a kickout — the two figures are answering
+   24   110  different questions, not disagreeing with each other. Use Scoring Breakdown (Part 1) for what was scored, and Game Origin Analysis (Part 3) for where the pressure that led to it began.
+  234   185  POSSESSION ORIGIN
+  900   185  KILMACUD CROKES
+ 1260   185  ST BRIGID'S
+  234   242  Restart-origin scores
+  900   242  2 Goals, 8 Points (14 pts)
+ 1260   242  6 Points & 3 Two-Point scores (12 pts)
+  234   310  Turnover-origin scores
+  900   310  9 Points & 2 Two-Point scores (13 pts)
+ 1260   310  2 Goals, 16 Points & 2 Two-Point scores (26 pts)
+  210   370  Origin possessions include 8 placed frees won during kickout-origin possessions (Kilmacud Croke 3 · St Brigid's 5) — the scoring ledger attributes those scores to placed balls.
+  210   402  Only restart and turnover origins are currently tracked — a score with neither origin has no row here.
+ 1896  1060  306 events
+
+===== PAGE 22 (1920x1080) =====
+   24    38  Player Chain Involvement
+ 1896    38  22 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   24    86  Scoring-chain involvement and recorded ball actions, ranked by most scoring-chain involvements.
+   38   124  KILMACUD CROKES
+  982   124  ST BRIGID'S
+   38   158  MOST SCORING-CHAIN INVOLVEMENTS
+  982   158  MOST SCORING-CHAIN INVOLVEMENTS
+   38   188  1. Aidan Jones
+  938   188  9 of 22 chains
+  982   188  1. #11
+ 1882   188  16 of 31 chains
+   50   214  Aidan Jones: 0-11 (38% of Kilmacud Crokes total) · from 12 shots · -6 net ball impact
+  994   214  #11: 1-17 (50% of St Brigid's total) · from 18 shots · +3 net ball impact
+   38   248  2. Craig Dias
+  938   248  5 of 22 chains
+  982   248  2. #9
+ 1882   248  11 of 31 chains
+   50   274  Craig Dias: 0-01 (3% of Kilmacud Crokes total) · from 1 shot · +6 net ball impact
+  994   274  #9: 0-02 (5% of St Brigid's total) · from 2 shots · +10 net ball impact
+   38   308  3. Tom Fox
+  938   308  4 of 22 chains
+  982   308  3. #8
+ 1882   308  7 of 31 chains
+   50   334  Tom Fox: 1-02 (17% of Kilmacud Crokes total) · from 5 shots · -2 net ball impact
+  994   334  #8: 0-02 (5% of St Brigid's total) · from 2 shots · +11 net ball impact
+   38   377  PLAYER
+  378   377  SCORE
+  498   377  SHARE
+  618   377  SHOTS
+  758   377  CHAIN INV
+  898   377  NET BALL
+  982   377  PLAYER
+ 1322   377  SCORE
+ 1442   377  SHARE
+ 1562   377  SHOTS
+ 1702   377  CHAIN INV
+ 1842   377  NET BALL
+   38   405  Aidan Jones
+  378   405  0-11
+  498   405  38%
+  618   405  9/12
+  758   405  9/22
+  898   405  -6
+  982   405  #11
+ 1322   405  1-17
+ 1442   405  50%
+ 1562   405  14/18
+ 1702   405  16/31
+ 1842   405  +3
+   38   435  Craig Dias
+  378   435  0-01
+  498   435  3%
+  618   435  1/1
+  758   435  5/22
+  898   435  +6
+  982   435  #9
+ 1322   435  0-02
+ 1442   435  5%
+ 1562   435  2/2
+ 1702   435  11/31
+ 1842   435  +10
+   38   465  Tom Fox
+  378   465  1-02
+  498   465  17%
+  618   465  3/5
+  758   465  4/22
+  898   465  -2
+  982   465  #8
+ 1322   465  0-02
+ 1442   465  5%
+ 1562   465  2/2
+ 1702   465  7/31
+ 1842   465  +11
+   38   495  Shane Walsh
+  378   495  0-02
+  498   495  7%
+  618   495  2/3
+  758   495  4/22
+  898   495  +4
+  982   495  #15
+ 1322   495  0-03
+ 1442   495  8%
+ 1562   495  3/3
+ 1702   495  3/31
+ 1842   495  0
+   38   525  Ben Shovlin
+  378   525  —
+  498   525  —
+  618   525  0/1
+  758   525  4/22
+  898   525  +5
+  982   525  #12
+ 1322   525  0-02
+ 1442   525  5%
+ 1562   525  2/3
+ 1702   525  3/31
+ 1842   525  +1
+   38   555  Pat Burke
+  378   555  0-04
+  498   555  14%
+  618   555  3/4
+  758   555  3/22
+  898   555  -2
+  982   555  #10
+ 1322   555  0-01
+ 1442   555  3%
+ 1562   555  1/2
+ 1702   555  1/31
+ 1842   555  0
+   38   585  Rory O'Carroll
+  378   585  —
+  498   585  —
+  618   585  —
+  758   585  3/22
+  898   585  +3
+  982   585  #14
+ 1322   585  0-01
+ 1442   585  3%
+ 1562   585  1/3
+ 1702   585  1/31
+ 1842   585  0
+   38   615  Callum Pearson
+  378   615  1-01
+  498   615  14%
+  618   615  2/5
+  758   615  2/22
+  898   615  -2
+  982   615  #4
+ 1322   615  —
+ 1442   615  —
+ 1562   615  —
+ 1702   615  —
+ 1842   615  0
+   38   645  Andrew McGowan
+  378   645  —
+  498   645  —
+  618   645  —
+  758   645  2/22
+  898   645  -1
+  982   645  #6
+ 1322   645  —
+ 1442   645  —
+ 1562   645  —
+ 1702   645  —
+ 1842   645  0
+   38   682  RECORDED PATTERNS
+  982   682  RECORDED PATTERNS
+   50   712  Kilmacud Crokes top scorer share was 38%.
+  994   712  #11 (St Brigid's) scored 1-17 of 2-34 (50% of team score).
+   50   746  Ben Shovlin (Kilmacud Crokes) appeared in 4 of 22 Kilmacud Crokes scoring chains without shooting.
+  994   746  #14 (St Brigid's) recorded 1 from 3 shot attempts.
+ 1896  1060  306 events
+
+===== PAGE 23 (1920x1080) =====
+   24    38  Opposition Origin & Chain Analysis
+ 1896    38  23 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40   100  RESTART ORIGIN (KICKOUTS)
+  984   100  MOMENTUM SPELL
+   40   131  Restart-origin scores for OPP
+  938   131  6 Points & 3 Two-Point scores (12 pts)
+   40   161  Restart-origin scores conceded
+  938   161  2 Goals, 15 Points & 3 Two-Point scores (27 pts)  (56%)
+  988   162  4
+  988   179  LONGEST UNANSWERED RUN — 1H ~1'
+   40   191  Restart-origin scores from our kickout losses
+  938   191  6 Points & 3 Two-Point scores (12 pts)
+  984   207  Total OPP runs ≥ 2
+ 1882   207  9
+  984   237  Half of peak run
+ 1882   237  1H
+  984   360  CHAIN RATE
+  988   422  —
+  988   439  CHAIN SHARE NOT SHOWN — RULE MATCHES ARE NOT UNIQUE POSSESSIONS
+  984   467  OPP rule matches — 1st Half
+ 1882   467  —
+  984   497  OPP rule matches — 2nd Half
+ 1882   497  —
+  984   527  Busiest OPP segment
+ 1882   527  —
+   40   580  TURNOVER ORIGIN
+   40   611  Turnover-origin scores for OPP
+  938   611  2 Goals, 16 Points & 2 Two-Point scores (26 pts)
+  984   620  OPPOSITION MARKERS
+   40   641  Turnover-origin scores conceded
+  938   641  26
+   40   671  Turnover-origin punishment rate
+  938   671  57%
+  988   682  #11  1-17
+  988   699  50% OF ST BRIGID'S SCORE · 14/18 SHOOTING
+   40   701  Turnover wins → shot
+  938   701  32
+  984   727  Longest unanswered run
+ 1882   727  4 scores
+  984   757  Restart-origin scoring
+ 1882   757  6 Points & 3 Two-Point scores (12 pts)
+  984   787  Turnover-origin scoring
+ 1882   787  2 Goals, 16 Points & 2 Two-Point scores (26 pts)
+  984   817  Chain share
+ 1882   817  —
+ 1896  1060  306 events
+
+===== PAGE 24 (1920x1080) =====
+   24    38  Intelligence Summary
+ 1896    38  24 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40   100  KICKOUT PLATFORM
+  984   100  SCORING RUNS
+   44   162  53%
+  988   162  5 / 9
+   44   179  RESTART SHARE  (40 WON OF 76 TOTAL)
+  988   179  SCORING RUNS  (RUNS OF ≥2 CONSECUTIVE SCORES)
+   40   207  Kickout wins → origin score
+  938   207  30%
+  984   207  Kilmacud Crokes longest burst
+ 1882   207  4 scores
+   40   237  Kickout losses → origin score against
+  938   237  56%
+  984   237  St Brigid's longest burst
+ 1882   237  4 scores
+   40   267  Net kickout advantage (%pt)
+  938   267  -26 %pt
+  984   267  Kilmacud Crokes max consecutive
+ 1882   267  4
+  984   297  St Brigid's max consecutive
+ 1882   297  4
+   40   400  TURNOVER BATTLE
+  984   400  CHAIN SEQUENCES
+   44   462  51%
+  988   462  62
+   44   479  TURNOVER SHARE  (47 WON OF 93 TOTAL)
+  988   479  KILMACUD CROKES CHAIN RULE MATCHES  (OVERLAPPING — NOT UNIQUE POSSESSIONS)
+   40   507  Turnover wins → origin score
+  938   507  23%
+  984   507  Kickout → score chains (rule match)
+ 1882   507  8
+   40   537  Turnover wins → shot, no score
+  938   537  26%
+  984   537  Turnover → score chains (rule match)
+ 1882   537  16
+   40   567  Turnover losses → origin score against
+  938   567  57%
+  984   567  Placed ball → goal chains (rule match)
+ 1882   567  0
+   40   700  MATCH INTELLIGENCE
+  984   700  TEAM COMPARISON
+   40   726  Balanced kickout contest — Kilmacud Crokes held 53% Restart Share; 30% of wins produced restart-origin point value (2 G…
+  984   740  METRIC
+ 1618   740  Kilmacud…
+ 1785   740  St…
+   40   758  Kilmacud Crokes won 51% of turnovers (23% origin point value); 57% of St Brigid's's wins produced turnover-origin point val…
+  984   767  Restart Share
+ 1618   767  53%
+ 1785   767  47%
+   40   790  Kilmacud Crokes and St Brigid's each recorded a 4-score unanswered run.
+  984   797  Turnover conversion rate
+ 1618   797  23%
+ 1785   797  57%
+  984   827  Longest scoring run
+ 1618   827  4
+ 1785   827  4
+  984   857  Chain rule matches
+ 1618   857  62
+ 1785   857  —
+  984   887  Yellow cards
+ 1618   887  1
+ 1785   887  1
+  984   917  Sin bins
+ 1618   917  1
+ 1785   917  0
+  984   947  Red cards
+ 1618   947  0
+ 1785   947  1
+   50  1004  Kickout Net <−10%pt
+  207  1004  Turnover Concession >40%
+  405  1004  Kilmacud… Run ≥4
+  552  1004  St Brigid's Run ≥4
+ 1896  1060  306 events
+
+===== PAGE 25 (1920x1080) =====
+   24    38  Match Markers
+ 1896    38  25 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   35   101  KICKOUT  2
+  143   101  TURNOVER  4
+  264   101  MOMENTUM  3
+   47   154  KICKOUT
+  125   154  Kilmacud Crokes held 53% Restart Share (40 of 76) — 30% of won kickouts produced restart-origin point value (2 Goals, 10 Points (16 pts)).
+   47   228  KICKOUT
+  125   228  30% of Kilmacud Crokes's kickout wins produced restart-origin point value; 56% of their losses produced restart-origin point value for St Brigid's.
+   47   302  TURNOVER
+  137   302  Kilmacud Crokes won 51% of turnovers (47 of 93); 23% of wins produced turnover-origin point value, against 57% for St Brigid's.
+   47   376  TURNOVER
+  137   376  57% of the turnovers St Brigid's won against Kilmacud Crokes produced turnover-origin point value (2 Goals, 22 Points & 2 Two-Point scores (32 pts) from 46 losses).
+   47   450  TURNOVER
+  137   450  Kilmacud Crokes won 47 turnovers; 24 did not lead to a shot.
+   47   524  TURNOVER
+  137   524  Kilmacud Crokes's turnover conversion was higher in the second half (8 of 19, 42%) than in the first half (3 of 28, 11%).
+   47   598  MOMENTUM
+  142   598  St Brigid's recorded a 4-score unanswered run.
+   47   672  MOMENTUM
+  142   672  Kilmacud Crokes recorded a 4-score unanswered run.
+   47   746  MOMENTUM
+  142   746  St Brigid's recorded more scoring runs than Kilmacud Crokes (9 vs 5).
+ 1896  1060  306 events
+
+===== PAGE 26 (1920x1080) =====
+   24    38  Chain Intelligence
+ 1896    38  26 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40    99  CHAIN PATTERNS
+  670    99  KICKOUT CHAINS
+ 1300    99  SCORING MOMENTUM
+   38   124  PATTERN
+  376   124  Kilmacud…
+  620   124  St Brigid's
+ 1298   124  Kilmacud Crokes — Best Run
+  668   127  Total kickouts
+ 1250   127  76
+   38   147  Kickout Won → Score (rule match)
+  376   147  8
+  620   147  14
+ 1298   147  Consecutive scores
+ 1880   147  4
+  668   153  Won
+ 1250   153  40
+   38   173  Other team lost kickout → Score (rule match)
+  376   173  9
+  620   173  11
+ 1298   173  Period / Segment
+ 1880   173  2H · Seg 6
+  668   179  Lost / Conceded
+ 1250   179  36
+   38   199  Turnover Won → Score (rule match)
+  376   199  16
+  620   199  —
+ 1298   204  St Brigid's — Best Run
+  668   211  Won → Origin score
+ 1250   211  12 (30%)
+   38   225  Turnover Won → Shot
+  376   225  29
+  620   225  —
+ 1298   227  Consecutive scores
+ 1880   227  4
+  668   237  Lost → Origin score against
+ 1250   237  20 (56%)
+   38   251  Free Won → Goal
+  376   251  0
+  620   251  —
+ 1298   253  Period / Segment
+ 1880   253  1H · Seg 1
+  957   282  Possession rate: 53%
+ 1298   288  ALL SCORING RUNS (14 total)
+   38   294  TOTAL RULE MATCHES
+  376   294  62
+  620   294  —
+ 1298   311  Kilmacud…  ×3  2H S6
+ 1880   311  3 pts
+   38   320  (rule match) counts exact rule matches. The origin panels follow the full possession.
+ 1298   337  Kilmacud…  ×4  2H S6
+ 1880   337  4 pts
+   38   338  — not measurable: those wins were logged as the other team's loss or concession.
+ 1298   363  St…  ×3  2H S6
+ 1880   363  3 pts
+   38   374  SCORING RUNS (≥2 consecutive)
+ 1298   389  St…  ×3  2H S5
+ 1880   389  3 pts
+   38   397  Longest run (For)
+  620   397  4 pts
+ 1298   415  Kilmacud…  ×2  2H S5
+ 1880   415  2 pts
+   38   423  Longest run (Opp)
+  620   423  4 pts
+ 1298   441  St…  ×3  2H S5
+ 1880   441  3 pts
+   38   449  Total runs detected
+  620   449  14
+ 1298   467  Kilmacud…  ×2  2H S5
+ 1880   467  2 pts
+ 1298   493  St…  ×3  2H S4
+ 1880   493  3 pts
+ 1298   519  St…  ×3  2H S4
+ 1880   519  3 pts
+  666   543  Origin possessions include 8 placed frees won during kickout-origin possessions (Kilmacud Croke 3 · St Brigid's 5) — the scoring ledger attributes those scores to placed balls.
+ 1298   545  St…  ×2  1H S3
+ 1880   545  2 pts
+ 1298   571  St…  ×2  1H S3
+ 1880   571  2 pts
+  670   586  TURNOVER CHAINS
+ 1298   597  Kilmacud…  ×2  1H S2
+ 1880   597  2 pts
+  668   614  Total turnovers
+ 1250   614  93
+  668   640  Won
+ 1250   640  47
+  668   666  Lost
+ 1250   666  46
+  668   698  Won → Origin score
+ 1250   698  11 (23%)
+  668   724  Won → Shot
+ 1250   724  12 (26%)
+  668   750  Lost → Origin score against
+ 1250   750  26
+ 1896  1060  306 events
+
+===== PAGE 27 (1920x1080) =====
+   24    38  Restart Chain Analysis
+ 1896    38  27 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40    99  KICKOUT POSSESSION OVERVIEW
+  670    99  KILMACUD CROKES — KICKOUT TYPES
+ 1300    99  KICKOUT CHAIN OUTCOMES
+  668   124  OWN KICKOUTS RETAINED
+ 1298   124  CHAIN RULE MATCHES
+   36   146  Kilmacud… 53%
+  618   146  47% St Brigid's
+  668   147  Clean Won
+ 1250   147  15
+ 1298   147  Won → Score (rule match) — Kilmacud…
+ 1880   147  8
+  668   173  Break Won
+ 1250   173  5
+ 1298   173  Won → Score (rule match) — St…
+ 1880   173  14
+   38   177  Total kickout events
+  620   177  76
+  668   199  Foul Won
+ 1250   199  0
+ 1298   199  Other team lost → Score (rule match) — Kilmacu…
+ 1880   199  9
+   38   203  Kilmacud Crokes won
+  620   203  40
+ 1298   225  Other team lost → Score (rule match) — St…
+ 1880   225  11
+   38   229  St Brigid's won
+  620   229  36
+  668   230  OWN KICKOUTS CONCEDED
+  668   253  Clean Lost
+ 1250   253  9
+ 1298   260  RESTART ORIGIN
+   38   263  Won → Score (origin)
+  620   263  12 (30%)
+ 1298   278  Scores that started from a kickout.
+  668   279  Break Lost
+ 1250   279  7
+   38   289  Lost → Score Against (origin)
+  620   289  20 (56%)
+ 1298   301  Kilmacud Crokes — Restart Origin
+ 1880   301  2 Goals, 10 Points (16 pts)
+  668   305  Foul Conceded
+ 1250   305  0
+   38   320  BY HALF
+ 1298   327  Kilmacud Crokes — Shots from Kickout
+ 1880   327  25
+  668   331  Kicked Dead
+ 1250   331  0
+   38   343  1H — Won / Lost
+  620   343  20 / 14
+ 1298   353  St Brigid's — Restart Origin
+ 1880   353  2 Goals, 15 Points & 3 Two-Point scores (27 pts)
+   38   369  1H — Restart Share
+  620   369  59%
+ 1298   388  Kilmacud Crokes POSSESSION OUTCOMES
+   38   395  1H — Won → Score (origin)
+  620   395  5
+ 1298   411  Won kickouts total
+ 1880   411  40
+   38   421  2H — Won / Lost
+  620   421  20 / 22
+ 1298   437  → Generated a shot
+ 1880   437  25 (63%)
+   38   447  2H — Restart Share
+  620   447  48%
+ 1298   463  → Restart Origin
+ 1880   463  2 Goals, 10 Points (16 pts) (30% of wins)
+   38   473  2H — Won → Score (origin)
+  620   473  7
+ 1298   489  → No shot attempt
+ 1880   489  15
+   38   507  Avg secs to score (won Kickout)
+  620   507  30s
+ 1298   523  Avg time to score (Kickout)
+ 1880   523  30s avg
+   38   532  Origin possessions include 8 placed frees won during kickout-origin possessions (Kilmacud Croke 3 · St Brigid's 5) — the scoring ledger attributes those scores to placed balls.
+ 1298   552  OVERALL POSSESSION RATE
+  670   586  ST BRIGID'S — KICKOUT TYPES
+ 1296   592  Kilmacud… 53%
+ 1878   592  47% St…
+  668   611  OWN KICKOUTS RETAINED
+  668   634  Clean Won
+ 1250   634  7
+  668   660  Break Won
+ 1250   660  10
+  668   686  Foul Won
+ 1250   686  0
+  668   717  OWN KICKOUTS CONCEDED
+  668   740  Clean Lost
+ 1250   740  6
+  668   766  Break Lost
+ 1250   766  11
+  668   792  Foul Conceded
+ 1250   792  0
+  668   818  Kicked Dead
+ 1250   818  0
+ 1896  1060  306 events
+
+===== PAGE 28 (1920x1080) =====
+   24    38  Turnover Chain Analysis
+ 1896    38  28 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40    99  KILMACUD CROKES — TURNOVER ATTACK
+  670    99  ST BRIGID'S — TURNOVER ATTACK
+ 1300    99  TURNOVER PUNISHMENT SUMMARY
+ 1298   124  ORIGIN SCORES FROM WON TURNOVERS
+   38   127  Turnovers won / gained
+  620   127  47
+  668   127  Turnovers won / gained
+ 1250   127  46
+   38   153  → Origin score
+  620   153  11 (23%)
+  668   153  → Origin score
+ 1250   153  26 (57%)
+ 1296   160  Kilmacud… 30%
+ 1878   160  70% St…
+   38   179  → Shot / wide, no score
+  620   179  12 (26%)
+  668   179  → Shot / wide, no score
+ 1250   179  6 (13%)
+ 1298   191  Kilmacud Crokes — Won → Origin score %
+ 1880   191  23%
+   38   205  → No shot attempt
+  620   205  24 (51%)
+  668   205  → No shot attempt
+ 1250   205  14 (30%)
+ 1298   217  St Brigid's — Won → Origin score %
+ 1880   217  57%
+   38   231  → Attack immediately lost
+  620   231  23 (49%)
+  668   231  → Attack immediately lost
+ 1250   231  0 (0%)
+ 1298   243  Kilmacud Crokes — Won → Shot %
+ 1880   243  49%
+   38   257  Avg time to outcome
+  620   257  15s
+  668   257  Avg time to outcome
+ 1250   257  25s
+ 1298   269  St Brigid's — Won → Shot %
+ 1880   269  70%
+   38   288  BY HALF
+  668   288  BY HALF
+ 1298   302  CHAIN RULE MATCHES
+   38   311  1H — Turnovers won
+  620   311  28
+  668   311  1H — Turnovers won
+ 1250   311  32
+ 1298   325  T/O Won → Score (rule match) — Kilmacud…
+ 1880   325  16
+   38   337  1H — Scored
+  620   337  3 (11%)
+  668   337  1H — Scored
+ 1250   337  16 (50%)
+ 1298   351  T/O Won → Score (rule match) — St…
+ 1880   351  —
+   38   363  2H — Turnovers won
+  620   363  19
+  668   363  2H — Turnovers won
+ 1250   363  14
+ 1298   377  T/O Won → Shot   (Kilmacud…)
+ 1880   377  29
+   38   389  2H — Scored
+  620   389  8 (42%)
+  668   389  2H — Scored
+ 1250   389  10 (71%)
+ 1298   403  T/O Won → Shot   (St…)
+ 1880   403  —
+   38   420  HOW TURNOVERS WERE WON / GAINED
+  668   420  HOW TURNOVERS WERE WON / GAINED
+ 1298   436  DAMAGE CONCEDED FROM TURNOVERS LOST
+   38   443  Tackle / Press
+  620   443  18
+  668   443  Tackle / Press
+ 1250   443  12
+ 1298   459  Kilmacud… lost → OPP scored
+ 1880   459  26 (57%)
+   38   469  Swarm / Intercept
+  620   469  0
+  668   469  Swarm / Intercept
+ 1250   469  0
+ 1298   485  Kilmacud… lost → OPP shot
+ 1880   485  32 (70%)
+   38   495  Opposition unforced error
+  620   495  0
+  668   495  Opposition unforced error
+ 1250   495  0
+ 1298   511  St Brigid's lost → FOR scored
+ 1880   511  —
+   38   521  Opposition slack pass
+  620   521  0
+  668   521  Opposition slack pass
+ 1250   521  0
+ 1298   537  St Brigid's lost → FOR shot
+ 1880   537  —
+ 1298   570  NET TURNOVER PRESSURE
+ 1298   593  Score differential from T/Os
+ 1880   593  -15 St…
+ 1298   619  Shot differential from T/Os
+ 1880   619  -9 St…
+ 1298   652  TURNOVER OUTCOMES (BOTH TEAMS)
+ 1298   675  Total turnovers gained
+ 1880   675  93
+ 1298   701  Led to score
+ 1880   701  37 (40%)
+ 1298   727  Led to shot (no score)
+ 1880   727  18 (19%)
+ 1298   753  Attack immediately lost
+ 1880   753  23 (25%)
+ 1298   779  No shot generated
+ 1880   779  38 (41%)
+ 1298   818  POSSESSION CHAIN INSIGHTS
+ 1298   841  • Restarts Won → Scores: 12 of 40 won restarts produced restart-origin point value (2 Goals, 10 Points (16 pts), 30%)
+ 1298   867  • Conceded restarts produced restart-origin point value for the opposition (2 Goals, 15 Points & 3 Two-Point scores (27 pts)) in 56% of cases (20 of 36)
+ 1298   893  • Turnover wins produced turnover-origin point value (9 Points & 2 Two-Point scores (13 pts), 23% conversion)
+ 1896  1060  306 events
+
+===== PAGE 29 (1920x1080) =====
+   24    38  Scoring Momentum
+ 1896    38  29 / 29
+ 1847    59  CHAIN
+   24    62  Kilmacud Crokes v St Brigid's
+ 1896    62  PáircVision
+   40    99  UNANSWERED SCORING RUNS (≥2 CONSECUTIVE)
+  670    99  FIRST HALF — SCORING RUNS
+ 1300    99  RUN QUALITY & SEGMENT DETAIL
+   38   124  TEAM  ×SCORES  WHEN  SCORE VALUE
+ 1298   124  BEST SCORING RUNS
+  668   127  Kilmacud Crokes runs (≥2)
+ 1250   127  1
+   38   147  St Brigid's
+  214   147  ×4
+  284   147  1H 1'–6'
+  620   147  0-04 (4)
+ 1298   147  Kilmacud Crokes longest
+ 1880   147  ×4  2H 24'–27'  1-03 (6)
+  668   153  Kilmacud Crokes run-scores
+ 1250   153  2
+   38   173  St Brigid's
+  214   173  ×2
+  284   173  1H 12'
+  620   173  0-02 (2)
+ 1298   173  St Brigid's longest
+ 1880   173  ×4  1H 1'–6'  0-04 (4)
+  668   179  St Brigid's runs (≥2)
+ 1250   179  4
+   38   199  Kilmacud…
+  214   199  ×2
+  284   199  1H 16'–18'
+  620   199  1-01 (4)
+ 1298   199  Kilmacud Crokes total runs
+ 1880   199  5
+  668   205  St Brigid's run-scores
+ 1250   205  10
+   38   225  St Brigid's
+  214   225  ×2
+  284   225  1H 24'–26'
+  620   225  0-02 (2)
+ 1298   225  St Brigid's total runs
+ 1880   225  9
+  668   237  Longest 1H run
+ 1250   237  St Brigid's ×4  1H 1'–6'
+   38   251  St Brigid's
+  214   251  ×2
+  284   251  1H 33'–2H 1'
+  620   251  0-03 (3)
+ 1298   251  Kilmacud Crokes total run-scores
+ 1880   251  13
+  668   263  1H momentum edge
+ 1250   263  St Brigid's
+   38   277  St Brigid's
+  214   277  ×3
+  284   277  2H 4'–6'
+  620   277  0-03 (3)
+ 1298   277  St Brigid's total run-scores
+ 1880   277  25
+  668   295  1H late burst (seg 3)
+ 1250   295  Kilmacud…: 0 pts  St…: 4 pts
+   38   303  St Brigid's
+  214   303  ×3
+  284   303  2H 8'–10'
+  620   303  0-04 (4)
+ 1298   303  Net run-score advantage
+ 1880   303  -12 St…
+   38   329  Kilmacud…
+  214   329  ×2
+  284   329  2H 11'–12'
+  620   329  0-02 (2)
+ 1298   336  RESPONSE AFTER OPPOSITION RUN
+   38   355  St Brigid's
+  214   355  ×3
+  284   355  2H 13'–15'
+  620   355  0-05 (5)
+ 1298   359  Kilmacud Crokes avg response
+ 1880   359  1m 23s
+   38   381  Kilmacud…
+  214   381  ×2
+  284   381  2H 15'–16'
+  620   381  0-03 (3)
+ 1298   385  Kilmacud Crokes fastest response
+ 1880   385  30s
+   38   407  St Brigid's
+  214   407  ×3
+  284   407  2H 17'–18'
+  620   407  0-03 (3)
+ 1298   411  St Brigid's avg response
+ 1880   411  2m 32s
+   38   433  St Brigid's
+  214   433  ×3
+  284   433  2H 22'–24'
+  620   433  0-04 (4)
+ 1298   437  St Brigid's fastest response
+ 1880   437  25s
+   38   459  Kilmacud…
+  214   459  ×4
+  284   459  2H 24'–27'
+  620   459  1-03 (6)
+ 1298   470  RUN-SCORES BY SEGMENT
+   38   485  Kilmacud…
+  214   485  ×3
+  284   485  2H 29'–32'
+  620   485  0-04 (4)
+ 1298   493  1H Early (0–10)
+ 1880   493  St… +4
+ 1298   519  1H Mid   (11–20)
+ 1880   519  Level
+ 1298   545  1H Late  (21–30+)
+ 1880   545  St… +4
+ 1298   571  2H Early (0–10)
+ 1880   571  St… +6
+  670   586  SECOND HALF — SCORING RUNS
+ 1298   597  2H Mid   (11–20)
+ 1880   597  St… +2
+  668   614  Kilmacud Crokes runs (≥2)
+ 1250   614  4
+ 1298   623  2H Late  (21–30+)
+ 1880   623  Kilmacud… +4
+  668   640  Kilmacud Crokes run-scores
+ 1250   640  11
+  668   666  St Brigid's runs (≥2)
+ 1250   666  5
+  668   692  St Brigid's run-scores
+ 1250   692  15
+  668   724  Longest 2H run
+ 1250   724  Kilmacud… ×4  2H 24'–27'
+  668   750  2H momentum edge
+ 1250   750  St Brigid's
+  668   782  2H late burst (seg 6)
+ 1250   782  Kilmacud…: 7 pts  St…: 3 pts
+ 1896  1060  306 events

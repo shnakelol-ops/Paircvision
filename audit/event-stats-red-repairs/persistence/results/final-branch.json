@@ -1,0 +1,49 @@
+{
+ "f1_saveAndFinish_archiveCopyFails": {
+  "shown": {
+   "text": "Match saved. Match Stats copy not updated — its storage is corrupted.",
+   "colour": "rgb(248, 81, 73)"
+  },
+  "stillOnScreenBeforeTimeout": true,
+  "leftToHomeAfter3s": true,
+  "stored": {
+   "state": "FULL_TIME",
+   "events": 3,
+   "score": "Ballyboden 0-03 (3) v Na Fianna 0-00 (0)"
+  },
+  "archiveUnchanged": true,
+  "reviewOpens": true,
+  "reviewHead": "← Event Stats | Review | Event | Ballyboden | v | Na Fianna | Ballyboden 0-03 (3) v Na Fianna 0-00 (0) | Gaelic Football | League | Unknown venue | Oct 26, 2026 | 3 events | Event Map | 3 events · tap"
+ },
+ "f2_storageFull_backupThenDeleteResumesSaving": {
+  "fillers": 12,
+  "onFail": {
+   "text": "Save failed — storage full. Back up and delete old matches.",
+   "colour": "rgb(248, 81, 73)"
+  },
+  "stripWhileFull": {
+   "text": "Save failed — storage full. Back up and delete old matches.",
+   "colour": "rgb(248, 81, 73)"
+  },
+  "storedWhileFull": 1,
+  "eventsInApp": 4,
+  "backupStatus": "Downloaded paircvision-backup-2026-10-26-1400.pvbackup. This file is now on your device wherever your browser saves downloads — PáircVision cannot confirm it stays there, so store or share it somewhere safe.",
+  "backupHasLiveMatch": true,
+  "backupMatches": 13,
+  "noticeBeforeDelete": "Storage nearly full — back up and delete old matches.",
+  "deletedOne": true,
+  "seededRemaining": 11,
+  "onRecovery": {
+   "text": "✓ Event saved",
+   "colour": "rgb(46, 160, 67)"
+  },
+  "stripAfter": null,
+  "liveEventsStored": 4
+ },
+ "f3_storageFull_leavingLiveScreenLosesUnsavedEvents": {
+  "eventsInApp": 3,
+  "eventsStored": 1,
+  "unsavedLostOnLeaving": 2,
+  "promptedBeforeLeaving": false
+ }
+}
