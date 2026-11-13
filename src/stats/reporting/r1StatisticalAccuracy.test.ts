@@ -23,6 +23,7 @@ import {
   makeKickoutChainPage,
   makeMomentumRunsPage,
   makeOppositionOriginPage,
+  makePlayerContributionsPage,
   OPP_RESTART_ORIGIN_HEADLINE,
   makeRestartVisualPage,
   makeShotEfficiencyPage,
@@ -315,3 +316,70 @@ describe("Two-way split bars total 100%", () => {
     expect(after(t, "Na Fianna Won")).toBe("7 (87%)");
   });
 });
+
+// ─── Sport-aware report labels (presentation only) ─────────────────────────
+
+describe("Hurling and camogie reports use puckout wording and hide football's 2-Point Profile", () => {
+  const stored = [
+    tap(60, { familyId: "RESTART", tileLabel: "Clean", teamSide: "FOR", restartOwner: "FOR", playerNumber: 8 }),
+    tap(80, { familyId: "POINT", tileLabel: "Play", teamSide: "FOR", playerNumber: 11 }),
+    tap(200, { familyId: "RESTART", tileLabel: "Break", teamSide: "OPP", restartOwner: "OPP" }),
+    tap(230, { familyId: "POINT", tileLabel: "Free", teamSide: "OPP" }),
+    tap(400, { familyId: "WIDE", tileLabel: "Play", teamSide: "FOR", playerNumber: 13 }),
+  ];
+  const TWO_POINT_BLOCK = ["2-POINT PROFILE", "Two-point scores", "45+2 Scores", "Total 2PT Scores", "Total 2PT Pts Value"];
+  const upper = (t: readonly string[]) => t.map((x) => x.toUpperCase());
+  /** Every drawn text that is a figure (digits, %, dashes) — the page's numbers, in drawing order. */
+  const figures = (t: readonly string[]) => t.filter((x) => /^[\d\s.%/()+\-—–|]+$/.test(x) && x !== "45" && x !== "65"); // "45" / "65" is the source-row label
+
+  for (const sport of ["gaelic", "ladies_football"] as PitchSport[]) {
+    it(`${sport}: Shot Efficiency keeps the 2-Point Profile, labelled "Two-point scores"`, () => {
+      const { events, report } = input(stored);
+      const eff = texts(makeShotEfficiencyPage(events, report, HOME, AWAY, 1, 1, sport));
+      for (const label of TWO_POINT_BLOCK) expect(upper(eff).filter((x) => x === label.toUpperCase())).toHaveLength(2); // one per team column
+      expect(eff).not.toContain("TWO_POINTER Scores");
+    });
+    it(`${sport}: restart labels stay "Kickout"`, () => {
+      const { events, report } = input(stored);
+      expect(texts(makeKickoutChainPage(report, HOME, AWAY, 1, 1, sport))).toContain(`${HOME} — Shots from Kickout`);
+      expect(texts(makePlayerContributionsPage(events, report, HOME, AWAY, 1, 1, undefined, undefined, sport))).toContain("KO W-L");
+    });
+  }
+
+  for (const sport of ["hurling", "camogie"] as PitchSport[]) {
+    it(`${sport}: Shot Efficiency has no 2-Point Profile, and every other figure is unchanged`, () => {
+      const { events, report } = input(stored);
+      const eff = texts(makeShotEfficiencyPage(events, report, HOME, AWAY, 1, 1, sport));
+      for (const label of [...TWO_POINT_BLOCK, "TWO_POINTER Scores"]) expect(upper(eff)).not.toContain(label.toUpperCase());
+      expect(eff.some((x) => /2PT|two-point|2-point/i.test(x))).toBe(false);
+      // The sections after the removed block are still drawn.
+      expect(upper(eff).filter((x) => x === "FREE CONVERSION")).toHaveLength(2);
+      // Same figures as football once football's 2-Point Profile rows (4 per team, all 0 here) are taken out.
+      const football = texts(makeShotEfficiencyPage(events, report, HOME, AWAY, 1, 1, "gaelic"));
+      const footballFigures = figures(football);
+      const blockValues = 8; // 4 rows × 2 teams
+      expect(figures(eff)).toHaveLength(footballFigures.length - blockValues);
+      expect([...figures(eff)].sort()).toEqual(removeN([...footballFigures].sort(), "0", blockValues));
+    });
+    it(`${sport}: restart labels say "Puckout"`, () => {
+      const { events, report } = input(stored);
+      const chain = texts(makeKickoutChainPage(report, HOME, AWAY, 1, 1, sport));
+      expect(chain).toContain(`${HOME} — Shots from Puckout`);
+      expect(chain.some((x) => /kickout/i.test(x))).toBe(false);
+      const contributions = texts(makePlayerContributionsPage(events, report, HOME, AWAY, 1, 1, undefined, undefined, sport));
+      expect(contributions).toContain("PO W-L");
+      expect(contributions).not.toContain("KO W-L");
+    });
+  }
+});
+
+/** `sorted` with `n` occurrences of `value` removed. */
+function removeN(sorted: readonly string[], value: string, n: number): string[] {
+  const out = [...sorted];
+  for (let i = 0; i < n; i++) {
+    const at = out.indexOf(value);
+    if (at < 0) throw new Error(`expected ${n} × "${value}"`);
+    out.splice(at, 1);
+  }
+  return out;
+}
