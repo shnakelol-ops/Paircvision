@@ -27,7 +27,8 @@
 // picker, Squad Setup and the header icons now all draw the one shared
 // ProTaggerJersey, whose look comes from the team's kit (default: plain,
 // secondary sleeves, secondary collar — the closest match to the old
-// picker mark). `livePicker` now controls the NUMBER treatment only. The
+// picker mark). Numbers now sit centred below the jersey with one shared
+// treatment, so the picker-only `livePicker` number flag is retired. The
 // geometry assertions below were updated accordingly; every behaviour
 // guard (sizes, hit areas, discipline, selection, formation) is unchanged.
 import { describe, expect, it } from "vitest";
@@ -43,11 +44,11 @@ const pickerCodeOnly = pickerSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]
 const tileCodeOnly = tileSource.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("ProTaggerPlayerPicker — requests the simplified live-tagging jersey (req. 1)", () => {
-  it("both formation and bench tiles pass the livePicker prop", () => {
+  it("Jersey Designer V2: formation and bench tiles no longer pass a picker-only flag — the picker shows the same marker as Squad Setup", () => {
     const jerseyTileCalls = pickerSource.match(/<ProTaggerLineupJerseyTile[\s\S]*?\/>/g) ?? [];
     expect(jerseyTileCalls.length).toBeGreaterThanOrEqual(1);
     for (const call of jerseyTileCalls) {
-      expect(call).toMatch(/\blivePicker\b/);
+      expect(call).not.toMatch(/\blivePicker\b/);
     }
   });
 });
@@ -80,43 +81,39 @@ describe("ProTaggerLineupJerseyTile — one shared V2 jersey drawing (req. 2, 3,
 });
 
 describe("ProTaggerLineupJerseyTile — live-picker number treatment (req. 5, 6)", () => {
-  it("the livePicker number outline has no WebkitTextStroke — clean white text, no heavy outline", () => {
-    const block = tileSource.match(/numberOutlineLivePicker:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    expect(block).not.toMatch(/WebkitTextStroke/);
+  it("the number sits below the jersey, so its outline is a subtle thin stroke rather than a heavy on-shirt outline", () => {
+    const block = tileSource.match(/numberText:\s*\{([\s\S]*?)\n {2}\},/)![1];
+    expect(block).toMatch(/WebkitTextStroke:\s*["']0\.5px/);
   });
 
-  it("the livePicker number outline uses a single shadow, not the previous multi-layer stack", () => {
-    const block = tileSource.match(/numberOutlineLivePicker:\s*\{([\s\S]*?)\n {2}\},/)![1];
+  it("the number uses a single shadow, not the previous multi-layer stack", () => {
+    const block = tileSource.match(/numberText:\s*\{([\s\S]*?)\n {2}\},/)![1];
     const shadowMatch = block.match(/textShadow:\s*["']([^"']+)["']/);
     expect(shadowMatch).not.toBeNull();
-    // Strip the rgba(...) argument list before checking for a top-level
-    // comma — rgba() itself contains commas, but a multi-layer shadow
-    // stack (like numberOutlineDefault's) joins whole "offset offset blur
-    // colour" layers with a comma OUTSIDE any rgba().
     const withoutColourArgs = shadowMatch![1].replace(/rgba?\([^)]*\)/g, "rgba(...)");
     expect(withoutColourArgs).not.toContain(",");
   });
 
-  it("the number itself is still white, bold, and centred (unchanged base numberText style)", () => {
+  it("the number itself is still white, bold, and centred (now below the jersey)", () => {
     expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?color:\s*["']#ffffff["']/);
     expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?fontWeight:\s*900/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?left:\s*["']50%["']/);
-    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?transform:\s*["']translate\(-50%, -50%\)["']/);
+    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?textAlign:\s*["']center["']/);
   });
 
-  it("livePicker's outline takes priority over numberCrisp when both could apply", () => {
-    expect(tileSource).toMatch(/livePicker\s*\n?\s*\?\s*S\.numberOutlineLivePicker/);
+  it("there is exactly one number treatment — no per-caller outline variants remain", () => {
+    expect(tileSource).not.toMatch(/numberOutline\w+/);
   });
 });
 
-describe("Default Squad Setup rendering is unchanged unless livePicker is explicitly requested (req. 7, 8)", () => {
+describe("Squad Setup and the picker share one marker (req. 7, 8)", () => {
   it("ProTaggerLineupFormation.tsx (Squad Setup's own caller) passes neither livePicker nor numberCrisp", () => {
     expect(formationSource).not.toMatch(/livePicker/);
     expect(formationSource).not.toMatch(/numberCrisp/);
   });
 
-  it("the tile uses numberOutlineDefault whenever livePicker and numberCrisp are falsy (on a dark kit)", () => {
-    expect(tileSource).toMatch(/livePicker\s*\?\s*S\.numberOutlineLivePicker\s*:\s*numberCrisp\s*\?\s*S\.numberOutlineCrisp\s*:\s*S\.numberOutlineDefault/);
+  it("Squad Setup and the picker render the identical marker: neither passes a number-treatment flag", () => {
+    expect(formationSource).not.toMatch(/livePicker|numberCrisp/);
+    expect(pickerSource).not.toMatch(/livePicker|numberCrisp/);
   });
 
   it("ProTaggerMiniJersey is a thin wrapper around the same shared ProTaggerJersey — no separate jersey art", () => {
@@ -124,10 +121,9 @@ describe("Default Squad Setup rendering is unchanged unless livePicker is explic
     expect(miniJerseySource).not.toMatch(/<path/);
   });
 
-  it("the default outline (numberOutlineDefault) values are completely untouched by this pass", () => {
-    const defaultBlock = tileSource.match(/numberOutlineDefault:\s*\{([\s\S]*?)\n {2}\},/)![1];
-    expect(defaultBlock).toMatch(/WebkitTextStroke:\s*["']0\.75px rgba\(6, 10, 16, 0\.9\)["']/);
-    expect(defaultBlock.split(",").length).toBeGreaterThanOrEqual(5); // still the 5-layer shadow stack
+  it("number font sizes are untouched (Squad Setup 13px, picker 14px)", () => {
+    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 13/);
+    expect(pickerSource).toMatch(/FORMATION_NUMBER_FONT_SIZE = 14/);
   });
 });
 

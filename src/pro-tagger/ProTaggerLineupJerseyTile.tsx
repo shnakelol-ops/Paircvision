@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { ProTaggerJersey } from "./ProTaggerJersey";
-import { DARK_NUMBER_INK, prefersDarkNumber, type JerseyKit } from "./jersey-kit";
+import type { JerseyKit } from "./jersey-kit";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 interface Props {
@@ -20,52 +20,25 @@ interface Props {
    */
   numberFontSize?: number;
   /**
-   * Swaps the default heavier outline (0.75px stroke + a 5-layer shadow
-   * stack: four hard 1px-offset diagonal copies plus one blurred shadow)
-   * for a lighter, single-shadow treatment with a thinner stroke. At very
-   * small sizes (~13px, e.g. the live player picker) the default stack's
-   * combined ink is close in width to a thin numeral's own stroke (the "1"
-   * in 10/11/13/14/15 especially), reading as soft/blurry rather than
-   * crisp. Omit (or false) to keep today's exact default treatment —
-   * Squad Setup's lineup tile passes nothing here and is unaffected.
-   */
-  numberCrisp?: boolean;
-  /**
-   * Number treatment ONLY: the live player picker's minimal outline (no
-   * stroke, one soft shadow) instead of numberCrisp/numberOutlineDefault.
-   * The jersey drawing itself is the same shared ProTaggerJersey for every
-   * caller; its look comes from `kit`. Squad Setup passes nothing here.
-   */
-  livePicker?: boolean;
-  /**
    * Jersey Designer V2 kit (pattern, sleeve and collar colour). Omitted or
    * invalid renders DEFAULT_JERSEY_KIT — see jersey-kit.ts.
    */
   kit?: JerseyKit | null;
 }
 
-// Read-only jersey-first tile for the Squad Setup lineup summary
-// (ProTaggerLineupFormation) and the Live Player Picker. Composes the shared
-// ProTaggerJersey rather than duplicating jersey art — this file only adds
-// the number/name overlay. No taps, no editing: player names are still changed exclusively
-// through ProTaggerSquadScreen's existing "Edit Player Names" list, which
-// this tile never reads from or writes to.
+// Read-only jersey-first player marker for the Squad Setup lineup summary
+// (ProTaggerLineupFormation) and the Live Player Picker: the shared
+// ProTaggerJersey, the player's number centred directly below it, then the
+// optional name plate. No taps, no editing here: the picker wraps the whole
+// marker in one button, so jersey and number select together. Player names
+// are still changed only through ProTaggerSquadScreen's "Edit Player Names".
 //
-// Visual hierarchy is jersey -> number -> name, matching a real team sheet:
-// the jersey is the dominant shape (enlarged here, not shrunk to make room
-// for a badge), and the number sits directly on the jersey as bold,
-// high-contrast text — a white fill with a dark outline, the standard way a
-// printed jersey number stays legible against any shirt colour, not a
-// solid circular badge sitting on top of it (that read as a Tactical
-// Slate/player-token marker, not a team sheet, and is deliberately not
-// used here).
-//
-// Jersey Designer V2 number ink: on a light primary colour (where a white
-// number would fall below WCAG's 3:1 — see prefersDarkNumber) the number
-// turns dark and its outline becomes a soft light halo instead of the dark
-// stroke, which would only thicken dark digits. Dark kits keep today's
-// white number and outline exactly. Size and position never change.
-export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, numberCrisp, livePicker, kit }: Props) {
+// Visual hierarchy is jersey -> number -> name, matching a real team sheet.
+// The number sits on the pitch, not on the shirt, so it reads the same on
+// every kit and pattern: bold white with a subtle dark outline, the one
+// treatment for Squads and the picker alike. No badge or shape behind it
+// (a badge read as a Tactical Slate player token, not a team sheet).
+export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, kit }: Props) {
   if (!player) {
     return (
       <div style={S.tile}>
@@ -83,21 +56,12 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
   // number to shrink with it (see ProTaggerLineupFormation.tsx) pass an
   // explicit numberFontSize instead, which wins over this default.
   const resolvedNumberFontSize = numberFontSize ?? Math.max(15, Math.round(size * 0.5));
-  const darkNumber = prefersDarkNumber(primary);
-  const outlineStyle: CSSProperties = darkNumber
-    ? S.numberOutlineOnLight
-    : livePicker
-      ? S.numberOutlineLivePicker
-      : numberCrisp
-        ? S.numberOutlineCrisp
-        : S.numberOutlineDefault;
-  const inkStyle: CSSProperties = darkNumber ? { color: DARK_NUMBER_INK } : {};
   return (
     <div style={S.tile}>
       <div style={{ ...S.jerseyWrap, width: size }}>
         <ProTaggerJersey primary={primary} secondary={secondary} kit={kit} size={size} />
-        <span style={{ ...S.numberText, ...outlineStyle, ...inkStyle, fontSize: resolvedNumberFontSize }}>{player.number}</span>
       </div>
+      <span style={{ ...S.numberText, fontSize: resolvedNumberFontSize }}>{player.number}</span>
       {name && <span style={S.name}>{name}</span>}
     </div>
   );
@@ -108,7 +72,7 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 3,
+    gap: 2,
     width: 76,
     flexShrink: 0,
   },
@@ -124,63 +88,21 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     filter: "drop-shadow(0 0 2px rgba(4, 8, 14, 0.55)) drop-shadow(0 1px 3px rgba(4, 8, 14, 0.5))",
   },
-  // Bold white number — no shape behind it, just an outline (either variant
-  // below) to keep it high-contrast against any user-chosen jersey primary
-  // colour without covering the jersey itself the way a solid badge did.
-  // top moved down from 44% to 56% (of the jersey's own rendered height) to
-  // pull the number off the collar/shoulders and into the torso — the same
-  // one rule for every jersey size and every number, one or two digits.
+  // Player number, centred below the jersey. Bold white with a subtle dark
+  // outline (a thin stroke plus one soft shadow) so it reads on the green
+  // pitch and on the picker's dark bench area alike, without the heavier
+  // multi-layer outline an on-shirt number needed.
   numberText: {
-    position: "absolute",
-    top: "56%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
+    display: "block",
     fontWeight: 900,
     color: "#ffffff",
     fontVariantNumeric: "tabular-nums",
     letterSpacing: "-0.3px",
     lineHeight: 1,
-    pointerEvents: "none",
-  },
-  // Default outline (WebkitTextStroke, with a multi-directional text-shadow
-  // fallback for browsers without stroke support) — unchanged since the
-  // last tuning pass. Still used everywhere numberCrisp isn't explicitly
-  // requested, so Squad Setup's lineup tile renders byte-identically.
-  numberOutlineDefault: {
-    WebkitTextStroke: "0.75px rgba(6, 10, 16, 0.9)",
-    textShadow: [
-      "0 1px 1px rgba(0,0,0,0.6)",
-      "-1px -1px 0 rgba(6,10,16,0.8)",
-      "1px -1px 0 rgba(6,10,16,0.8)",
-      "-1px 1px 0 rgba(6,10,16,0.8)",
-      "1px 1px 0 rgba(6,10,16,0.8)",
-    ].join(", "),
-  },
-  // Lighter outline for very small/dense renderings (the live player
-  // picker): a thinner stroke and a single, tighter shadow instead of the
-  // default's four stacked hard-offset copies plus a blurred one. Modern
-  // Android browsers render -webkit-text-stroke as a crisp vector outline,
-  // so dropping the redundant shadow stack (built as a fallback for
-  // browsers without stroke support) removes ink that was making thin
-  // digits like the "1" in 10/11/13/14/15 look like it was being eaten by
-  // its own outline, without losing edge contrast entirely.
-  numberOutlineCrisp: {
+    textAlign: "center" as const,
     WebkitTextStroke: "0.5px rgba(6, 10, 16, 0.85)",
-    textShadow: "0 1px 1px rgba(0,0,0,0.5)",
-  },
-  // Live-tagging jersey experiment: no stroke at all — a clean white
-  // number with only one soft shadow for baseline contrast against an
-  // arbitrary (including pale) primary jersey colour. This is testing
-  // whether the uninterrupted primary chest plus a clean number (no
-  // outline "eating" the glyph) reads better than either outline variant
-  // above at live-picker scale.
-  numberOutlineLivePicker: {
-    textShadow: "0 1px 2px rgba(0,0,0,0.55)",
-  },
-  // Dark number on a light kit (any caller): no stroke, which would only
-  // thicken dark digits, and a soft light halo for edge contrast instead.
-  numberOutlineOnLight: {
-    textShadow: "0 0 2px rgba(255,255,255,0.7)",
+    textShadow: "0 1px 2px rgba(0, 0, 0, 0.7)",
+    pointerEvents: "none",
   },
   // A compact PáircVision name plate — a translucent navy surface just big
   // enough for the text, not a card: no border, no glow, restrained corner

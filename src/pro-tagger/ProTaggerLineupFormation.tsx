@@ -32,6 +32,13 @@ const STARTER_NUMBER_FONT_SIZE = 13;
 const SUB_JERSEY_SIZE = 22;
 const SUB_NUMBER_FONT_SIZE = 13;
 
+// Player numbers sit below the jersey (Jersey Designer V2), so a tile is
+// taller than its jersey. Each slot is anchored on the JERSEY's centre, not
+// the whole tile's, so every shirt stays exactly on its formation point and
+// the number and optional name hang below it — the same for named and
+// unnamed players. Height follows ProTaggerJersey's 20:22 aspect ratio.
+const STARTER_JERSEY_HALF_HEIGHT = Math.round((STARTER_JERSEY_SIZE * 22) / 20) / 2;
+
 export type LineupSlots = {
   starters: ProTaggerSquadPlayer[];
   subs: ProTaggerSquadPlayer[];
@@ -90,7 +97,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary, kit }: P
           return (
             <div
               key={p?.id ?? `empty-${slot}`}
-              style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%` }}
+              style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%`, transform: `translate(-50%, -${STARTER_JERSEY_HALF_HEIGHT}px)` }}
             >
               <ProTaggerLineupJerseyTile
                 player={p} primary={primary} secondary={secondary} kit={kit}

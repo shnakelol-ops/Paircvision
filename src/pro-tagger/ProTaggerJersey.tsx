@@ -32,14 +32,18 @@ const CUFF_PATHS = [
 
 const COLLAR_PATH = "M14,2.6 Q20,6.4 26,2.6 L27.4,3.2 Q20,9.4 12.6,3.2 Z";
 
-// Pattern layers in the secondary colour. All sit clear of, or behind, the
-// number (which is centred at 56% of the height): the Chest V ends above
-// it, the Hoop sits on the chest above it, and only the centre stripe runs
-// behind it.
+// Pattern layers in the secondary colour. Player numbers sit below the
+// shirt, so the whole chest is free for the pattern. Each is chosen to stay
+// distinguishable at the real 22-26px size: the Hoop is one narrow band
+// across mid-chest, below the sleeves so it never merges into them; the
+// Chest Band a broad panel across the middle third (nearly three times the
+// Hoop's depth); and Hoops four evenly spaced bands down the body.
 export const JERSEY_PATTERN_PATHS: Record<JerseyPattern, string | null> = {
   plain: null,
   chestV: "M7.6,8.5 L20,19.5 L32.4,8.5 L32.4,13.2 L20,24.2 L7.6,13.2 Z",
-  hoop: "M0,10.6 H40 V16.6 H0 Z",
+  chestBand: "M0,14 H40 V29 H0 Z",
+  hoop: "M0,18.5 H40 V24 H0 Z",
+  hoops: "M0,9 H40 V13.5 H0 Z M0,18 H40 V22.5 H0 Z M0,27 H40 V31.5 H0 Z M0,36 H40 V40.5 H0 Z",
   stripes: "M10.4,0 h3.6 v44 h-3.6 Z M18.2,0 h3.6 v44 h-3.6 Z M26,0 h3.6 v44 h-3.6 Z",
 };
 

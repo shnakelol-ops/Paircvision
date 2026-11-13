@@ -348,7 +348,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart, crestBackend, c
               </button>
             </div>
 
-            {/* Jersey Design panel — pattern buttons drawn in this team's own
+            {/* Jersey Design panel — six pattern buttons drawn in this team's own
                 colours, plus sleeve and collar colour. The Starting XV below
                 is the live preview. Presentation only. */}
             {showKitDesigner && (
@@ -792,7 +792,9 @@ const S: Record<string, CSSProperties> = {
   },
   patternGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    // Six patterns as two rows of three: wide enough for "Chest Band" at
+    // 360px phone widths, and every button stays well above 48px tall.
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 6,
   },
   patternBtn: {

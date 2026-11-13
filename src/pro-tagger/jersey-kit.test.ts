@@ -1,11 +1,9 @@
-// Jersey Designer V2 — kit model: safe defaults for every stored shape and
-// automatic number contrast.
+// Jersey Designer V2 — kit model: safe defaults for every stored shape.
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_JERSEY_KIT,
   JERSEY_PATTERNS,
-  prefersDarkNumber,
-  relativeLuminance,
+  JERSEY_PATTERN_LABEL,
   resolveJerseyKit,
   storedJerseyKit,
 } from "./jersey-kit";
@@ -15,14 +13,19 @@ describe("DEFAULT_JERSEY_KIT", () => {
     expect(DEFAULT_JERSEY_KIT).toEqual({ pattern: "plain", sleeves: "secondary", collar: "secondary" });
   });
 
-  it("offers exactly the four approved patterns", () => {
-    expect(JERSEY_PATTERNS).toEqual(["plain", "chestV", "hoop", "stripes"]);
+  it("offers exactly the six approved patterns, with their labels", () => {
+    expect(JERSEY_PATTERNS).toEqual(["plain", "chestV", "chestBand", "hoop", "hoops", "stripes"]);
+    expect(JERSEY_PATTERNS.map((p) => JERSEY_PATTERN_LABEL[p])).toEqual(["Plain", "Chest V", "Chest Band", "Hoop", "Hoops", "Stripes"]);
   });
 });
 
 describe("resolveJerseyKit — never throws, always renderable", () => {
   it.each([undefined, null, "", "hoop", 42, true, [], () => 1])("non-object %s renders the default kit", (raw) => {
     expect(resolveJerseyKit(raw)).toEqual(DEFAULT_JERSEY_KIT);
+  });
+
+  it.each(["chestBand", "hoops"] as const)("keeps the new %s pattern", (pattern) => {
+    expect(resolveJerseyKit({ pattern, sleeves: "primary", collar: "primary" })).toEqual({ pattern, sleeves: "primary", collar: "primary" });
   });
 
   it("keeps a fully valid kit as-is", () => {
@@ -58,42 +61,5 @@ describe("storedJerseyKit — legacy records are not given a kit", () => {
 
   it("returns a cleaned kit for any stored object", () => {
     expect(storedJerseyKit({ pattern: "hoop", sleeves: "nonsense" })).toEqual({ pattern: "hoop", sleeves: "secondary", collar: "secondary" });
-  });
-});
-
-describe("number ink — dark digits only where white falls below WCAG 3:1", () => {
-  it.each([
-    ["#ffffff", true],  // white
-    ["#facc15", true],  // yellow
-    ["#fbbf24", true],  // gold
-    ["#4ade80", true],  // light green
-    ["#e5e7eb", true],  // light grey
-    ["#94a3b8", true],  // mid grey (white ≈ 2.6:1)
-    ["#22c55e", true],  // bright green (white ≈ 2.3:1)
-    ["#16a34a", false], // the default home green keeps today's white number (white ≈ 3.3:1)
-    ["#dc2626", false], // the default away red keeps today's white number
-    ["#15803d", false], // dark green
-    ["#7f1d1d", false], // maroon
-    ["#1e3a8a", false], // navy
-    ["#111827", false], // black
-    ["#2563eb", false], // blue
-  ])("%s → dark number: %s", (primary, dark) => {
-    expect(prefersDarkNumber(primary)).toBe(dark);
-  });
-
-  it("accepts 3-digit hex and surrounding whitespace", () => {
-    expect(prefersDarkNumber(" #fff ")).toBe(true);
-    expect(prefersDarkNumber("#000")).toBe(false);
-  });
-
-  it("an unreadable colour keeps today's white number", () => {
-    expect(prefersDarkNumber("green")).toBe(false);
-    expect(prefersDarkNumber("")).toBe(false);
-    expect(relativeLuminance("not-a-colour")).toBeNull();
-  });
-
-  it("relative luminance spans 0 (black) to 1 (white)", () => {
-    expect(relativeLuminance("#000000")).toBe(0);
-    expect(relativeLuminance("#ffffff")).toBeCloseTo(1, 5);
   });
 });

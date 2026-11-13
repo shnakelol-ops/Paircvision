@@ -65,7 +65,7 @@ function openDesigner() {
 }
 
 function choose(group: string, button: string) {
-  fireEvent.click(within(screen.getByRole("group", { name: group })).getByRole("button", { name: new RegExp(button) }));
+  fireEvent.click(within(screen.getByRole("group", { name: group })).getByRole("button", { name: new RegExp(`^${button}$`) }));
 }
 
 /** The record ProTaggerLiveScreen's buildSaveRecords writes (squads copied from session as-is). */
@@ -104,11 +104,11 @@ describe("Jersey Design panel", () => {
     expect(lineupKit(container)).toEqual({ pattern: "plain", sleeves: "secondary", collar: "secondary" });
   });
 
-  it("four pattern buttons drawn in the team's own colours; choices combine and preview immediately", () => {
+  it("six pattern buttons drawn in the team's own colours; choices combine and preview immediately", () => {
     const { container } = renderSquads(session());
     openDesigner();
     const patternButtons = within(screen.getByRole("group", { name: "Jersey pattern" })).getAllByRole("button");
-    expect(patternButtons.map((b) => b.textContent)).toEqual(["Plain", "Chest V", "Hoop", "Stripes"]);
+    expect(patternButtons.map((b) => b.textContent)).toEqual(["Plain", "Chest V", "Chest Band", "Hoop", "Hoops", "Stripes"]);
     for (const b of patternButtons) {
       expect(b.querySelector('[data-layer="body"]')!.getAttribute("fill")).toBe("#16a34a"); // home primary
     }

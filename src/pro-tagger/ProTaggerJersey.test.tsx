@@ -6,7 +6,8 @@ import { ProTaggerJersey } from "./ProTaggerJersey";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
-import { DARK_NUMBER_INK, JERSEY_PATTERNS, type JerseyKit, type JerseyTrim } from "./jersey-kit";
+import { JERSEY_PATTERNS, type JerseyKit, type JerseyTrim } from "./jersey-kit";
+import { JERSEY_PATTERN_PATHS } from "./ProTaggerJersey";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 afterEach(cleanup);
@@ -24,8 +25,8 @@ describe("ProTaggerJersey — every pattern × sleeves × collar combination", (
     trims.flatMap((sleeves) => trims.map((collar) => ({ pattern, sleeves, collar }))),
   );
 
-  it("covers all 16 combinations", () => {
-    expect(combos).toHaveLength(16);
+  it("covers all 24 combinations (6 patterns × 2 sleeves × 2 collars)", () => {
+    expect(combos).toHaveLength(24);
   });
 
   it.each(combos)("%o renders with the right fills", (kit) => {
@@ -101,36 +102,65 @@ describe("ProTaggerMiniJersey — header icon uses the same renderer and kit", (
 
 const player = (number: number, name = ""): ProTaggerSquadPlayer => ({ id: `p${number}`, number, name });
 
-describe("ProTaggerLineupJerseyTile — number contrast", () => {
-  function numberEl(container: HTMLElement) {
-    return [...container.querySelectorAll("span")].find((s) => s.textContent === "7")!;
+describe("Six patterns stay distinguishable", () => {
+  it("every pattern has its own geometry; only Plain has none", () => {
+    const paths = JERSEY_PATTERNS.map((p) => JERSEY_PATTERN_PATHS[p]);
+    expect(paths.filter((d) => d === null)).toHaveLength(1);
+    const drawn = paths.filter((d): d is string => d !== null);
+    expect(new Set(drawn).size).toBe(drawn.length);
+  });
+
+  it("Hoop is one narrow band, Chest Band one broad band, Hoops four bands", () => {
+    const bands = (d: string) => [...d.matchAll(/M0,([\d.]+) H40 V([\d.]+)/g)].map((m) => Number(m[2]) - Number(m[1]));
+    const hoop = bands(JERSEY_PATTERN_PATHS.hoop!);
+    const chestBand = bands(JERSEY_PATTERN_PATHS.chestBand!);
+    const hoops = bands(JERSEY_PATTERN_PATHS.hoops!);
+    expect(hoop).toHaveLength(1);
+    expect(chestBand).toHaveLength(1);
+    expect(hoops).toHaveLength(4);
+    // A broad panel at least twice the single hoop's depth.
+    expect(chestBand[0]).toBeGreaterThanOrEqual(hoop[0] * 2);
+    // Each hoop at least 2px deep on the 22px subs jersey (44-unit viewBox).
+    for (const h of hoops) expect((h * 24) / 44).toBeGreaterThanOrEqual(2);
+  });
+});
+
+
+describe("ProTaggerLineupJerseyTile — number below the jersey", () => {
+  function parts(container: HTMLElement) {
+    const tile = container.firstElementChild as HTMLElement;
+    const [jerseyWrap, numberEl, nameEl] = [...tile.children] as HTMLElement[];
+    return { tile, jerseyWrap, numberEl, nameEl };
   }
 
-  it("dark kit: white number with today's dark outline, unchanged", () => {
-    const { container } = render(<ProTaggerLineupJerseyTile player={player(7)} primary="#16a34a" secondary="#ffffff" size={26} numberFontSize={13} />);
-    const el = numberEl(container);
-    expect(el.style.color).toBe("rgb(255, 255, 255)");
-    expect(el.style.getPropertyValue("-webkit-text-stroke")).toContain("0.75px");
-    expect(el.style.fontSize).toBe("13px");
-    expect(el.style.top).toBe("56%");
+  it.each(["#16a34a", "#facc15", "#ffffff", "#111827"])("on a %s kit: the number is centred below the shirt, not on it", (primary) => {
+    const { container } = render(<ProTaggerLineupJerseyTile player={player(7, "Seán")} primary={primary} secondary="#166534" size={26} numberFontSize={13} />);
+    const { jerseyWrap, numberEl, nameEl } = parts(container);
+    expect(jerseyWrap.querySelector("svg")).not.toBeNull();
+    expect(jerseyWrap.textContent).toBe(""); // nothing printed on the shirt
+    expect(numberEl.textContent).toBe("7");
+    expect(numberEl.style.position).toBe(""); // in flow below the jersey, not overlaid
+    expect(numberEl.style.textAlign).toBe("center");
+    expect(nameEl.textContent).toBe("Seán");
   });
 
-  it("light kit: dark number with a light halo and no dark stroke", () => {
-    const { container } = render(<ProTaggerLineupJerseyTile player={player(7)} primary="#facc15" secondary="#166534" size={26} numberFontSize={13} />);
-    const el = numberEl(container);
-    expect(el.style.color).toBe("rgb(11, 18, 32)");
-    expect(DARK_NUMBER_INK).toBe("#0b1220");
-    expect(el.style.getPropertyValue("-webkit-text-stroke")).toBe("");
-    expect(el.style.textShadow).toMatch(/rgba\(255,\s*255,\s*255/);
-    expect(el.style.fontSize).toBe("13px");
+  it("one readable treatment on every kit: bold white with a subtle dark outline, no badge", () => {
+    for (const primary of ["#16a34a", "#facc15", "#ffffff"]) {
+      const { container, unmount } = render(<ProTaggerLineupJerseyTile player={player(11)} primary={primary} secondary="#000000" size={26} numberFontSize={14} />);
+      const { numberEl } = parts(container);
+      expect(numberEl.style.color).toBe("rgb(255, 255, 255)");
+      expect(numberEl.style.fontWeight).toBe("900");
+      expect(numberEl.style.fontSize).toBe("14px");
+      expect(numberEl.style.getPropertyValue("-webkit-text-stroke")).toBe("0.5px rgba(6, 10, 16, 0.85)");
+      expect(numberEl.style.background).toBe("");
+      expect(numberEl.style.borderRadius).toBe("");
+      unmount();
+    }
   });
 
-  it("live picker keeps its own minimal outline on a dark kit", () => {
-    const { container } = render(<ProTaggerLineupJerseyTile player={player(7)} primary="#16a34a" secondary="#ffffff" size={26} numberFontSize={14} livePicker />);
-    const el = numberEl(container);
-    expect(el.style.color).toBe("rgb(255, 255, 255)");
-    expect(el.style.getPropertyValue("-webkit-text-stroke")).toBe("");
-    expect(el.style.textShadow).toBe("0 1px 2px rgba(0,0,0,0.55)");
+  it("an empty formation slot shows a ghost jersey with no number", () => {
+    const { container } = render(<ProTaggerLineupJerseyTile player={null} primary="#16a34a" secondary="#ffffff" size={26} />);
+    expect(container.textContent).toBe("");
   });
 });
 

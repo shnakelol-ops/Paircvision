@@ -84,9 +84,10 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
   // colour alone) and the tile is disabled only for RED — SIN_BIN stays
   // fully tappable; that rule is unchanged.
   //
-  // livePicker requests the tile's minimal live-tagging NUMBER treatment
-  // only. The jersey itself is the shared ProTaggerJersey drawn from this
-  // team's `kit`, the same drawing Squad Setup shows.
+  // The tile is the same player marker Squad Setup shows: the shared
+  // ProTaggerJersey drawn from this team's `kit`, with the number centred
+  // below it. The whole marker sits inside one button, so the jersey and
+  // its number are a single tap target.
   function renderTile(p: ProTaggerSquadPlayer, size: number, numberFontSize: number) {
     const status = disciplineStatus?.get(p.id);
     // Suppress the tile's own name plate when a status label must show
@@ -97,7 +98,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       <>
         <ProTaggerLineupJerseyTile
           player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
-          kit={kit} size={size} numberFontSize={numberFontSize} livePicker
+          kit={kit} size={size} numberFontSize={numberFontSize}
         />
         {status === "RED" && <span style={S.statusRed}>RED</span>}
         {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}
