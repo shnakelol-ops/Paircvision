@@ -252,6 +252,17 @@ describe("Scoring Map markers", () => {
     expect(ops.some((o) => o.op === "stroke" && o.stroke === "#ffffff")).toBe(false);
   });
 
+  it("two-pointer is a bright yellow #FFDF00 disc at the base radius with the dark outline", () => {
+    const { ctx, ops } = recordingContext();
+    drawShotMarker(ctx, "TWO_POINT", 100, 100, SHOT_MARKER_R);
+    const arcs = ops.filter((o) => o.op === "arc");
+    expect(arcs).toHaveLength(1);
+    expect(arcs[0].args.slice(0, 3)).toEqual([100, 100, SHOT_MARKER_R]);
+    expect(ops.find((o) => o.op === "fill")!.fill).toBe("#FFDF00");
+    expect(ops.find((o) => o.op === "stroke")!.stroke).toBe("#0b1428");
+    expect(SHOT_MARKER_COLOURS.TWO_POINT).not.toBe(SHOT_MARKER_COLOURS.GOAL);
+  });
+
   it("shot markers are ~25–30% smaller than turnover markers' base size", () => {
     expect(SHOT_MARKER_R / 15).toBeGreaterThanOrEqual(0.7);
     expect(SHOT_MARKER_R / 15).toBeLessThanOrEqual(0.75);

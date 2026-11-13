@@ -23,7 +23,7 @@
  * pitch until every plotted shot is inside — a shot is never cropped off.
  *
  * Marker language (CLAUDE.md Visual Language):
- *   Goal: orange #F28C28 regular hexagon (vertices top and bottom, Point-sized) · Point #4ade80 · Two-pointer #fbbf24 · Wide red ✕
+ *   Goal: orange #F28C28 regular hexagon (vertices top and bottom, Point-sized) · Point #4ade80 · Two-pointer #FFDF00 · Wide red ✕
  *   Blocked / saved: solid grey #94a3b8 · Post: grey ring with a centre dot
  *   Dropped short: burgundy #641E39 disc with a white ↓ · Other / not recorded: dashed white ring
  *   Turnover won: purple #a78bfa circle · Turnover lost: orange #f97316 diamond
@@ -260,7 +260,7 @@ export function drawPortraitPitch(ctx: CanvasRenderingContext2D, sport: ProTagge
 export const SHOT_MARKER_COLOURS = {
   GOAL: "#F28C28",
   POINT: "#4ade80",
-  TWO_POINT: "#fbbf24",
+  TWO_POINT: "#FFDF00",
   WIDE: "#ef4444",
   GREY: "#94a3b8",
   SHORT: "#641E39",
