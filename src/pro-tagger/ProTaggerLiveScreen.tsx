@@ -3,7 +3,7 @@ import type { CSSProperties, TouchEvent as ReactTouchEvent } from "react";
 import { NotesQuickPanel } from "../features/notes";
 import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
-import { PRO_TAGGER_FAMILIES, getFamilyLabel, resolvePickerTeamSide } from "./pro-tagger-families";
+import { PRO_TAGGER_FAMILIES, getFamilyLabel, getRestartTerm, resolvePickerTeamSide } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
@@ -1733,8 +1733,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                       ["Wides",          forCts.wides,        oppCts.wides],
                       ["Turnover Won",   forCts.turnoverWon,  oppCts.turnoverWon],
                       ["Turnover Lost",  oppCts.turnoverWon,  forCts.turnoverWon],
-                      ["Kickout Won",    forCts.kickoutWon,   oppCts.kickoutWon],
-                      ["Kickout Lost",   oppCts.kickoutWon,   forCts.kickoutWon],
+                      [`${getRestartTerm(session.sport)} Won`,  forCts.kickoutWon,   oppCts.kickoutWon],
+                      [`${getRestartTerm(session.sport)} Lost`, oppCts.kickoutWon,   forCts.kickoutWon],
                       ["Free Won",       forCts.freeWon,      forCts.freeConceded],
                       ["Free Conceded",  forCts.freeConceded, forCts.freeWon],
                       [`${restartTerm45} Won`,  forCts.fortyFiveWon, oppCts.fortyFiveWon],
@@ -1766,6 +1766,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                         secondHalfModel={quickReviewSecondHalfSegmentModel}
                         homeColour={homeColour}
                         awayColour={awayColour}
+                        restartAbbrev={isHurlingOrCamogie ? "PO" : "KO"}
                       />
                     </div>
                   </div>

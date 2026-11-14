@@ -847,7 +847,10 @@ function drawSummaryStatsTable(
   const secH    = 18;
   const hdrH    = 28;
   const gap     = 3;
-  const BLOCK_H = 820;
+  // Hurling / camogie have no two-point score, so the 2-Pointers row is not
+  // drawn there and the card is one row shorter.
+  const showTwoPointers = !isPuck(sport);
+  const BLOCK_H = 820 - (showTwoPointers ? 0 : rowH);
 
   type SRow = { label: string; value: string; vColor?: string };
   type Section = { label: string; accent: string; bg: string; rows: SRow[] };
@@ -861,7 +864,7 @@ function drawSummaryStatsTable(
         rows: [
           { label: "Goals",          value: String(st.goals) },
           { label: "Points",         value: String(st.points) },
-          { label: "2-Pointers",     value: String(st.twoPointers) },
+          ...(showTwoPointers ? [{ label: "2-Pointers", value: String(st.twoPointers) }] : []),
           { label: "Total Score",    value: String(st.scoreTotal) },
           { label: "Shots",          value: String(st.shots) },
           { label: "Wides",          value: String(st.wides) },
@@ -1959,6 +1962,7 @@ export function makePlayerContributionsPage(
   totalPages: number,
   homeSquadPlayers?: readonly PdfSquadPlayer[],
   awaySquadPlayers?: readonly PdfSquadPlayer[],
+  sport: PitchSport = "gaelic",
 ): HTMLCanvasElement {
   const analysis = report.chain;
   const canvas = document.createElement("canvas");
@@ -2014,7 +2018,7 @@ export function makePlayerContributionsPage(
 
     const cols: Array<[string, number]> = [
       ["PLAYER", 0], ["SCORE", 300], ["SHARE", 400], ["SHOTS", 500],
-      ["T/O W-L", 620], ["KO W-L", 740], ["NET BALL", 860],
+      ["T/O W-L", 620], [isPuck(sport) ? "PO W-L" : "KO W-L", 740], ["NET BALL", 860],
     ];
     ctx.fillStyle = "rgba(255,255,255,0.06)";
     ctx.fillRect(colX, cy, COL_W, 26);
@@ -2672,7 +2676,7 @@ export function makeChainSummaryPage(
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(
-      restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam),
+      xRestartStr(restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam), sport),
       COL2_X + 12, PANEL_Y1 + HALF_H - 14, COL_W - 24,
     );
     ctx.restore();
@@ -3066,7 +3070,7 @@ export function makeKickoutChainPage(
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText(
-        restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam),
+        xRestartStr(restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam), sport),
         COL1_X + 14, cy + 12, COL_W - 24,
       );
       ctx.restore();
@@ -3218,7 +3222,7 @@ export function makeKickoutChainPage(
     cy += 18;
 
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Restart Origin`, forRestartOriginFmt,  "#4ade80", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Shots from Kickout`,  String(forShotFromKo),    "#7dd3fc", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Shots from ${koLabel(sport)}`,  String(forShotFromKo),    "#7dd3fc", true);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Restart Origin`, oppRestartOriginFmt,  "#fb7185", false);
     cy += 12;
 
@@ -4773,7 +4777,7 @@ export function makeTacticalReviewGuidePage(
   for (const cat of ORDERED_CATS) {
     const count = countByCategory.get(cat) ?? 0;
     if (count === 0) continue;
-    const label  = `${cat}  ${count}`;
+    const label  = `${cat === "KICKOUT" ? koLabelUC(sport) : cat}  ${count}`;
     const tw     = ctx.measureText(label).width;
     const chipW  = tw + 22;
     ctx.fillStyle = categoryBgColor(cat);
@@ -4804,7 +4808,7 @@ export function makeTacticalReviewGuidePage(
 
     // Category chip (row 1, left)
     ctx.font = "bold 12px sans-serif";
-    const chipLabel = p.category;
+    const chipLabel = p.category === "KICKOUT" ? koLabelUC(sport) : p.category;
     const chipTW    = ctx.measureText(chipLabel).width;
     const chipW     = chipTW + 18;
     const CHIP_X    = STRIP_X + 14;
@@ -5039,7 +5043,7 @@ export function makeOppositionFactsPage(
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals), "#f8fafc", false);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, isPuck(sport) ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score Conversion", oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false);
     oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score zone (avg position)", scoreZoneLabel, "#94a3b8", true);
   }
@@ -5855,7 +5859,7 @@ function makeMatchSwingTimelinePage(
             teamSide:   cSide,
             clockOrder: cMinClock,
             period:     p,
-            label:      `${teamLabel(cSide)} converted ${n} kickout${n !== 1 ? "s" : ""} into score${n !== 1 ? "s" : ""}`,
+            label:      `${teamLabel(cSide)} converted ${n} ${koLabelLC(sport)}${n !== 1 ? "s" : ""} into score${n !== 1 ? "s" : ""}`,
             sublabel:   fmtClock(cMinClock, p, !hasReal),
             count:      n,
           });
@@ -6357,18 +6361,20 @@ export function makeShotEfficiencyPage(
     }
     cy += SEC_GAP;
 
-    // ── Section 3: 2-Point Profile ────────────────────────────────────────────
-    cy = drawSecHeader(colX, cy, "2-Point Profile", accentColor);
-    cy = drawRow(colX, cy, "TWO_POINTER Scores", String(stats.twoPointerSc),
-      stats.twoPointerSc   > 0 ? accentColor : MUTED, false);
-    cy = drawRow(colX, cy, "45+2 Scores",        String(stats.fortyFiveTwoSc),
-      stats.fortyFiveTwoSc > 0 ? accentColor : MUTED, true);
-    const totalTwoSc = stats.twoPointerSc + stats.fortyFiveTwoSc;
-    cy = drawRow(colX, cy, "Total 2PT Scores",   String(totalTwoSc),
-      totalTwoSc > 0 ? accentColor : MUTED, false);
-    cy = drawRow(colX, cy, "Total 2PT Pts Value", String(totalTwoSc * 2),
-      totalTwoSc > 0 ? NEUTRAL    : MUTED, true);
-    cy += SEC_GAP;
+    // ── Section 3: 2-Point Profile (football only — hurling / camogie have no two-point score) ──
+    if (!isPuck(sport)) {
+      cy = drawSecHeader(colX, cy, "2-Point Profile", accentColor);
+      cy = drawRow(colX, cy, "Two-point scores", String(stats.twoPointerSc),
+        stats.twoPointerSc   > 0 ? accentColor : MUTED, false);
+      cy = drawRow(colX, cy, "45+2 Scores",        String(stats.fortyFiveTwoSc),
+        stats.fortyFiveTwoSc > 0 ? accentColor : MUTED, true);
+      const totalTwoSc = stats.twoPointerSc + stats.fortyFiveTwoSc;
+      cy = drawRow(colX, cy, "Total 2PT Scores",   String(totalTwoSc),
+        totalTwoSc > 0 ? accentColor : MUTED, false);
+      cy = drawRow(colX, cy, "Total 2PT Pts Value", String(totalTwoSc * 2),
+        totalTwoSc > 0 ? NEUTRAL    : MUTED, true);
+      cy += SEC_GAP;
+    }
 
     // ── Section 4: Free Conversion ────────────────────────────────────────────
     cy = drawSecHeader(colX, cy, "Free Conversion", accentColor);
@@ -7327,7 +7333,7 @@ export function makeRestartVisualPage(
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(
-      restartOriginBridgeNote(countPlacedRestartOriginScores(outcomes), homeTeam, awayTeam),
+      xRestartStr(restartOriginBridgeNote(countPlacedRestartOriginScores(outcomes), homeTeam, awayTeam), sport),
       DP_P3_X + 12, DP_STRIP_Y + DP_STRIP_H - 16, DP_P3_W - 24,
     );
     ctx.restore();
@@ -7963,7 +7969,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.7+N — Player Contributions (Part 1 — Match Facts; factual only)
   try {
-    const c = makePlayerContributionsPage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    const c = makePlayerContributionsPage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "Player Contributions");
   } catch (err) {
@@ -8138,7 +8144,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.19+N — Chain Intelligence
   // p.19+N — Scoring Possession Origins (prints GAME_ORIGIN_EXPLANATION first)
   try {
-    const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES);
+    const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Scoring Possession Origins");
   } catch (err) {
@@ -13066,6 +13072,7 @@ function makeScoringPossessionOriginsPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  sport: PitchSport = "gaelic",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -13083,7 +13090,7 @@ function makeScoringPossessionOriginsPage(
   ctx.font = "16px sans-serif";
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  const explainerLines = wrapText(ctx, GAME_ORIGIN_EXPLANATION, CANVAS_W - 48);
+  const explainerLines = wrapText(ctx, xRestartStr(GAME_ORIGIN_EXPLANATION, sport), CANVAS_W - 48);
   let ey = 88;
   explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 22; });
   ctx.restore();
@@ -13153,9 +13160,12 @@ function makeScoringPossessionOriginsPage(
   ctx.font = "italic 17px sans-serif";
   const bridgeLines = wrapText(
     ctx,
-    restartOriginBridgeNote(
-      countPlacedRestartOriginScores(report.chain.kickouts.outcomes),
-      homeTeam, awayTeam,
+    xRestartStr(
+      restartOriginBridgeNote(
+        countPlacedRestartOriginScores(report.chain.kickouts.outcomes),
+        homeTeam, awayTeam,
+      ),
+      sport,
     ),
     TBL_W,
   );
@@ -13301,6 +13311,7 @@ function makeSnapshotDashboardPage(
   pageNum: number,
   totalPages: number,
   scoreCrests?: PdfScoreCrests,
+  sport: PitchSport = "gaelic",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -13367,8 +13378,8 @@ function makeSnapshotDashboardPage(
   const panelW = Math.floor((CANVAS_W - PAD_X * 2 - GAP * 3) / 4);
 
   drawDashboardShootingPanel(ctx, PAD_X + 0 * (panelW + GAP), panelY, panelW, panelH, homeTeam, awayTeam, us.shooting, them.shooting);
-  drawDashboardKickoutPanel(ctx, PAD_X + 1 * (panelW + GAP), panelY, panelW, panelH, "OUR KICKOUTS", "#4ade80", us.ownKickouts, us.restartOwnerUnknown);
-  drawDashboardKickoutPanel(ctx, PAD_X + 2 * (panelW + GAP), panelY, panelW, panelH, "THEIR KICKOUTS", "#f87171", them.ownKickouts, them.restartOwnerUnknown);
+  drawDashboardKickoutPanel(ctx, PAD_X + 1 * (panelW + GAP), panelY, panelW, panelH, `OUR ${koLabelPluralUC(sport)}`, "#4ade80", us.ownKickouts, us.restartOwnerUnknown);
+  drawDashboardKickoutPanel(ctx, PAD_X + 2 * (panelW + GAP), panelY, panelW, panelH, `THEIR ${koLabelPluralUC(sport)}`, "#f87171", them.ownKickouts, them.restartOwnerUnknown);
   drawDashboardTurnoverPanel(ctx, PAD_X + 3 * (panelW + GAP), panelY, panelW, panelH, us.turnovers);
 
   // ── Placed balls — reuses the two-column strip used on Restart Battle ─────
@@ -13490,7 +13501,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Dashboard — "What happened in the first half?"
     addPage(
-      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES, input.scoreCrests),
+      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES, input.scoreCrests, sport),
       false,
       "Dashboard",
       "STATISTICS",
@@ -13536,7 +13547,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Dashboard — "What happened?"
     addPage(
-      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES, input.scoreCrests),
+      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES, input.scoreCrests, sport),
       false,
       "Dashboard",
       "STATISTICS",

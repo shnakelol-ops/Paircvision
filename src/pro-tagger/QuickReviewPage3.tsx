@@ -30,6 +30,8 @@ export interface QuickReviewPage3Props {
   secondHalfModel?: QuickReviewSegmentBreakdown | null;
   homeColour: string;
   awayColour: string;
+  /** Restart abbreviation for the retention rows: "KO" (football) or "PO" (hurling / camogie). */
+  restartAbbrev?: "KO" | "PO";
 }
 
 const CLR = {
@@ -45,16 +47,16 @@ const CLR = {
 
 const SEGMENT_HEADERS = ["Early", "Mid", "Late"] as const;
 
-export function QuickReviewPage3({ model, secondHalfModel, homeColour, awayColour }: QuickReviewPage3Props) {
+export function QuickReviewPage3({ model, secondHalfModel, homeColour, awayColour, restartAbbrev = "KO" }: QuickReviewPage3Props) {
   return (
     <div style={S.page}>
       <div style={S.pageSubtitle}>Early 0–10 · Mid 10–20 · Late 20+</div>
       {secondHalfModel && <div style={S.halfTitle}>First Half</div>}
-      <HalfSections model={model} homeColour={homeColour} awayColour={awayColour} />
+      <HalfSections model={model} homeColour={homeColour} awayColour={awayColour} restartAbbrev={restartAbbrev} />
       {secondHalfModel && (
         <>
           <div style={S.halfTitle}>Second Half</div>
-          <HalfSections model={secondHalfModel} homeColour={homeColour} awayColour={awayColour} />
+          <HalfSections model={secondHalfModel} homeColour={homeColour} awayColour={awayColour} restartAbbrev={restartAbbrev} />
         </>
       )}
     </div>
@@ -67,10 +69,12 @@ function HalfSections({
   model,
   homeColour,
   awayColour,
+  restartAbbrev,
 }: {
   model: QuickReviewSegmentBreakdown;
   homeColour: string;
   awayColour: string;
+  restartAbbrev: "KO" | "PO";
 }) {
   return (
     <>
@@ -78,11 +82,13 @@ function HalfSections({
         teamName={model.homeTeam}
         colour={homeColour}
         rows={model.segments.map((s) => s.home)}
+        restartAbbrev={restartAbbrev}
       />
       <TeamSection
         teamName={model.awayTeam}
         colour={awayColour}
         rows={model.segments.map((s) => s.away)}
+        restartAbbrev={restartAbbrev}
       />
     </>
   );
@@ -94,10 +100,12 @@ function TeamSection({
   teamName,
   colour,
   rows,
+  restartAbbrev,
 }: {
   teamName: string;
   colour: string;
   rows: readonly QuickReviewSegmentSideStats[];
+  restartAbbrev: "KO" | "PO";
 }) {
   return (
     <section style={S.block}>
@@ -133,8 +141,8 @@ function TeamSection({
         sub
       />
 
-      <MetricRow label="Own KO Retained" values={rows.map((r) => r.ownKORetained.text)} accent={CLR.amber} />
-      <MetricRow label="Opposition KO Retained" values={rows.map((r) => r.oppKORetained.text)} accent={CLR.amber} />
+      <MetricRow label={`Own ${restartAbbrev} Retained`} values={rows.map((r) => r.ownKORetained.text)} accent={CLR.amber} />
+      <MetricRow label={`Opposition ${restartAbbrev} Retained`} values={rows.map((r) => r.oppKORetained.text)} accent={CLR.amber} />
     </section>
   );
 }
