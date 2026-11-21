@@ -599,6 +599,51 @@ function drawShotAttemptFooter(ctx: CanvasRenderingContext2D, count: number): vo
   ctx.restore();
 }
 
+// ─── Readable-type helpers (phone readability prototype: pages 1, 12, 27) ─────
+//
+// Text that does not fit is stepped down in font size — never squeezed with
+// fillText's maxWidth argument, which narrows glyphs and hurts legibility.
+
+/**
+ * Sets ctx.font to the largest size from maxPx down to minPx at which `text`
+ * fits within maxW, and returns that size. At minPx the text may still be
+ * wider than maxW; callers that must never overflow wrap instead.
+ */
+function setFittedFont(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxW: number,
+  maxPx: number,
+  minPx: number,
+  weight = "",
+): number {
+  const prefix = weight ? `${weight} ` : "";
+  for (let px = maxPx; px > minPx; px--) {
+    ctx.font = `${prefix}${px}px sans-serif`;
+    if (ctx.measureText(text).width <= maxW) return px;
+  }
+  ctx.font = `${prefix}${minPx}px sans-serif`;
+  return minPx;
+}
+
+/**
+ * Draws `text` word-wrapped to maxW using the font already set on ctx.
+ * Lines are drawn top-down from y (each line's middle) at lineH spacing.
+ * Returns the number of lines drawn.
+ */
+function drawWrappedLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxW: number,
+  lineH: number,
+): number {
+  const lines = wrapText(ctx, text, maxW);
+  lines.forEach((line, i) => ctx.fillText(line, x, y + i * lineH));
+  return lines.length;
+}
+
 // ─── Pitch rendering ──────────────────────────────────────────────────────────
 
 type PitchArea = { x: number; y: number; w: number; h: number };
@@ -820,9 +865,8 @@ function renderEventMarkers(
  * All tracked sub-type tags are represented — nothing is omitted.
  *
  * Row counts: SCORING=7, SHOT DETAIL=4, KICKOUTS=11, TURNOVERS=8, FREES=6 → 36 data rows.
- * Geometry: rowH=19, secH=18 → BLOCK_H≈820px.
- * With default blockY=244: bottom y=1023 — safe within canvas (footer at y=1060).
- * With blockY=162 (segment detail pages): bottom y=941 — very comfortable.
+ * Geometry: two 408px sub-columns per team, rowH=36, secH=28 → block height 796px.
+ * With default blockY=244: bottom y=1040 — clear of the footer text at y=1060.
  */
 function drawSummaryStatsTable(
   ctx: CanvasRenderingContext2D,
@@ -837,20 +881,33 @@ function drawSummaryStatsTable(
   const forStats = buildTeamSummaryBlock(report, "FOR");
   const oppStats = buildTeamSummaryBlock(report, "OPP");
 
-  // ── Block geometry ────────────────────────────────────────────────────────────
-  // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=11, TURNOVERS=8, FREES=6 → 36 data rows
-  // BLOCK_H = hdrH(28)+hdrGap(3) + 5×secH(90) + 36×rowH(684) + 5×gap(15) = 820px
+  // ── Block geometry (phone readability layout) ────────────────────────────────
+  // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=11, TURNOVERS=8, FREES=6 → 36 data rows.
+  // Each team block is split into two sub-columns so rows can be twice as tall:
+  //   left  — SCORING · SHOT DETAIL · FREES   (shooting & placed balls, 17 rows)
+  //   right — KICKOUTS · TURNOVERS            (possession, 19 rows)
+  // Right column height = 2×secH(56) + 19×rowH(684) + 1×gap(8) = 748px.
+  // BLOCK_H = hdrH(34)+hdrGap(6) + 748 + bottom pad(8) = 796 → bottom y=1040
+  // with blockY=244 (footer text sits at y=1060, right-aligned past x=1848).
+  // Values sit at the right edge of a 408px sub-column, so a label and its
+  // value are ≤ ~390px apart (was ~820px).
   const blockW  = 848;
   const blockX1 = 72;
   const blockX2 = 1000;
-  const rowH    = 19;
-  const secH    = 18;
-  const hdrH    = 28;
-  const gap     = 3;
+  const rowH    = 36;
+  const secH    = 28;
+  const hdrH    = 34;
+  const hdrGap  = 6;
+  const gap     = 8;
+  const subGap  = 16;
+  const subW    = Math.floor((blockW - 10 - 6 - subGap) / 2); // 408
+  const LABEL_PX = 22;
+  const LABEL_MIN_PX = 17;
+  const VALUE_PX = 24;
   // Hurling / camogie have no two-point score, so the 2-Pointers row is not
-  // drawn there and the card is one row shorter.
+  // drawn there (the left sub-column is one row shorter; the block is sized
+  // by the taller right sub-column either way).
   const showTwoPointers = !isPuck(sport);
-  const BLOCK_H = 820 - (showTwoPointers ? 0 : rowH);
 
   type SRow = { label: string; value: string; vColor?: string };
   type Section = { label: string; accent: string; bg: string; rows: SRow[] };
@@ -927,21 +984,71 @@ function drawSummaryStatsTable(
     ];
   }
 
+  function sectionsHeight(secs: readonly Section[]): number {
+    const rows = secs.reduce((n, s) => n + s.rows.length, 0);
+    return secs.length * secH + rows * rowH + Math.max(0, secs.length - 1) * gap;
+  }
+
+  function drawSubColumn(sx: number, top: number, secs: readonly Section[]): void {
+    let cy = top;
+    secs.forEach((sec, si) => {
+      // Section header bar
+      ctx.fillStyle = sec.bg;
+      ctx.fillRect(sx, cy, subW, secH);
+      ctx.fillStyle = sec.accent;
+      ctx.fillRect(sx, cy, 3, secH);
+      ctx.font = "bold 17px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText(sec.label, sx + 12, cy + secH / 2);
+      cy += secH;
+
+      sec.rows.forEach(({ label, value, vColor }, ri) => {
+        if (ri % 2 === 0) {
+          ctx.fillStyle = "rgba(255,255,255,0.025)";
+          ctx.fillRect(sx, cy, subW, rowH);
+        }
+        const midY = cy + rowH / 2;
+        // Measure the value first so the label can be fitted to the space
+        // left of it; draw label then value (reading order).
+        ctx.font = `bold ${VALUE_PX}px sans-serif`;
+        const valueW = ctx.measureText(value).width;
+        ctx.fillStyle = "#94a3b8";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "left";
+        setFittedFont(ctx, label, subW - 10 - valueW - 16, LABEL_PX, LABEL_MIN_PX);
+        ctx.fillText(label, sx + 10, midY);
+        ctx.fillStyle = vColor ?? "#f1f5f9";
+        ctx.font = `bold ${VALUE_PX}px sans-serif`;
+        ctx.textAlign = "right";
+        ctx.fillText(value, sx + subW - 8, midY);
+        cy += rowH;
+      });
+
+      if (si < secs.length - 1) cy += gap;
+    });
+  }
+
   function drawBlock(bx: number, teamName: string, st: BlockStats, accent: string): void {
     const sections = makeSections(st);
+    // Shooting & placed balls on the left, possession on the right.
+    const leftSecs  = [sections[0], sections[1], sections[4]];
+    const rightSecs = [sections[2], sections[3]];
+    const bodyH   = Math.max(sectionsHeight(leftSecs), sectionsHeight(rightSecs));
+    const blockH  = hdrH + hdrGap + bodyH + 8;
     ctx.save();
 
     // Card background + left accent bar
     ctx.fillStyle = "rgba(255,255,255,0.022)";
-    ctx.fillRect(bx, blockY, blockW, BLOCK_H);
+    ctx.fillRect(bx, blockY, blockW, blockH);
     ctx.fillStyle = accent;
-    ctx.fillRect(bx, blockY, 4, BLOCK_H);
+    ctx.fillRect(bx, blockY, 4, blockH);
 
-    let cy = blockY;
+    const cy = blockY;
 
     // Team-name header
     ctx.fillStyle = accent;
-    ctx.font = "bold 18px sans-serif";
+    ctx.font = "bold 24px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(teamName, bx + 16, cy + hdrH / 2);
@@ -951,40 +1058,16 @@ function drawSummaryStatsTable(
     ctx.moveTo(bx + 4, cy + hdrH);
     ctx.lineTo(bx + blockW, cy + hdrH);
     ctx.stroke();
-    cy += hdrH + gap;
 
-    for (const sec of sections) {
-      // Section header bar
-      ctx.fillStyle = sec.bg;
-      ctx.fillRect(bx + 4, cy, blockW - 4, secH);
-      ctx.fillStyle = sec.accent;
-      ctx.fillRect(bx + 4, cy, 3, secH);
-      ctx.font = "bold 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(sec.label, bx + 16, cy + secH / 2);
-      cy += secH;
+    const bodyTop = cy + hdrH + hdrGap;
+    const subX1 = bx + 10;
+    const subX2 = subX1 + subW + subGap;
+    drawSubColumn(subX1, bodyTop, leftSecs);
+    drawSubColumn(subX2, bodyTop, rightSecs);
 
-      sec.rows.forEach(({ label, value, vColor }, ri) => {
-        if (ri % 2 === 0) {
-          ctx.fillStyle = "rgba(255,255,255,0.025)";
-          ctx.fillRect(bx + 4, cy, blockW - 4, rowH);
-        }
-        const midY = cy + rowH / 2;
-        ctx.fillStyle = "#94a3b8";
-        ctx.font = "14px sans-serif";
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "left";
-        ctx.fillText(label, bx + 12, midY);
-        ctx.fillStyle = vColor ?? "#f1f5f9";
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText(value, bx + blockW - 10, midY);
-        cy += rowH;
-      });
-
-      cy += gap;
-    }
+    // Hairline between the two sub-columns
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(subX2 - subGap / 2, bodyTop, 1, bodyH);
 
     ctx.restore();
   }
@@ -994,8 +1077,8 @@ function drawSummaryStatsTable(
 
   // "v" label centred in the gap between the two blocks
   ctx.save();
-  ctx.fillStyle = "#64748b";
-  ctx.font = "bold 22px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "bold 24px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
   ctx.fillText("v", 960, blockY + hdrH / 2);
@@ -2414,23 +2497,63 @@ export function makeChainSummaryPage(
     ctx.restore();
   }
 
+  // ── Phone readability type scale (this page only) ───────────────────────────
+  // Body labels 22px (fitted down to 18px, then wrapped — never squeezed),
+  // values 24px bold, secondary labels 18px, footnotes 17px italic in #94a3b8.
+  const ROW_H        = 40;
+  const WRAP_ROW_H   = 56;   // a label that needs two lines at the minimum size
+  const SUB_HDR_H    = 30;
+  const TITLE_H      = 40;
+  const LABEL_PX     = 22;
+  const LABEL_MIN_PX = 18;
+  const VALUE_PX     = 24;
+  const SECONDARY    = "#94a3b8";
+  // FOR / OPP value columns of the Chain Patterns table: values sit close to
+  // the right edge instead of at 58% of the panel, leaving room for labels.
+  const forValX = (x: number, w: number): number => x + w - 120;
+  const oppValX = (x: number, w: number): number => x + w - 12;
+
   function drawPanelTitle(
     x: number, y: number, label: string, accentColor: string,
   ): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 15px sans-serif";
+    ctx.font = "bold 20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
+    ctx.fillText(label.toUpperCase(), x + 16, y + 19);
     ctx.strokeStyle = "rgba(255,255,255,0.07)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x + 4, y + 26);
-    ctx.lineTo(x + COL_W, y + 26);
+    ctx.moveTo(x + 4, y + TITLE_H - 2);
+    ctx.lineTo(x + COL_W, y + TITLE_H - 2);
     ctx.stroke();
     ctx.restore();
-    return y + 28; // returns y after title area
+    return y + TITLE_H; // returns y after title area
+  }
+
+  /**
+   * Draws a row label fitted into maxW. Steps the font down to LABEL_MIN_PX;
+   * if it still does not fit, wraps onto two lines. Returns the row height.
+   */
+  function drawRowLabel(label: string, x: number, cy: number, maxW: number): number {
+    ctx.fillStyle = SECONDARY;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    setFittedFont(ctx, label, maxW, LABEL_PX, LABEL_MIN_PX);
+    if (ctx.measureText(label).width <= maxW) {
+      ctx.fillText(label, x, cy + ROW_H / 2);
+      return ROW_H;
+    }
+    const lines = wrapText(ctx, label, maxW);
+    if (lines.length <= 1) {
+      ctx.fillText(label, x, cy + ROW_H / 2);
+      return ROW_H;
+    }
+    // Two lines: first line, then the rest joined (labels here are short).
+    ctx.fillText(lines[0], x, cy + WRAP_ROW_H / 2 - 11);
+    ctx.fillText(lines.slice(1).join(" "), x, cy + WRAP_ROW_H / 2 + 11);
+    return WRAP_ROW_H;
   }
 
   function drawDataRow(
@@ -2440,48 +2563,47 @@ export function makeChainSummaryPage(
     forColor = "#7dd3fc",
     oppColor = "#fb7185",
   ): number {
-    const ROW_H = 26;
+    const labelMaxW = forValX(x, w) - 56 - (x + 14);
+    // Measure the row height first so the stripe covers a wrapped label.
+    ctx.save();
+    setFittedFont(ctx, label, labelMaxW, LABEL_PX, LABEL_MIN_PX);
+    const needsWrap = ctx.measureText(label).width > labelMaxW
+      && wrapText(ctx, label, labelMaxW).length > 1;
+    ctx.restore();
+    const rowH = needsWrap ? WRAP_ROW_H : ROW_H;
     if (isAlt) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+      ctx.fillRect(x + 4, cy, w - 4, rowH);
     }
-    const mid = cy + ROW_H / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, mid);
-    // FOR value — right-aligned in left two-thirds
-    const valCol = x + w * 0.58;
+    drawRowLabel(label, x + 14, cy, labelMaxW);
+    const mid = cy + rowH / 2;
     ctx.fillStyle = forColor;
-    ctx.font = "bold 15px sans-serif";
+    ctx.font = `bold ${VALUE_PX}px sans-serif`;
     ctx.textAlign = "right";
-    ctx.fillText(valFor, valCol, mid);
-    // OPP value
+    ctx.fillText(valFor, forValX(x, w), mid);
     ctx.fillStyle = oppColor;
     ctx.textAlign = "right";
-    ctx.fillText(valOpp, x + w - 10, mid);
-    return cy + ROW_H;
+    ctx.fillText(valOpp, oppValX(x, w), mid);
+    return cy + rowH;
   }
 
   function drawColumnHeader(
     x: number, cy: number, w: number,
     forLabel: string, oppLabel: string,
   ): number {
-    const H = 20;
+    const H = SUB_HDR_H;
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(x + 4, cy, w - 4, H);
     const mid = cy + H / 2;
-    ctx.font = "bold 12px sans-serif";
+    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
-    const valCol = x + w * 0.58;
     ctx.fillStyle = "#7dd3fc";
     ctx.textAlign = "right";
-    ctx.fillText(forLabel, valCol, mid);
+    ctx.fillText(forLabel, forValX(x, w), mid);
     ctx.fillStyle = "#fb7185";
     ctx.textAlign = "right";
-    ctx.fillText(oppLabel, x + w - 10, mid);
-    ctx.fillStyle = "#64748b";
+    ctx.fillText(oppLabel, oppValX(x, w), mid);
+    ctx.fillStyle = SECONDARY;
     ctx.textAlign = "left";
     ctx.fillText("PATTERN", x + 14, mid);
     return cy + H;
@@ -2492,22 +2614,42 @@ export function makeChainSummaryPage(
     label: string, value: string, valueColor: string,
     isAlt: boolean,
   ): number {
-    const ROW_H = 26;
+    ctx.save();
+    ctx.font = `bold ${VALUE_PX}px sans-serif`;
+    const valueW = ctx.measureText(value).width;
+    ctx.restore();
+    const labelMaxW = w - 24 - valueW - 20;
+    ctx.save();
+    setFittedFont(ctx, label, labelMaxW, LABEL_PX, LABEL_MIN_PX);
+    const needsWrap = ctx.measureText(label).width > labelMaxW
+      && wrapText(ctx, label, labelMaxW).length > 1;
+    ctx.restore();
+    const rowH = needsWrap ? WRAP_ROW_H : ROW_H;
     if (isAlt) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+      ctx.fillRect(x + 4, cy, w - 4, rowH);
     }
-    const mid = cy + ROW_H / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
+    drawRowLabel(label, x + 14, cy, labelMaxW);
+    ctx.fillStyle = valueColor;
+    ctx.font = `bold ${VALUE_PX}px sans-serif`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 12, cy + rowH / 2);
+    return cy + rowH;
+  }
+
+  /** Shaded sub-section header bar (e.g. "SCORING RUNS", "<Team> — Best Run"). */
+  function drawSubHeader(x: number, cy: number, label: string, color: string): number {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(x + 4, cy, COL_W - 4, SUB_HDR_H);
+    ctx.fillStyle = color;
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, mid);
-    ctx.fillStyle = valueColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(value, x + w - 10, mid);
-    return cy + ROW_H;
+    setFittedFont(ctx, label, COL_W - 32, 18, 15, "bold");
+    ctx.fillText(label, x + 14, cy + SUB_HDR_H / 2);
+    ctx.restore();
+    return cy + SUB_HDR_H;
   }
 
   function val(n: number): string {
@@ -2570,55 +2712,50 @@ export function makeChainSummaryPage(
     const totalFor = summary.forChains;
     const totalOpp = summary.oppChains;
     ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "bold 12px sans-serif";
+    ctx.fillStyle = SECONDARY;
+    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText("TOTAL RULE MATCHES", COL1_X + 14, cy + 10);
+    ctx.fillText("TOTAL RULE MATCHES", COL1_X + 14, cy + 22);
     ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = "bold 32px sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(forAllMeasurable ? val(totalFor) : "—", COL1_X + COL_W * 0.58, cy + 10);
+    ctx.fillText(forAllMeasurable ? val(totalFor) : "—", forValX(COL1_X, COL_W), cy + 22);
     ctx.fillStyle = "#fb7185";
-    ctx.fillText(oppAllMeasurable ? val(totalOpp) : "—", COL1_X + COL_W - 10, cy + 10);
+    ctx.fillText(oppAllMeasurable ? val(totalOpp) : "—", oppValX(COL1_X, COL_W), cy + 22);
     ctx.restore();
-    cy += 30;
+    cy += 48;
 
     // (rule match) vs origin — the two kickout panels on this page are
     // different metrics by design; say so where both are visible (see
     // restartMetrics.ts). Never call a rule-match count "direct" — it is
     // still chain-origin attribution, just a narrower window than the
     // origin panels' full-possession forward scan.
+    // Wrapped (not horizontally compressed) at 17px in #94a3b8.
     ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "italic 12px sans-serif";
+    ctx.fillStyle = SECONDARY;
+    ctx.font = "italic 17px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(
+    const FOOT_LINE_H = 22;
+    let footLines = drawWrappedLines(
+      ctx,
       "(rule match) counts exact rule matches. The origin panels follow the full possession.",
-      COL1_X + 14, cy + 6, COL_W - 24,
+      COL1_X + 14, cy + 11, COL_W - 28, FOOT_LINE_H,
     );
     if (!forAllMeasurable || !oppAllMeasurable) {
-      ctx.fillText(
+      footLines += drawWrappedLines(
+        ctx,
         "— not measurable: those wins were logged as the other team's loss or concession.",
-        COL1_X + 14, cy + 24, COL_W - 24,
+        COL1_X + 14, cy + 11 + footLines * FOOT_LINE_H, COL_W - 28, FOOT_LINE_H,
       );
     }
     ctx.restore();
-    cy += !forAllMeasurable || !oppAllMeasurable ? 38 : 20;
+    cy += footLines * FOOT_LINE_H;
 
     // Momentum summary teaser
-    cy += 12;
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL1_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText("SCORING RUNS (≥2 consecutive)", COL1_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
+    cy += 16;
+    cy = drawSubHeader(COL1_X, cy, "SCORING RUNS (≥2 consecutive)", "#fbbf24");
 
     const { scoringRuns } = analysis;
     cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (For)", fmtScoreCount(scoringRuns.maxConsecutiveFor), "#7dd3fc", false);
@@ -2650,7 +2787,7 @@ export function makeChainSummaryPage(
     cy += 10;
     if (ko.won + ko.lost > 0) {
       const barW = COL_W - 24;
-      const barH = 12;
+      const barH = 16;
       const barX = COL2_X + 12;
       const barY = cy;
       const restartShare = viewRestartShare(report);
@@ -2660,25 +2797,32 @@ export function makeChainSummaryPage(
       ctx.fillRect(barX, barY, barW, barH);
       ctx.fillStyle = "#22d3ee";
       ctx.fillRect(barX, barY, Math.max(4, barW * wonFrac), barH);
-      ctx.fillStyle = "#64748b";
-      ctx.font = "12px sans-serif";
+      ctx.fillStyle = SECONDARY;
+      ctx.font = "18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText(`Possession rate: ${restartShare.pct}%`, barX + barW / 2, barY + barH + 10);
+      ctx.fillText(`Possession rate: ${restartShare.pct}%`, barX + barW / 2, barY + barH + 16);
       ctx.restore();
     }
 
     // Attribution footnote — origin vs direct, with the computed bridge count
     // so this panel and the ledger reconcile with the same number (Bug 2).
+    // Wrapped at 17px and anchored so its last line sits at the panel bottom.
     ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "italic 12px sans-serif";
+    ctx.fillStyle = SECONDARY;
+    ctx.font = "italic 17px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(
-      xRestartStr(restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam), sport),
-      COL2_X + 12, PANEL_Y1 + HALF_H - 14, COL_W - 24,
-    );
+    {
+      const note = xRestartStr(
+        restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam),
+        sport,
+      );
+      const NOTE_LINE_H = 22;
+      const noteLines = wrapText(ctx, note, COL_W - 28);
+      const firstY = PANEL_Y1 + HALF_H - 16 - (noteLines.length - 1) * NOTE_LINE_H;
+      noteLines.forEach((line, i) => ctx.fillText(line, COL2_X + 14, firstY + i * NOTE_LINE_H));
+    }
     ctx.restore();
 
     // Turnover panel
@@ -2708,16 +2852,7 @@ export function makeChainSummaryPage(
     // Best runs for each side
     const { longestRunFor: lrf, longestRunOpp: lro } = scoringRuns;
 
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(`${truncTeam(homeTeam, 16)} — Best Run`, COL3_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
+    cy = drawSubHeader(COL3_X, cy, `${truncTeam(homeTeam, 16)} — Best Run`, "#7dd3fc");
 
     if (lrf) {
       const seg = lrf.period === "1H"
@@ -2726,21 +2861,12 @@ export function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lrf.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#64748b", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            SECONDARY, false);
       cy++;
     }
 
     cy += 8;
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#fb7185";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(`${truncTeam(awayTeam, 16)} — Best Run`, COL3_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
+    cy = drawSubHeader(COL3_X, cy, `${truncTeam(awayTeam, 16)} — Best Run`, "#fb7185");
 
     if (lro) {
       const seg = lro.period === "1H"
@@ -2749,29 +2875,20 @@ export function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lro.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#64748b", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            SECONDARY, false);
       cy++;
     }
 
     // All runs list (up to 12, most recent first)
     cy += 12;
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(`ALL SCORING RUNS (${scoringRuns.runs.length} total)`, COL3_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
+    cy = drawSubHeader(COL3_X, cy, `ALL SCORING RUNS (${scoringRuns.runs.length} total)`, "#fbbf24");
 
     const runsToShow = [...scoringRuns.runs]
       .sort((a, b) => b.startClockSeconds - a.startClockSeconds)
       .slice(0, 12);
 
     if (runsToShow.length === 0) {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", "#64748b", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", SECONDARY, false);
     } else {
       runsToShow.forEach((run, i) => {
         const sideLabel = run.teamSide === "FOR" ? truncTeam(homeTeam, 10) : truncTeam(awayTeam, 10);
@@ -6129,10 +6246,17 @@ export function makeShotEfficiencyPage(
   const L_COL_X     = 24;
   const L_COL_W     = 928;
   const R_COL_X     = 968;
-  const COL_HDR_H   = 36;
-  const SEC_HDR_H   = 26;
-  const ROW_H       = 32;
-  const SEC_GAP     = 20;
+  // Phone readability layout: larger rows/type; Attempts · Scores · Conversion
+  // are drawn as headline figures (HEADLINE_H band) instead of three rows.
+  // Worst case (football, all 6 source rows + unclassified note) ends at y≈1014.
+  const COL_HDR_H   = 44;
+  const SEC_HDR_H   = 32;
+  const ROW_H       = 36;
+  const SEC_GAP     = 14;
+  const SRC_HDR_H   = 28;
+  const HEADLINE_H  = 112;
+  const LABEL_PX    = 22;
+  const VALUE_PX    = 24;
   // Source breakdown sub-column right-edge positions (relative to column left)
   const SRC_ATT_X   = 520;
   const SRC_SC_X    = 640;
@@ -6230,9 +6354,9 @@ export function makeShotEfficiencyPage(
     ctx.fillStyle = accentColor;
     ctx.fillRect(colX, CONTENT_TOP, 3, COL_HDR_H);
     ctx.fillStyle    = accentColor;
-    ctx.font         = "bold 14px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
+    setFittedFont(ctx, label.toUpperCase(), L_COL_W - 28, 22, 16, "bold");
     ctx.fillText(label.toUpperCase(), colX + 14, CONTENT_TOP + COL_HDR_H / 2);
   }
 
@@ -6242,7 +6366,7 @@ export function makeShotEfficiencyPage(
     ctx.fillStyle = accentColor;
     ctx.fillRect(colX, cy, 3, SEC_HDR_H);
     ctx.fillStyle    = accentColor;
-    ctx.font         = "bold 13px sans-serif";
+    ctx.font         = "bold 18px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 14, cy + SEC_HDR_H / 2);
@@ -6260,23 +6384,51 @@ export function makeShotEfficiencyPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle    = MUTED;
-    ctx.font         = "14px sans-serif";
+    ctx.font         = `${LABEL_PX}px sans-serif`;
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label, colX + 14, mid);
     ctx.fillStyle    = valueColor;
-    ctx.font         = "bold 15px sans-serif";
+    ctx.font         = `bold ${VALUE_PX}px sans-serif`;
     ctx.textAlign    = "right";
     ctx.fillText(value, colX + L_COL_W - 12, mid);
     return cy + ROW_H;
   }
 
+  /**
+   * Headline figures band — the existing large-number styling (caption above a
+   * big bold figure) used for Attempts · Scores · Conversion. Same strings and
+   * colours as the rows they replace; nothing new is computed here.
+   */
+  function drawHeadlineFigures(
+    colX: number, cy: number,
+    figures: ReadonlyArray<{ label: string; value: string; color: string }>,
+  ): number {
+    const tileW = Math.floor((L_COL_W - 3) / figures.length);
+    figures.forEach(({ label, value, color }, i) => {
+      const tx = colX + 3 + i * tileW;
+      if (i > 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.fillRect(tx, cy + 14, 1, HEADLINE_H - 28);
+      }
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle    = MUTED;
+      ctx.font         = "bold 18px sans-serif";
+      ctx.fillText(label, tx + 14, cy + 24);
+      ctx.fillStyle    = color;
+      ctx.font         = "bold 56px sans-serif";
+      ctx.fillText(value, tx + 14, cy + 74);
+    });
+    return cy + HEADLINE_H;
+  }
+
   function drawSrcHeader(colX: number, cy: number): number {
     ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(colX + 3, cy, L_COL_W - 3, 22);
-    const mid = cy + 11;
+    ctx.fillRect(colX + 3, cy, L_COL_W - 3, SRC_HDR_H);
+    const mid = cy + SRC_HDR_H / 2;
     ctx.fillStyle    = MUTED;
-    ctx.font         = "bold 11px sans-serif";
+    ctx.font         = "bold 16px sans-serif";
     ctx.textBaseline = "middle";
     const colDefs: Array<[number, string]> = [
       [SRC_ATT_X,  "ATT"],
@@ -6290,7 +6442,7 @@ export function makeShotEfficiencyPage(
     }
     ctx.textAlign = "left";
     ctx.fillText("SOURCE", colX + 14, mid);
-    return cy + 22;
+    return cy + SRC_HDR_H;
   }
 
   function drawSrcRow(
@@ -6304,7 +6456,7 @@ export function makeShotEfficiencyPage(
     const mid      = cy + ROW_H / 2;
     const hasData  = row.att > 0;
     ctx.fillStyle    = hasData ? NEUTRAL : MUTED;
-    ctx.font         = "14px sans-serif";
+    ctx.font         = `${LABEL_PX}px sans-serif`;
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(row.label, colX + 14, mid);
@@ -6315,7 +6467,7 @@ export function makeShotEfficiencyPage(
       [SRC_MISS_X, row.att > 0 ? String(row.miss) : "—"],
       [SRC_CONV_X, row.conv],
     ];
-    ctx.font      = "bold 14px sans-serif";
+    ctx.font      = `bold ${VALUE_PX}px sans-serif`;
     ctx.textAlign = "right";
     for (const [rx, val] of vals) {
       ctx.fillStyle = vc;
@@ -6329,12 +6481,13 @@ export function makeShotEfficiencyPage(
 
     // ── Section 1: Overall Conversion ─────────────────────────────────────────
     cy = drawSecHeader(colX, cy, "Overall Conversion", accentColor);
-    cy = drawRow(colX, cy, "Attempts",        String(stats.totalAtt),
-      NEUTRAL, false);
-    cy = drawRow(colX, cy, "Scores",          String(stats.totalSc),
-      stats.totalAtt > 0 ? accentColor : MUTED, true);
-    cy = drawRow(colX, cy, "Conversion",      stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
-      stats.totalAtt > 0 ? accentColor : MUTED, false);
+    cy = drawHeadlineFigures(colX, cy, [
+      { label: "Attempts",   value: String(stats.totalAtt), color: NEUTRAL },
+      { label: "Scores",     value: String(stats.totalSc),
+        color: stats.totalAtt > 0 ? accentColor : MUTED },
+      { label: "Conversion", value: stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
+        color: stats.totalAtt > 0 ? accentColor : MUTED },
+    ]);
     cy = drawRow(colX, cy, "Wides",           String(stats.wides),
       NEUTRAL, true);
     cy = drawRow(colX, cy, "Blocked / Saved", String(stats.blocked),
@@ -6350,14 +6503,14 @@ export function makeShotEfficiencyPage(
     const unclassifiedAtt = stats.srcRows.find((r) => r.label === SRC_LABELS.UNKNOWN)?.att ?? 0;
     if (unclassifiedAtt > 0) {
       ctx.fillStyle    = "#fbbf24";
-      ctx.font         = "italic 13px sans-serif";
+      ctx.font         = "italic 18px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(
         `${unclassifiedAtt} shot${unclassifiedAtt !== 1 ? "s" : ""} logged without a source`,
-        colX + 14, cy + 11,
+        colX + 14, cy + 13,
       );
-      cy += 22;
+      cy += 26;
     }
     cy += SEC_GAP;
 
