@@ -550,7 +550,7 @@ function drawPageHeader(
   ctx.font = "22px sans-serif";
   ctx.textAlign = "left";
   let subDisplay = subtitle;
-  const subMaxW = CANVAS_W - 200;
+  const subMaxW = CANVAS_W - 420;   // stays clear of the layer chips + wordmark
   if (ctx.measureText(subDisplay).width > subMaxW) {
     while (subDisplay.length > 0 && ctx.measureText(subDisplay + "…").width > subMaxW) {
       subDisplay = subDisplay.slice(0, -1);
@@ -2421,13 +2421,13 @@ export function makePlayerInfluencePage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Player Chain Involvement", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   ctx.save();
-  ctx.fillStyle = "#64748b";
-  ctx.font = "italic 14px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "italic 18px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(
     "Scoring-chain involvement and recorded ball actions, ranked by most scoring-chain involvements.",
-    24, 86,
+    24, 88,
   );
   ctx.restore();
   drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
@@ -2444,26 +2444,29 @@ export function makePlayerInfluencePage(
 
     // Column header
     ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(colX, cy, COL_W, 36);
+    // Phone readability (minor): header 15→20px, table 16→19px on 33px rows,
+    // headings 14→18px, secondary labels #64748b→#94a3b8. Worst case (9 rows +
+    // 4 two-line patterns) still ends by y≈975.
+    ctx.fillRect(colX, cy, COL_W, 40);
     ctx.fillStyle = accent;
-    ctx.fillRect(colX, cy, 3, 36);
-    ctx.font = "bold 15px sans-serif";
+    ctx.fillRect(colX, cy, 3, 40);
     ctx.fillStyle = accent;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(team.teamName.toUpperCase(), colX + 14, cy + 18);
-    cy += 44;
+    setFittedFont(ctx, team.teamName.toUpperCase(), COL_W - 28, 20, 15, "bold");
+    ctx.fillText(team.teamName.toUpperCase(), colX + 14, cy + 20);
+    cy += 48;
 
     if (team.players.length === 0) {
-      ctx.fillStyle = "#64748b";
-      ctx.font = "18px sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "20px sans-serif";
       ctx.fillText("No player-tagged events recorded", colX + 14, cy + 20);
       return;
     }
 
     // ── Most scoring-chain involvements ─────────────────────────────────────
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 14px sans-serif";
+    ctx.font = "bold 18px sans-serif";
     ctx.fillText("MOST SCORING-CHAIN INVOLVEMENTS", colX + 14, cy + 8);
     cy += 26;
     team.top3.forEach((p, i) => {
@@ -2480,10 +2483,14 @@ export function makePlayerInfluencePage(
       ctx.textAlign = "left";
       cy += 30;
       ctx.fillStyle = "#cbd5e1";
-      ctx.font = "16px sans-serif";
       let evidence = influenceEvidenceLine(p, team);
-      while (evidence.length > 0 && ctx.measureText(evidence).width > COL_W - 40) {
-        evidence = evidence.slice(0, -1);
+      // 16→18px, stepped down to 14px before any cut; a cut is marked "…".
+      setFittedFont(ctx, evidence, COL_W - 40, 18, 14);
+      if (ctx.measureText(evidence).width > COL_W - 40) {
+        while (evidence.length > 0 && ctx.measureText(evidence + "…").width > COL_W - 40) {
+          evidence = evidence.slice(0, -1);
+        }
+        evidence += "…";
       }
       ctx.fillText(evidence, colX + 26, cy + 8);
       cy += 30;
@@ -2496,37 +2503,43 @@ export function makePlayerInfluencePage(
       ["CHAIN INV", 720], ["NET BALL", 860],
     ];
     ctx.fillStyle = "rgba(255,255,255,0.06)";
-    ctx.fillRect(colX, cy, COL_W, 26);
-    ctx.font = "bold 12px sans-serif";
-    ctx.fillStyle = "#64748b";
+    ctx.fillRect(colX, cy, COL_W, 30);
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillStyle = "#94a3b8";
     for (const [label, off] of cols) {
       ctx.textAlign = off === 0 ? "left" : "center";
-      ctx.fillText(label, colX + 14 + off, cy + 13);
+      ctx.fillText(label, colX + 14 + off, cy + 15);
     }
-    cy += 26;
+    cy += 30;
 
+    const ROW_H = 33;
     for (const p of team.players.slice(0, 9)) {
-      const mid = cy + 15;
-      ctx.font = "16px sans-serif";
+      const mid = cy + ROW_H / 2;
       ctx.fillStyle = "#e2e8f0";
       ctx.textAlign = "left";
       let nm = p.displayName;
-      while (nm.length > 0 && ctx.measureText(nm).width > 310) nm = nm.slice(0, -1);
+      // Name 16→19px, stepped down to 15px before any cut; a cut is marked "…".
+      setFittedFont(ctx, nm, 310, 19, 15);
+      if (ctx.measureText(nm).width > 310) {
+        while (nm.length > 0 && ctx.measureText(nm + "…").width > 310) nm = nm.slice(0, -1);
+        nm += "…";
+      }
       ctx.fillText(nm, colX + 14, mid);
+      ctx.font = "19px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(p.scoreValue > 0 ? fmtPlayerScore(p) : "—", colX + 14 + 340, mid);
       ctx.fillText(p.scoreValue > 0 ? `${p.scoringSharePct}%` : "—", colX + 14 + 460, mid);
       ctx.fillText(p.shots > 0 ? `${p.scores}/${p.shots}` : "—", colX + 14 + 580, mid);
       ctx.fillStyle = accent;
-      ctx.font = "bold 16px sans-serif";
+      ctx.font = "bold 19px sans-serif";
       ctx.fillText(
         p.chainInvolvementCount > 0 ? `${p.chainInvolvementCount}/${team.teamScores}` : "—",
         colX + 14 + 720, mid,
       );
-      ctx.font = "16px sans-serif";
+      ctx.font = "19px sans-serif";
       ctx.fillStyle = p.netBallImpact > 0 ? "#4ade80" : p.netBallImpact < 0 ? "#fb7185" : "#94a3b8";
       ctx.fillText(p.netBallImpact > 0 ? `+${p.netBallImpact}` : String(p.netBallImpact), colX + 14 + 860, mid);
-      cy += 30;
+      cy += ROW_H;
     }
     cy += 14;
 
@@ -2536,7 +2549,7 @@ export function makePlayerInfluencePage(
     // what a coach should do about them (see players/influence.ts header).
     ctx.textAlign = "left";
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 14px sans-serif";
+    ctx.font = "bold 18px sans-serif";
     ctx.fillText("RECORDED PATTERNS", colX + 14, cy + 8);
     cy += 28;
 
@@ -2554,7 +2567,7 @@ export function makePlayerInfluencePage(
       patterns.push({ text: team.quietInfluence.text, colour: "#7dd3fc" });
     }
     if (patterns.length === 0) {
-      patterns.push({ text: "No additional patterns met the minimum sample.", colour: "#64748b" });
+      patterns.push({ text: "No additional patterns met the minimum sample.", colour: "#94a3b8" });
     }
 
     ctx.font = "17px sans-serif";
@@ -5635,8 +5648,8 @@ export function makeZoneAnalysisPage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (events.length === 0) {
-    ctx.fillStyle    = "#64748b";
-    ctx.font         = "18px sans-serif";
+    ctx.fillStyle    = "#94a3b8";
+    ctx.font         = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
@@ -5734,8 +5747,36 @@ export function makeZoneAnalysisPage(
     const MAX_TW  = DP_P3_W - 22;
     let   cy      = panelY + 6;
 
+    // Phone readability: the largest size (16px down to 13px) at which every
+    // bullet fits in full (wrapped, no "…") is used; otherwise the original
+    // 14px two-line layout below is kept unchanged.
+    const shown = bullets.slice(0, 5);
+    let drawnInFull = false;
     ctx.save();
-    for (const bullet of bullets.slice(0, 5)) {
+    for (let px = 16; px >= 13 && !drawnInFull; px--) {
+      ctx.font = `${px}px sans-serif`;
+      const lineH = px + 4;
+      const wrapped = shown.map((b) => wrapText(ctx, b, MAX_TW));
+      const total = wrapped.reduce((h, lines) => h + lines.length * lineH + 12, 6);
+      if (panelY + total > maxY - 4) continue;
+      wrapped.forEach((lines) => {
+        const itemH = lines.length * lineH + 8;
+        ctx.fillStyle = "#34d399cc";
+        ctx.fillRect(DP_P3_X + 7, cy + 4, 3, itemH - 4);
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        lines.forEach((line, li) => {
+          ctx.fillStyle = li === 0 ? "#e2e8f0" : "#cbd5e1";
+          ctx.fillText(line, DP_P3_X + 15, cy + 4 + li * lineH);
+        });
+        cy += itemH + 4;
+      });
+      drawnInFull = true;
+    }
+    ctx.restore();
+
+    ctx.save();
+    for (const bullet of drawnInFull ? [] : shown) {
       if (cy + ITEM_H > maxY - 4) break;
 
       ctx.fillStyle = "#34d399cc";
@@ -6261,7 +6302,14 @@ export function makeShotEfficiencyPage(
   pageNum: number,
   totalPages: number,
   sport: PitchSport = "gaelic",
+  /**
+   * "readable" — phone-readability layout used by the Full Review PDF.
+   * "compact"  — the original layout, kept for the FT Snapshot PDF (which is
+   *              out of scope for the readability work and must not change).
+   */
+  layout: "readable" | "compact" = "readable",
 ): HTMLCanvasElement {
+  const READABLE = layout === "readable";
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
@@ -6285,23 +6333,25 @@ export function makeShotEfficiencyPage(
   // Phone readability layout: larger rows/type; Attempts · Scores · Conversion
   // are drawn as headline figures (HEADLINE_H band) instead of three rows.
   // Worst case (football, all 6 source rows + unclassified note) ends at y≈1014.
-  const COL_HDR_H   = 44;
-  const SEC_HDR_H   = 32;
-  const ROW_H       = 36;
-  const SEC_GAP     = 14;
-  const SRC_HDR_H   = 28;
+  // (compact = original values)
+  const COL_HDR_H   = READABLE ? 44 : 36;
+  const SEC_HDR_H   = READABLE ? 32 : 26;
+  const ROW_H       = READABLE ? 36 : 32;
+  const SEC_GAP     = READABLE ? 14 : 20;
+  const SRC_HDR_H   = READABLE ? 28 : 22;
   const HEADLINE_H  = 112;
-  const LABEL_PX    = 22;
-  const VALUE_PX    = 24;
+  const LABEL_PX    = READABLE ? 22 : 14;
+  const VALUE_PX    = READABLE ? 24 : 15;
+  const SRC_VALUE_PX = READABLE ? 24 : 14;
   // Source breakdown sub-column right-edge positions (relative to column left).
   // Phone readability: values sit on a rail 500px from the column edge (was
   // 916px) so a label and its value stay together when zoomed in.
-  const VALUE_RAIL  = 500;
-  const SRC_ATT_X   = 250;
-  const SRC_SC_X    = 335;
-  const SRC_MISS_X  = 420;
+  const VALUE_RAIL  = READABLE ? 500 : L_COL_W - 12;
+  const SRC_ATT_X   = READABLE ? 250 : 520;
+  const SRC_SC_X    = READABLE ? 335 : 640;
+  const SRC_MISS_X  = READABLE ? 420 : 756;
   const SRC_CONV_X  = VALUE_RAIL;
-  const ROW_STRIPE_W = VALUE_RAIL + 14;  // row stripes end just past the values
+  const ROW_STRIPE_W = READABLE ? VALUE_RAIL + 14 : L_COL_W;  // row stripes end just past the values
 
   const FOR_COLOR = "#4ade80";
   const OPP_COLOR = "#f87171";
@@ -6396,7 +6446,8 @@ export function makeShotEfficiencyPage(
     ctx.fillStyle    = accentColor;
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
-    setFittedFont(ctx, label.toUpperCase(), L_COL_W - 28, 22, 16, "bold");
+    if (READABLE) setFittedFont(ctx, label.toUpperCase(), L_COL_W - 28, 22, 16, "bold");
+    else ctx.font = "bold 14px sans-serif";
     ctx.fillText(label.toUpperCase(), colX + 14, CONTENT_TOP + COL_HDR_H / 2);
   }
 
@@ -6406,7 +6457,7 @@ export function makeShotEfficiencyPage(
     ctx.fillStyle = accentColor;
     ctx.fillRect(colX, cy, 3, SEC_HDR_H);
     ctx.fillStyle    = accentColor;
-    ctx.font         = "bold 20px sans-serif";
+    ctx.font         = READABLE ? "bold 20px sans-serif" : "bold 13px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 14, cy + SEC_HDR_H / 2);
@@ -6468,7 +6519,7 @@ export function makeShotEfficiencyPage(
     ctx.fillRect(colX + 3, cy, ROW_STRIPE_W - 3, SRC_HDR_H);
     const mid = cy + SRC_HDR_H / 2;
     ctx.fillStyle    = MUTED;
-    ctx.font         = "bold 16px sans-serif";
+    ctx.font         = READABLE ? "bold 16px sans-serif" : "bold 11px sans-serif";
     ctx.textBaseline = "middle";
     const colDefs: Array<[number, string]> = [
       [SRC_ATT_X,  "ATT"],
@@ -6507,7 +6558,7 @@ export function makeShotEfficiencyPage(
       [SRC_MISS_X, row.att > 0 ? String(row.miss) : "—"],
       [SRC_CONV_X, row.conv],
     ];
-    ctx.font      = `bold ${VALUE_PX}px sans-serif`;
+    ctx.font      = `bold ${SRC_VALUE_PX}px sans-serif`;
     ctx.textAlign = "right";
     for (const [rx, val] of vals) {
       ctx.fillStyle = vc;
@@ -6521,13 +6572,22 @@ export function makeShotEfficiencyPage(
 
     // ── Section 1: Overall Conversion ─────────────────────────────────────────
     cy = drawSecHeader(colX, cy, "Overall Conversion", accentColor);
-    cy = drawHeadlineFigures(colX, cy, [
-      { label: "Attempts",   value: String(stats.totalAtt), color: NEUTRAL },
-      { label: "Scores",     value: String(stats.totalSc),
-        color: stats.totalAtt > 0 ? accentColor : MUTED },
-      { label: "Conversion", value: stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
-        color: stats.totalAtt > 0 ? accentColor : MUTED },
-    ]);
+    if (READABLE) {
+      cy = drawHeadlineFigures(colX, cy, [
+        { label: "Attempts",   value: String(stats.totalAtt), color: NEUTRAL },
+        { label: "Scores",     value: String(stats.totalSc),
+          color: stats.totalAtt > 0 ? accentColor : MUTED },
+        { label: "Conversion", value: stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
+          color: stats.totalAtt > 0 ? accentColor : MUTED },
+      ]);
+    } else {
+      cy = drawRow(colX, cy, "Attempts",        String(stats.totalAtt),
+        NEUTRAL, false);
+      cy = drawRow(colX, cy, "Scores",          String(stats.totalSc),
+        stats.totalAtt > 0 ? accentColor : MUTED, true);
+      cy = drawRow(colX, cy, "Conversion",      stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
+        stats.totalAtt > 0 ? accentColor : MUTED, false);
+    }
     cy = drawRow(colX, cy, "Wides",           String(stats.wides),
       NEUTRAL, true);
     cy = drawRow(colX, cy, "Blocked / Saved", String(stats.blocked),
@@ -6543,14 +6603,14 @@ export function makeShotEfficiencyPage(
     const unclassifiedAtt = stats.srcRows.find((r) => r.label === SRC_LABELS.UNKNOWN)?.att ?? 0;
     if (unclassifiedAtt > 0) {
       ctx.fillStyle    = "#fbbf24";
-      ctx.font         = "italic 18px sans-serif";
+      ctx.font         = READABLE ? "italic 18px sans-serif" : "italic 13px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(
         `${unclassifiedAtt} shot${unclassifiedAtt !== 1 ? "s" : ""} logged without a source`,
-        colX + 14, cy + 13,
+        colX + 14, cy + (READABLE ? 13 : 11),
       );
-      cy += 26;
+      cy += READABLE ? 26 : 22;
     }
     cy += SEC_GAP;
 
@@ -6662,7 +6722,11 @@ const LAYER_LABELS: Record<LayerKind, string[]> = {
   MIXED:      ["POSSESSION", "CHAIN"],   // two stacked chips for dual-engine pages
 };
 
-function stampLayerBadge(canvas: HTMLCanvasElement, layer: LayerKind): void {
+function stampLayerBadge(
+  canvas: HTMLCanvasElement,
+  layer: LayerKind,
+  placement: "stacked" | "inline" = "stacked",
+): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.save();
@@ -6671,6 +6735,33 @@ function stampLayerBadge(canvas: HTMLCanvasElement, layer: LayerKind): void {
   ctx.textAlign = "left";
 
   const chips = LAYER_LABELS[layer];
+
+  if (placement === "inline") {
+    // Full Review header: chips sit side by side on the wordmark row (y=62),
+    // ending just left of the "PáircVision" wordmark, so they no longer
+    // overlap the wordmark or the page number (stacked placement did).
+    ctx.save();
+    ctx.font = "italic 18px sans-serif";
+    const wordmarkW = ctx.measureText("PáircVision").width;
+    ctx.restore();
+    const chipH = 18;
+    const chipGap = 6;
+    const chipY = 62 - chipH / 2;
+    let right = CANVAS_W - 24 - wordmarkW - 14;
+    for (let i = chips.length - 1; i >= 0; i--) {
+      const label = chips[i];
+      const colour = chips.length === 1 ? LAYER_COLOURS[layer] : (i === 0 ? LAYER_COLOURS.POSSESSION : LAYER_COLOURS.CHAIN);
+      const chipW = ctx.measureText(label).width + 16;
+      const chipX = right - chipW;
+      ctx.fillStyle = colour + "33";
+      ctx.fillRect(chipX, chipY, chipW, chipH);
+      ctx.fillStyle = colour;
+      ctx.fillText(label, chipX + 8, chipY + chipH / 2);
+      right = chipX - chipGap;
+    }
+    ctx.restore();
+    return;
+  }
   const chipH = 16;
   const chipGap = 4;
   const startY = 51 - ((chips.length - 1) * (chipH + chipGap)) / 2;
@@ -7087,8 +7178,9 @@ function dpPanelStart(
   ctx.fillRect(x, y, 3, h);
 
   // Panel title — brighter than stat labels to anchor the eye
+  // (phone readability: 15→18px).
   ctx.fillStyle = "#f1f5f9";
-  ctx.font = "bold 15px sans-serif";
+  setFittedFont(ctx, title.toUpperCase(), w - 28, 18, 14, "bold");
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(title.toUpperCase(), x + 14, y + 16);
@@ -7105,7 +7197,12 @@ function dpPanelStart(
   return y + 34;
 }
 
-/** Standard key-value stat row (ROW_H = 26). */
+/**
+ * Standard key-value stat row (ROW_H = 26 — unchanged so every strip keeps
+ * its height). Phone readability: label 13→17px and value 15→19px, each
+ * stepped down only as far as needed to fit (never below the original size,
+ * never squeezed).
+ */
 function dpStatRow(
   ctx: CanvasRenderingContext2D,
   x: number, cy: number, w: number,
@@ -7117,13 +7214,15 @@ function dpStatRow(
     ctx.fillRect(x + 3, cy, w - 3, ROW_H);
   }
   const mid = cy + ROW_H / 2;
+  const valuePx = setFittedFont(ctx, value, Math.round((w - 18) * 0.55), 19, 15, "bold");
+  const valueW = ctx.measureText(value).width;
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
+  setFittedFont(ctx, label, w - 18 - valueW - 16, 17, 13);
   ctx.fillText(label, x + 10, mid);
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 15px sans-serif";
+  ctx.font = `bold ${valuePx}px sans-serif`;
   ctx.textAlign = "right";
   ctx.fillText(value, x + w - 8, mid);
   return cy + ROW_H;
@@ -7159,11 +7258,11 @@ function dpMiniBarRow(
 
   ctx.save();
 
-  // Label
+  // Label — 13→17px, fitted to the space before the bar column.
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
+  setFittedFont(ctx, label, DP_BAR_OFFSET - 10 - 12, 17, 13);
   ctx.fillText(label, x + 10, mid);
 
   // Bar track
@@ -7178,9 +7277,9 @@ function dpMiniBarRow(
     ctx.fill();
   }
 
-  // Value — right-aligned, bold
+  // Value — right-aligned, bold (15→19px, fitted to the space after the bar)
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 15px sans-serif";
+  setFittedFont(ctx, value, w - 8 - (DP_BAR_OFFSET + DP_BAR_MAX_W) - 16, 19, 15, "bold");
   ctx.textAlign = "right";
   ctx.fillText(value, x + w - 8, mid);
 
@@ -7200,7 +7299,7 @@ function dpSubHeader(
   ctx.fillStyle = accent;
   ctx.fillRect(x + 3, cy, 2, 20);
   ctx.fillStyle = accent + "cc";
-  ctx.font = "bold 12px sans-serif";
+  setFittedFont(ctx, label, w - 24, 15, 12, "bold");   // 12→15px
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label, x + 12, cy + 10);
@@ -7249,7 +7348,7 @@ function dpPossessionBar(
     }
 
     const labelY = cy + BAR_H + 12;
-    ctx.font = "12px sans-serif";
+    ctx.font = "bold 16px sans-serif";   // 12→16px
     ctx.textBaseline = "middle";
     ctx.fillStyle = forAccent;
     ctx.textAlign = "left";
@@ -7259,8 +7358,8 @@ function dpPossessionBar(
     ctx.textAlign = "right";
     ctx.fillText(`${oppPct}%  ${oppLabel}`, barX + barW, labelY);
   } else {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No data", barX + barW / 2, cy + BAR_H / 2);
@@ -7285,8 +7384,8 @@ function dpIntelligencePanel(
 
   if (filtered.length === 0) {
     ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "13px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No observation met the reporting threshold.", x + w / 2, startY + (maxY - startY) / 2);
@@ -7294,8 +7393,38 @@ function dpIntelligencePanel(
     return;
   }
 
-  let cy      = startY + 6;
   const MAX_W = w - 22;
+
+  // Phone readability: the largest size (16px down to 13px) at which EVERY
+  // prompt fits in full (wrapped, no "…") within the panel is used. If none
+  // fits, fall back to the original 14px two-line layout below.
+  ctx.save();
+  for (let px = 16; px >= 13; px--) {
+    ctx.font = `${px}px sans-serif`;
+    const lineH = px + 4;
+    const wrapped = filtered.map((p) => wrapText(ctx, p.text, MAX_W));
+    const total = wrapped.reduce((h, lines) => h + lines.length * lineH + 12, 6);
+    if (startY + total <= maxY - 4) {
+      let cy = startY + 6;
+      wrapped.forEach((lines) => {
+        const itemH = lines.length * lineH + 8;
+        ctx.fillStyle = accent + "cc";
+        ctx.fillRect(x + 7, cy + 4, 3, itemH - 4);
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        lines.forEach((line, li) => {
+          ctx.fillStyle = li === 0 ? "#e2e8f0" : "#cbd5e1";
+          ctx.fillText(line, x + 15, cy + 4 + li * lineH);
+        });
+        cy += itemH + 4;
+      });
+      ctx.restore();
+      return;
+    }
+  }
+  ctx.restore();
+
+  let cy      = startY + 6;
   const LINE_H = 16;
   const ITEM_H = 52;
 
@@ -7476,11 +7605,11 @@ export function makeRestartVisualPage(
     // Footnote, not a fabricated row, since this panel's tag mix isn't scoped
     // the same way as the mirrored Won total (see final report).
     ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "italic 10px sans-serif";
+    ctx.fillStyle = "#94a3b8";            // phone readability: 10px #64748b → 13px #94a3b8
+    ctx.font = "italic 13px sans-serif";  // (only 12px of panel remain below the rows)
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText("Excludes dead-ball restarts, already counted in Won above.", DP_P1_X + 10, cy + 7);
+    ctx.fillText("Excludes dead-ball restarts, already counted in Won above.", DP_P1_X + 10, cy + 6);
     ctx.restore();
   }
 
@@ -8141,7 +8270,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.4 — Scoring Breakdown
   try {
     const c = makeScoringBreakdownPage(events, homeTeamName, awayTeamName, 4, TOTAL_PAGES);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Scoring Breakdown");
   } catch (err) {
     console.error("Scoring Breakdown page generation failed", err);
@@ -8151,7 +8280,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.5 — Match Swing Timeline
   try {
     const c = makeMatchSwingTimelinePage(events, report, homeTeamName, awayTeamName, 5, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Match Swing Timeline");
   } catch (err) {
     console.error("Match Swing Timeline page generation failed", err);
@@ -8160,17 +8289,17 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.6 — Segment Control
   const p_seg = makeSegmentsPage(events, homeTeamName, awayTeamName, 6, TOTAL_PAGES, sport);
-  stampLayerBadge(p_seg, "STATISTICS");
+  stampLayerBadge(p_seg, "STATISTICS", "inline");
   addCanvasPage(p_seg, true, "Segment Control");
 
   // p.7…6+N — Player Breakdown
   const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 7, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
-  playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS"); addCanvasPage(c, true); });
+  playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS", "inline"); addCanvasPage(c, true); });
 
   // p.7+N — Player Contributions (Part 1 — Match Facts; factual only)
   try {
     const c = makePlayerContributionsPage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Player Contributions");
   } catch (err) {
     console.error("Player Contributions page generation failed", err);
@@ -8191,7 +8320,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       "Shot Pitch Maps",
       homeTeamName, awayTeamName, p_shotBase, TOTAL_PAGES,
     );
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Shot Pitch Maps");
   } catch (err) {
     console.error("Shot Pitch Maps page generation failed", err);
@@ -8201,7 +8330,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.7+N — Shot & Scoring Efficiency
   try {
     const c = makeShotEfficiencyPage(events, report, homeTeamName, awayTeamName, p_shotBase + 1, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Shot & Scoring Efficiency");
   } catch (err) {
     console.error("Shot & Scoring Efficiency page generation failed", err);
@@ -8211,7 +8340,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.8+N — Zone Analysis
   try {
     const c = makeZoneAnalysisPage(events, sport, homeTeamName, awayTeamName, p_shotBase + 2, TOTAL_PAGES, homeAttackingDirection);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Zone Analysis");
   } catch (err) {
     console.error("Zone Analysis page generation failed", err);
@@ -8234,7 +8363,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       homeTeamName, awayTeamName, p_arch, TOTAL_PAGES,
       h1AllEvents.length,
     );
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "1H Pitch Overview");
   } catch (err) {
     console.error("1H Pitch Overview page generation failed", err);
@@ -8256,7 +8385,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       homeTeamName, awayTeamName, p_arch + 1, TOTAL_PAGES,
       h2AllEvents.length,
     );
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "2H Pitch Overview");
   } catch (err) {
     console.error("2H Pitch Overview page generation failed", err);
@@ -8282,7 +8411,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.14+N — Opposition Facts (match-fact + possession-fact only)
   try {
     const c = makeOppositionFactsPage(events, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES, sport, homeAttackingDirection);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "STATISTICS", "inline");
     addCanvasPage(c, true, "Opposition Facts");
   } catch (err) {
     console.error("Opposition Facts page generation failed", err);
@@ -8292,7 +8421,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.15+N — Restart Analysis
   try {
     const c = makeRestartVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 2, TOTAL_PAGES, halfCoverage);
-    stampLayerBadge(c, "POSSESSION");
+    stampLayerBadge(c, "POSSESSION", "inline");
     addCanvasPage(c, true, "Restart Analysis");
   } catch (err) {
     console.error("Restart Analysis page generation failed", err);
@@ -8302,7 +8431,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.16+N — Turnover Analysis
   try {
     const c = makeTurnoverVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 3, TOTAL_PAGES, halfCoverage);
-    stampLayerBadge(c, "POSSESSION");
+    stampLayerBadge(c, "POSSESSION", "inline");
     addCanvasPage(c, true, "Turnover Analysis");
   } catch (err) {
     console.error("Turnover Analysis page generation failed", err);
@@ -8312,7 +8441,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.17+N — Free Kick Analysis
   try {
     const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, halfCoverage);
-    stampLayerBadge(c, "POSSESSION");
+    stampLayerBadge(c, "POSSESSION", "inline");
     addCanvasPage(c, true, "Free Kick Analysis");
   } catch (err) {
     console.error("Free Kick Analysis page generation failed", err);
@@ -8345,7 +8474,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.19+N — Scoring Possession Origins (prints GAME_ORIGIN_EXPLANATION first)
   try {
     const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Scoring Possession Origins");
   } catch (err) {
     console.error("Scoring Possession Origins page generation failed", err);
@@ -8355,7 +8484,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.20+N — Player Chain Involvement
   try {
     const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, p_ch3div + 2, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Top Players by Net Influence");
   } catch (err) {
     console.error("Player Chain Involvement page generation failed", err);
@@ -8365,7 +8494,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.21+N — Opposition Origin & Chain Analysis
   try {
     const c = makeOppositionOriginPage(events, report, homeTeamName, awayTeamName, p_ch3div + 3, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Opposition Origin & Chain Analysis");
   } catch (err) {
     console.error("Opposition Origin & Chain Analysis page generation failed", err);
@@ -8375,7 +8504,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.22+N — Intelligence Summary
   try {
     const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Intelligence Summary");
   } catch (err) {
     console.error("Intelligence Summary page generation failed", err);
@@ -8385,7 +8514,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.23+N — Match Markers
   try {
     const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch3div + 5, TOTAL_PAGES, sport, halfCoverage);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Match Markers");
   } catch (err) {
     console.error("Match Markers page generation failed", err);
@@ -8395,7 +8524,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.24+N — Chain Intelligence
   try {
     const c = makeChainSummaryPage(report, homeTeamName, awayTeamName, p_ch3div + 6, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Chain Intelligence");
   } catch (err) {
     console.error("Chain Intelligence page generation failed", err);
@@ -8405,7 +8534,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.25+N — Restart Chain Analysis
   try {
     const c = makeKickoutChainPage(report, homeTeamName, awayTeamName, p_ch3div + 7, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Restart Chain Analysis");
   } catch (err) {
     console.error("Restart Chain Analysis page generation failed", err);
@@ -8415,7 +8544,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.26+N — Turnover Chain Analysis
   try {
     const c = makeTurnoverPunishmentPage(report, homeTeamName, awayTeamName, p_ch3div + 8, TOTAL_PAGES);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Turnover Chain Analysis");
   } catch (err) {
     console.error("Turnover Chain Analysis page generation failed", err);
@@ -8425,7 +8554,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.27+N — Scoring Momentum
   try {
     const c = makeMomentumRunsPage(report, homeTeamName, awayTeamName, p_ch3div + 9, TOTAL_PAGES);
-    stampLayerBadge(c, "CHAIN");
+    stampLayerBadge(c, "CHAIN", "inline");
     addCanvasPage(c, true, "Scoring Momentum");
   } catch (err) {
     console.error("Scoring Momentum page generation failed", err);
@@ -13289,12 +13418,12 @@ function makeScoringPossessionOriginsPage(
   // ── Game Origin explanation — must appear before any origin table ─────────
   ctx.save();
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "20px sans-serif";
+  ctx.font = "24px sans-serif";
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   const explainerLines = wrapText(ctx, xRestartStr(GAME_ORIGIN_EXPLANATION, sport), CANVAS_W - 48);
-  let ey = 90;
-  explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 28; });
+  let ey = 92;
+  explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 33; });
   ctx.restore();
 
   const usOrigins   = viewScoringPossessionOrigins(report, "FOR");
@@ -13307,9 +13436,9 @@ function makeScoringPossessionOriginsPage(
   // origin breakdowns read as separate cells.
   const COL_US   = TBL_X + Math.round(TBL_W * 0.42);
   const COL_THEM = TBL_X + Math.round(TBL_W * 0.75);
-  // Phone readability: rows 68→84px, text 22→28px, header 19→22px.
+  // Phone readability: rows 68→96px, text 22→28px, header 19→22px.
   const HDR_H    = 54;
-  const ROW_H    = 84;
+  const ROW_H    = 96;
   let ty = ey + 36;
 
   ctx.fillStyle = "rgba(255,255,255,0.07)";
@@ -13357,9 +13486,9 @@ function makeScoringPossessionOriginsPage(
       const usTxt = formatScoringBreakdownOrDash(row.us);
       const themTxt = formatScoringBreakdownOrDash(row.them);
       // Both origin cells share one size so the comparison reads evenly:
-      // the largest size (28px down to 18px) at which the two centred cells
+      // the largest size (32px down to 18px) at which the two centred cells
       // keep a 48px gap, stay clear of the row label and inside the table.
-      let cellPx = 28;
+      let cellPx = 32;
       for (; cellPx > 18; cellPx--) {
         ctx.font = `${cellPx}px sans-serif`;
         const wUs = ctx.measureText(usTxt).width;
@@ -13380,7 +13509,7 @@ function makeScoringPossessionOriginsPage(
   ty += 30;
   ctx.textAlign = "left";
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "italic 20px sans-serif";
+  ctx.font = "italic 22px sans-serif";
   const bridgeLines = wrapText(
     ctx,
     xRestartStr(
@@ -13392,7 +13521,7 @@ function makeScoringPossessionOriginsPage(
     ),
     TBL_W,
   );
-  bridgeLines.forEach((line) => { ctx.fillText(line, TBL_X, ty); ty += 28; });
+  bridgeLines.forEach((line) => { ctx.fillText(line, TBL_X, ty); ty += 30; });
   ty += 12;
   ctx.fillText(
     "Only restart and turnover origins are currently tracked — a score with neither origin has no row here.",
@@ -13838,7 +13967,8 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 8. Shot & Scoring Efficiency
     addPage(
-      makeShotEfficiencyPage(events, report, home, away, 8, TOTAL_PAGES, sport),
+      // Original (compact) layout — Snapshot PDFs are outside the readability work.
+      makeShotEfficiencyPage(events, report, home, away, 8, TOTAL_PAGES, sport, "compact"),
       true,
       "Shot Efficiency",
       "STATISTICS",
