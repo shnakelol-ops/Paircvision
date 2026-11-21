@@ -644,6 +644,147 @@ function drawWrappedLines(
   return lines.length;
 }
 
+/**
+ * Readable panel kit for the three-column chain pages (Restart Chain,
+ * Turnover Chain, Scoring Momentum) — the type scale approved on Chain
+ * Intelligence: rows 40px, labels 22px (fitted to 18px, then wrapped onto a
+ * 56px row), values 24px bold (fitted to ≤60% of the row), sub-headers 18px,
+ * panel titles 20px, footnotes 17px italic #94a3b8, wrapped not squeezed.
+ */
+type ReadablePanelKit = {
+  rowH: number;
+  title(x: number, y: number, label: string, accentColor: string): number;
+  statRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string, isAlt: boolean,
+  ): number;
+  subHeader(x: number, cy: number, w: number, label: string, accentColor: string): number;
+  footnote(x: number, cy: number, w: number, text: string): number;
+  emptyText(text: string, cx: number, cy: number): void;
+};
+
+type ReadablePanelScale = {
+  rowH: number; wrapRowH: number; labelPx: number; labelMinPx: number;
+  valuePx: number; subH: number; subPx: number;
+};
+/** Default readable scale (matches Chain Intelligence). */
+const PANEL_SCALE_STANDARD: ReadablePanelScale = {
+  rowH: 40, wrapRowH: 56, labelPx: 22, labelMinPx: 18, valuePx: 24, subH: 30, subPx: 20,
+};
+/** Denser readable scale for panels whose row count cannot fit 40px rows. */
+const PANEL_SCALE_DENSE: ReadablePanelScale = {
+  rowH: 28, wrapRowH: 44, labelPx: 19, labelMinPx: 16, valuePx: 21, subH: 24, subPx: 17,
+};
+
+function makeReadablePanelKit(
+  ctx: CanvasRenderingContext2D,
+  colW: number,
+  scale: ReadablePanelScale = PANEL_SCALE_STANDARD,
+): ReadablePanelKit {
+  const ROW_H = scale.rowH;
+  const WRAP_ROW_H = scale.wrapRowH;
+  const SUB_H = scale.subH;
+  const TITLE_H = 40;
+  const SECONDARY = "#94a3b8";
+  const halfLine = Math.round((WRAP_ROW_H - 12) / 4);
+
+  function rowLayout(w: number, label: string, value: string) {
+    ctx.save();
+    const valueMaxW = Math.round((w - 28) * 0.6);
+    const valuePx = setFittedFont(ctx, value, valueMaxW, scale.valuePx, 16, "bold");
+    const valueW = Math.min(ctx.measureText(value).width, valueMaxW);
+    const labelMaxW = Math.max(80, w - 24 - valueW - 20);
+    const labelPx = setFittedFont(ctx, label, labelMaxW, scale.labelPx, scale.labelMinPx);
+    let lines = [label];
+    if (ctx.measureText(label).width > labelMaxW) {
+      const wrapped = wrapText(ctx, label, labelMaxW);
+      lines = wrapped.length > 1 ? [wrapped[0], wrapped.slice(1).join(" ")] : wrapped;
+    }
+    // A second line that is still too long steps down further (never squeezed).
+    const secondPx = lines.length > 1
+      ? setFittedFont(ctx, lines[1], labelMaxW, labelPx, 14)
+      : labelPx;
+    ctx.restore();
+    return { valuePx, labelPx, secondPx, lines, rowH: lines.length > 1 ? WRAP_ROW_H : ROW_H };
+  }
+
+  return {
+    rowH: ROW_H,
+    title(x, y, label, accentColor) {
+      ctx.save();
+      ctx.fillStyle = accentColor;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      setFittedFont(ctx, label.toUpperCase(), colW - 32, 22, 16, "bold");
+      ctx.fillText(label.toUpperCase(), x + 16, y + (TITLE_H - 2) / 2);
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y + TITLE_H - 2);
+      ctx.lineTo(x + colW, y + TITLE_H - 2);
+      ctx.stroke();
+      ctx.restore();
+      return y + TITLE_H;
+    },
+    statRow(x, cy, w, label, value, valueColor, isAlt) {
+      const L = rowLayout(w, label, value);
+      if (isAlt) {
+        ctx.fillStyle = "rgba(255,255,255,0.025)";
+        ctx.fillRect(x + 4, cy, w - 4, L.rowH);
+      }
+      const mid = cy + L.rowH / 2;
+      ctx.fillStyle = SECONDARY;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      if (L.lines.length === 1) {
+        ctx.font = `${L.labelPx}px sans-serif`;
+        ctx.fillText(label, x + 14, mid);
+      } else {
+        ctx.font = `${L.labelPx}px sans-serif`;
+        ctx.fillText(L.lines[0], x + 14, mid - halfLine);
+        ctx.font = `${L.secondPx}px sans-serif`;
+        ctx.fillText(L.lines[1], x + 14, mid + halfLine);
+      }
+      ctx.fillStyle = valueColor;
+      ctx.font = `bold ${L.valuePx}px sans-serif`;
+      ctx.textAlign = "right";
+      ctx.fillText(value, x + w - 12, mid);
+      return cy + L.rowH;
+    },
+    subHeader(x, cy, w, label, accentColor) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillRect(x + 4, cy, w - 4, SUB_H);
+      ctx.fillStyle = accentColor;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      setFittedFont(ctx, label, w - 32, scale.subPx, 15, "bold");
+      ctx.fillText(label, x + 14, cy + SUB_H / 2);
+      ctx.restore();
+      return cy + SUB_H;
+    },
+    footnote(x, cy, w, text) {
+      ctx.save();
+      ctx.fillStyle = SECONDARY;
+      ctx.font = "italic 17px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      const n = drawWrappedLines(ctx, text, x + 14, cy + 11, w - 28, 22);
+      ctx.restore();
+      return cy + n * 22;
+    },
+    emptyText(text, cx, cy) {
+      ctx.save();
+      ctx.fillStyle = SECONDARY;
+      ctx.font = "22px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText(text, cx, cy);
+      ctx.restore();
+    },
+  };
+}
+
 // ─── Pitch rendering ──────────────────────────────────────────────────────────
 
 type PitchArea = { x: number; y: number; w: number; h: number };
@@ -997,7 +1138,7 @@ function drawSummaryStatsTable(
       ctx.fillRect(sx, cy, subW, secH);
       ctx.fillStyle = sec.accent;
       ctx.fillRect(sx, cy, 3, secH);
-      ctx.font = "bold 17px sans-serif";
+      ctx.font = "bold 20px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText(sec.label, sx + 12, cy + secH / 2);
@@ -1232,7 +1373,7 @@ function makeSegmentsPage(
   ctx.fillStyle = "#94a3b8";
   ctx.font = "22px sans-serif";
   ctx.fillText(`${homeTeam} v ${awayTeam}`, 24, 62);
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "19px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
@@ -1253,27 +1394,30 @@ function makeSegmentsPage(
   // Centered: tableLeft=280, tableW=1360, right edge=1640, right margin=280
   // Columns: seg(160) | FOR: Score(170)+Shots(110)+K/O(120)+NetTO(80)+Frees(120)=600
   //                   | OPP: same 600
-  const tL    = 280;   // tableLeft
-  const segW  = 160;
+  // Phone readability layout: table widened to 1800px (tableLeft=60),
+  // columns ×1.3, rows 54→70px, values 18–20→26–30px.
+  // Columns: seg(220) | FOR: Score(220)+Shots(145)+K/O(160)+NetTO(105)+Frees(160)=790
+  const tL    = 60;    // tableLeft
+  const segW  = 220;
   // column starts within each team block:
-  const cScore = 0;   const wScore = 170;
-  const cShots = 170; const wShots = 110;
-  const cKO    = 280; const wKO    = 120;
-  const cTO    = 400; const wTO    = 80;
-  const cFree  = 480; const wFree  = 120;
-  const teamW  = wScore + wShots + wKO + wTO + wFree; // 600
-  const tableW = segW + teamW * 2;                     // 1360
+  const cScore = 0;   const wScore = 220;
+  const cShots = 220; const wShots = 145;
+  const cKO    = 365; const wKO    = 160;
+  const cTO    = 525; const wTO    = 105;
+  const cFree  = 630; const wFree  = 160;
+  const teamW  = wScore + wShots + wKO + wTO + wFree; // 790
+  const tableW = segW + teamW * 2;                     // 1800
 
-  const titleH = 34;   // coloured section title bar
-  const hdr1H  = 28;   // team-name banner row
-  const hdr2H  = 26;   // stat-label sub-header row
-  const dataH  = 54;   // per-segment data row
-  const totH   = 54;   // total row
+  const titleH = 40;   // coloured section title bar
+  const hdr1H  = 36;   // team-name banner row
+  const hdr2H  = 32;   // stat-label sub-header row
+  const dataH  = 70;   // per-segment data row
+  const totH   = 70;   // total row
   // Per-half block height: titleH + hdr1H + hdr2H + 3×dataH + totH
-  const blockH = titleH + hdr1H + hdr2H + 3 * dataH + totH; // 34+28+26+162+54 = 304
-  const secGap = 50;
-  const h1Top  = 82;
-  const h2Top  = h1Top + blockH + secGap;  // 82+304+50 = 436
+  const blockH = titleH + hdr1H + hdr2H + 3 * dataH + totH; // 40+36+32+210+70 = 388
+  const secGap = 40;
+  const h1Top  = 84;
+  const h2Top  = h1Top + blockH + secGap;  // 84+388+40 = 512 → bottom y=900
 
   type HalfSpec = {
     title: string; accent: string; accentBg: string;
@@ -1328,7 +1472,7 @@ function makeSegmentsPage(
     ctx.fillRect(tL, top, tableW, titleH);
     ctx.fillStyle = accent;
     ctx.fillRect(tL, top, 4, titleH);
-    ctx.font = "bold 20px sans-serif";
+    ctx.font = "bold 24px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(title, tL + 18, top + titleH / 2);
@@ -1340,17 +1484,18 @@ function makeSegmentsPage(
     ctx.fillStyle = "rgba(251,113,133,0.07)";
     ctx.fillRect(oppX, hdr1Y, teamW, hdr1H);
 
-    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillStyle = "#7dd3fc";
+    setFittedFont(ctx, homeTeam, teamW - 24, 24, 16, "bold");
     ctx.fillText(homeTeam, forX + teamW / 2, hdr1Y + hdr1H / 2);
     ctx.fillStyle = "#fb7185";
+    setFittedFont(ctx, awayTeam, teamW - 24, 24, 16, "bold");
     ctx.fillText(awayTeam, oppX + teamW / 2, hdr1Y + hdr1H / 2);
 
     // Segment column label
-    ctx.fillStyle = "#64748b";
-    ctx.font = "bold 14px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "bold 18px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("SEGMENT", tL + 10, hdr1Y + hdr1H / 2);
 
@@ -1364,8 +1509,8 @@ function makeSegmentsPage(
     const subLabels = ["Score", "Shots/W", `${koLabel(sport)} W-L`, "Net T/O", "Frees W/C"];
     const subOffsets = [cScore + wScore / 2, cShots + wShots / 2, cKO + wKO / 2, cTO + wTO / 2, cFree + wFree / 2];
 
-    ctx.fillStyle = "#64748b";
-    ctx.font = "bold 13px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     [forX, oppX].forEach((teamStart) => {
@@ -1404,7 +1549,7 @@ function makeSegmentsPage(
 
       // Segment label
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "19px sans-serif";
+      ctx.font = "24px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText(label, tL + 10, midY);
@@ -1419,18 +1564,18 @@ function makeSegmentsPage(
         const netStr = st.netTo >= 0 ? `+${st.netTo}` : String(st.netTo);
 
         ctx.fillStyle = isFor ? "#4ade80" : "#fb7185";
-        ctx.font = "bold 19px sans-serif";
+        ctx.font = "bold 28px sans-serif";
         ctx.fillText(fmtScore(st.score), teamStart + cScore + wScore / 2, midY);
 
         ctx.fillStyle = "#e2e8f0";
-        ctx.font = "18px sans-serif";
+        ctx.font = "26px sans-serif";
         ctx.fillText(shoStr, teamStart + cShots + wShots / 2, midY);
         ctx.fillText(koStr,  teamStart + cKO    + wKO    / 2, midY);
         ctx.fillStyle = netCol;
-        ctx.font = "bold 19px sans-serif";
+        ctx.font = "bold 28px sans-serif";
         ctx.fillText(netStr, teamStart + cTO    + wTO    / 2, midY);
         ctx.fillStyle = "#e2e8f0";
-        ctx.font = "18px sans-serif";
+        ctx.font = "26px sans-serif";
         ctx.fillText(fStr,   teamStart + cFree  + wFree  / 2, midY);
       }
 
@@ -1455,7 +1600,7 @@ function makeSegmentsPage(
     ctx.fillRect(tL, totalY, 4, totH);
 
     ctx.fillStyle = accent;
-    ctx.font = "bold 18px sans-serif";
+    ctx.font = "bold 24px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("TOTAL", tL + 10, totMidY);
@@ -1466,18 +1611,18 @@ function makeSegmentsPage(
       const netStr = tot.netTo >= 0 ? `+${tot.netTo}` : String(tot.netTo);
 
       ctx.fillStyle = isFor ? "#4ade80" : "#fb7185";
-      ctx.font = "bold 20px sans-serif";
+      ctx.font = "bold 30px sans-serif";
       ctx.fillText(fmtScore(tot.score), teamStart + cScore + wScore / 2, totMidY);
 
       ctx.fillStyle = "#e2e8f0";
-      ctx.font = "bold 18px sans-serif";
+      ctx.font = "bold 28px sans-serif";
       ctx.fillText(`${tot.shots} / ${tot.wides}`, teamStart + cShots + wShots / 2, totMidY);
       ctx.fillText(`${tot.koWon}-${tot.koCon}`,   teamStart + cKO    + wKO    / 2, totMidY);
       ctx.fillStyle = netCol;
-      ctx.font = "bold 20px sans-serif";
+      ctx.font = "bold 30px sans-serif";
       ctx.fillText(netStr, teamStart + cTO + wTO / 2, totMidY);
       ctx.fillStyle = "#e2e8f0";
-      ctx.font = "bold 18px sans-serif";
+      ctx.font = "bold 28px sans-serif";
       ctx.fillText(`${tot.fWon} / ${tot.fCon}`, teamStart + cFree + wFree / 2, totMidY);
     }
 
@@ -2518,7 +2663,7 @@ export function makeChainSummaryPage(
   ): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 20px sans-serif";
+    ctx.font = "bold 22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 19);
@@ -2595,14 +2740,22 @@ export function makeChainSummaryPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(x + 4, cy, w - 4, H);
     const mid = cy + H / 2;
-    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
+    // Both team headers share one size that fits the 108px between the
+    // FOR and OPP value columns (long names would otherwise collide).
+    const hdrMaxW = oppValX(x, w) - forValX(x, w) - 12;
+    const hdrPx = Math.min(
+      setFittedFont(ctx, forLabel, hdrMaxW, 20, 13, "bold"),
+      setFittedFont(ctx, oppLabel, hdrMaxW, 20, 13, "bold"),
+    );
+    ctx.font = `bold ${hdrPx}px sans-serif`;
     ctx.fillStyle = "#7dd3fc";
     ctx.textAlign = "right";
     ctx.fillText(forLabel, forValX(x, w), mid);
     ctx.fillStyle = "#fb7185";
     ctx.textAlign = "right";
     ctx.fillText(oppLabel, oppValX(x, w), mid);
+    ctx.font = "bold 20px sans-serif";
     ctx.fillStyle = SECONDARY;
     ctx.textAlign = "left";
     ctx.fillText("PATTERN", x + 14, mid);
@@ -2646,7 +2799,7 @@ export function makeChainSummaryPage(
     ctx.fillStyle = color;
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    setFittedFont(ctx, label, COL_W - 32, 18, 15, "bold");
+    setFittedFont(ctx, label, COL_W - 32, 20, 15, "bold");
     ctx.fillText(label, x + 14, cy + SUB_HDR_H / 2);
     ctx.restore();
     return cy + SUB_HDR_H;
@@ -2965,21 +3118,10 @@ export function makeKickoutChainPage(
     ctx.restore();
   }
 
+  // Phone readability: shared readable chain-panel type scale (see makeReadablePanelKit).
+  const kit = makeReadablePanelKit(ctx, COL_W);
   function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
-    ctx.save();
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + 26);
-    ctx.lineTo(x + COL_W, y + 26);
-    ctx.stroke();
-    ctx.restore();
-    return y + 28;
+    return kit.title(x, y, label, accentColor);
   }
 
   function drawStatRow(
@@ -2987,23 +3129,13 @@ export function makeKickoutChainPage(
     label: string, value: string, valueColor: string,
     isAlt: boolean,
   ): number {
-    const ROW_H = 26;
-    if (isAlt) {
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
-    }
-    const mid = cy + ROW_H / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, mid);
-    ctx.fillStyle = valueColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(value, x + w - 10, mid);
-    return cy + ROW_H;
+    return kit.statRow(x, cy, w, label, value, valueColor, isAlt);
   }
+
+  function drawSubHeader(x: number, cy: number, w: number, label: string, accentColor: string): number {
+    return kit.subHeader(x, cy, w, label, accentColor);
+  }
+
 
   /** Draws a two-segment possession bar (FOR left, OPP right) with percentage labels. */
   function drawPossessionBar(
@@ -3011,7 +3143,7 @@ export function makeKickoutChainPage(
     forCount: number, oppCount: number,
     forLabel: string, oppLabel: string,
   ): number {
-    const barH    = 14;
+    const barH    = 18;
     const barX    = x + 12;
     const barW    = w - 24;
     const total   = forCount + oppCount;
@@ -3027,9 +3159,9 @@ export function makeKickoutChainPage(
         ctx.fillStyle = "#fb7185";
         ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
       }
-      ctx.font = "13px sans-serif";
+      ctx.font = "bold 20px sans-serif";
       ctx.textBaseline = "middle";
-      const labelY = cy + barH + 12;
+      const labelY = cy + barH + 18;
       ctx.fillStyle = "#22d3ee";
       ctx.textAlign = "left";
       const [forPct, oppPct] = splitPercentages([forCount, oppCount]) ?? [0, 0];
@@ -3038,14 +3170,14 @@ export function makeKickoutChainPage(
       ctx.textAlign = "right";
       ctx.fillText(`${oppPct}% ${oppLabel}`, barX + barW, labelY);
     } else {
-      ctx.fillStyle = "#64748b";
-      ctx.font = "13px sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "20px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText(`No ${koLabelLC(sport)} data`, barX + barW / 2, cy + barH + 12);
+      ctx.fillText(`No ${koLabelLC(sport)} data`, barX + barW / 2, cy + barH + 18);
     }
     ctx.restore();
-    return cy + barH + 26;
+    return cy + barH + 38;
   }
 
   // ── Derived data ─────────────────────────────────────────────────────────────
@@ -3125,13 +3257,7 @@ export function makeKickoutChainPage(
     let cy = drawPanelTitle(COL1_X, CONTENT_TOP, `${koLabel(sport)} Possession Overview`, "#22d3ee");
 
     if (ko.total === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "18px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText(`No ${koLabelLC(sport)} events recorded`, COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
-      ctx.restore();
+      kit.emptyText(`No ${koLabelLC(sport)} events recorded`, COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
     } else {
       // Possession bar
       cy += 6;
@@ -3153,16 +3279,7 @@ export function makeKickoutChainPage(
       cy += 8;
 
       // Half split sub-header
-      ctx.save();
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
-      ctx.fillRect(COL1_X + 4, cy, COL_W - 4, 20);
-      ctx.fillStyle = "#22d3ee";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText("BY HALF", COL1_X + 14, cy + 10);
-      ctx.restore();
-      cy += 20;
+      cy = drawSubHeader(COL1_X, cy, COL_W, "BY HALF", "#22d3ee");
 
       const h1Share = viewRestartShareHalf(report, "1H");
       const h2Share = viewRestartShareHalf(report, "2H");
@@ -3181,16 +3298,11 @@ export function makeKickoutChainPage(
       cy = drawStatRow(COL1_X, cy, COL_W, `Avg secs to score (won ${koLabel(sport)})`, avgStr, "#fbbf24", false);
 
       // Origin ↔ ledger bridge footnote (Bug 2) — same wording as the ledger.
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "italic 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(
+      cy += 8;
+      kit.footnote(
+        COL1_X, cy, COL_W,
         xRestartStr(restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam), sport),
-        COL1_X + 14, cy + 12, COL_W - 24,
       );
-      ctx.restore();
     }
   }
 
@@ -3205,43 +3317,19 @@ export function makeKickoutChainPage(
     let cy = drawPanelTitle(COL2_X, PANEL_Y1, `${truncTeam(homeTeam, 18)} — ${koLabel(sport)} Types`, "#7dd3fc");
 
     if (forKoWonOut.length + forKoConOut.length === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText(noOwnKickoutsLine, COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
-      ctx.restore();
+      kit.emptyText(noOwnKickoutsLine, COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
     } else {
-      ctx.save();
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
-      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
-      ctx.fillStyle = "#7dd3fc";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(`OWN ${koLabelUC(sport)}S RETAINED`, COL2_X + 14, cy + 10);
-      ctx.restore();
-      cy += 20;
+      cy = drawSubHeader(COL2_X, cy, COL_W, `OWN ${koLabelUC(sport)}S RETAINED`, "#7dd3fc");
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Won",     String(forCleanWon),  "#4ade80", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Break Won",     String(forBreakWon),  "#e2e8f0", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Foul Won",      String(forFoulWon),   "#fbbf24", false);
       cy += 8;
 
-      ctx.save();
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
-      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
-      ctx.fillStyle = "#fb7185";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(`OWN ${koLabelUC(sport)}S CONCEDED`, COL2_X + 14, cy + 10);
-      ctx.restore();
-      cy += 20;
+      cy = drawSubHeader(COL2_X, cy, COL_W, `OWN ${koLabelUC(sport)}S CONCEDED`, "#fb7185");
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Lost",    String(forCleanLost),   "#fb7185", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Break Lost",    String(forBreakLost),   "#e2e8f0", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Foul Conceded", String(forFoulCon),     "#f97316", false);
-      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(forKickedDead),  "#64748b", true);
+      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(forKickedDead),  "#94a3b8", true);
     }
 
     // OPP team panel
@@ -3249,43 +3337,19 @@ export function makeKickoutChainPage(
     cy = drawPanelTitle(COL2_X, PANEL_Y2, `${truncTeam(awayTeam, 18)} — ${koLabel(sport)} Types`, "#fb7185");
 
     if (oppKoWonOut.length + oppKoConOut.length === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText(noOwnKickoutsLine, COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
-      ctx.restore();
+      kit.emptyText(noOwnKickoutsLine, COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
     } else {
-      ctx.save();
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
-      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
-      ctx.fillStyle = "#fb7185";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(`OWN ${koLabelUC(sport)}S RETAINED`, COL2_X + 14, cy + 10);
-      ctx.restore();
-      cy += 20;
+      cy = drawSubHeader(COL2_X, cy, COL_W, `OWN ${koLabelUC(sport)}S RETAINED`, "#fb7185");
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Won",     String(oppCleanWon),  "#4ade80", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Break Won",     String(oppBreakWon),  "#e2e8f0", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Foul Won",      String(oppFoulWon),   "#fbbf24", false);
       cy += 8;
 
-      ctx.save();
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
-      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
-      ctx.fillStyle = "#22d3ee";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(`OWN ${koLabelUC(sport)}S CONCEDED`, COL2_X + 14, cy + 10);
-      ctx.restore();
-      cy += 20;
+      cy = drawSubHeader(COL2_X, cy, COL_W, `OWN ${koLabelUC(sport)}S CONCEDED`, "#22d3ee");
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Lost",    String(oppCleanLost),   "#fb7185", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Break Lost",    String(oppBreakLost),   "#e2e8f0", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Foul Conceded", String(oppFoulCon),     "#f97316", false);
-      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(oppKickedDead),  "#64748b", true);
+      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(oppKickedDead),  "#94a3b8", true);
     }
   }
 
@@ -3295,16 +3359,7 @@ export function makeKickoutChainPage(
     let cy = drawPanelTitle(COL3_X, CONTENT_TOP, `${koLabel(sport)} Chain Outcomes`, "#fbbf24");
 
     // Chain rule match counts
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText("CHAIN RULE MATCHES", COL3_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
+    cy = drawSubHeader(COL3_X, cy, COL_W, "CHAIN RULE MATCHES", "#fbbf24");
 
     const koToScoreFor = koToScoreChains.filter((c) => c.teamSide === "FOR").length;
     const koToScoreOpp = koToScoreChains.filter((c) => c.teamSide === "OPP").length;
@@ -3319,24 +3374,8 @@ export function makeKickoutChainPage(
     cy += 12;
 
     // Restart Origin — scoring from kickout/puckout possession chains
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#4ade80";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(RESTART_ORIGIN_HEADING.toUpperCase(), COL3_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
-    ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "italic 11px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(restartOriginExplanation(sport), COL3_X + 14, cy + 8, COL_W - 28);
-    ctx.restore();
-    cy += 18;
+    cy = drawSubHeader(COL3_X, cy, COL_W, RESTART_ORIGIN_HEADING.toUpperCase(), "#4ade80");
+    cy = kit.footnote(COL3_X, cy + 2, COL_W, restartOriginExplanation(sport)) + 4;
 
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Restart Origin`, forRestartOriginFmt,  "#4ade80", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Shots from ${koLabel(sport)}`,  String(forShotFromKo),    "#7dd3fc", true);
@@ -3344,16 +3383,7 @@ export function makeKickoutChainPage(
     cy += 12;
 
     // FOR possession outcome breakdown
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
-    ctx.fillStyle = "#22d3ee";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(`${truncTeam(homeTeam, 16)} POSSESSION OUTCOMES`, COL3_X + 14, cy + 10);
-    ctx.restore();
-    cy += 20;
+    cy = drawSubHeader(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} POSSESSION OUTCOMES`, "#22d3ee");
 
     const forNoShot    = Math.max(0, forWonTotal - forShotFromKo);
     const forShotPct   = forWonTotal > 0 ? `${Math.round((forShotFromKo   / forWonTotal) * 100)}%` : "—";
@@ -3372,13 +3402,13 @@ export function makeKickoutChainPage(
     if (ko.won + ko.lost > 0) {
       cy += 16;
       ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "bold 12px sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "bold 18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("OVERALL POSSESSION RATE", COL3_X + 14, cy);
       ctx.restore();
-      cy += 14;
+      cy += 18;
       drawPossessionBar(COL3_X, cy, COL_W, ko.won, ko.lost, truncTeam(homeTeam, 10), truncTeam(awayTeam, 10));
     }
   }
@@ -3445,21 +3475,14 @@ export function makeTurnoverPunishmentPage(
     ctx.restore();
   }
 
+  // Phone readability: shared readable chain-panel type scale. Columns 1–2 use
+  // the standard scale; column 3 (19 rows + 5 sub-headers + insights) uses the
+  // denser readable scale so it still fits the page height.
+  const kit = makeReadablePanelKit(ctx, COL_W);
+  const denseKit = makeReadablePanelKit(ctx, COL_W, PANEL_SCALE_DENSE);
+  const kitFor = (x: number): ReadablePanelKit => (x === COL3_X ? denseKit : kit);
   function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
-    ctx.save();
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + 26);
-    ctx.lineTo(x + COL_W, y + 26);
-    ctx.stroke();
-    ctx.restore();
-    return y + 28;
+    return kit.title(x, y, label, accentColor);
   }
 
   function drawStatRow(
@@ -3467,36 +3490,14 @@ export function makeTurnoverPunishmentPage(
     label: string, value: string, valueColor: string,
     isAlt: boolean,
   ): number {
-    const ROW_H = 26;
-    if (isAlt) {
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
-    }
-    const mid = cy + ROW_H / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, mid);
-    ctx.fillStyle = valueColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(value, x + w - 10, mid);
-    return cy + ROW_H;
+    return kitFor(x).statRow(x, cy, w, label, value, valueColor, isAlt);
   }
 
   function drawSubHeader(x: number, cy: number, w: number, label: string, accentColor: string): number {
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(x + 4, cy, w - 4, 20);
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, cy + 10);
-    ctx.restore();
-    return cy + 20;
+    return kitFor(x).subHeader(x, cy, w, label, accentColor);
   }
+
+
 
   /** Two-segment bar: left = FOR side (accentFor), right = OPP side (accentOpp) */
   function drawComparisonBar(
@@ -3505,7 +3506,7 @@ export function makeTurnoverPunishmentPage(
     forLabel: string, oppLabel: string,
     accentFor: string, accentOpp: string,
   ): number {
-    const barH  = 14;
+    const barH  = 16;
     const barX  = x + 12;
     const barW  = w - 24;
     const total = forVal + oppVal;
@@ -3521,8 +3522,8 @@ export function makeTurnoverPunishmentPage(
         ctx.fillStyle = accentOpp;
         ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
       }
-      const labelY = cy + barH + 12;
-      ctx.font = "13px sans-serif";
+      const labelY = cy + barH + 15;
+      ctx.font = "bold 18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.fillStyle = accentFor;
       ctx.textAlign = "left";
@@ -3532,15 +3533,15 @@ export function makeTurnoverPunishmentPage(
       ctx.textAlign = "right";
       ctx.fillText(`${oppPct}% ${oppLabel}`, barX + barW, labelY);
     } else {
-      const labelY = cy + barH + 12;
-      ctx.font = "13px sans-serif";
+      const labelY = cy + barH + 15;
+      ctx.font = "18px sans-serif";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#64748b";
+      ctx.fillStyle = "#94a3b8";
       ctx.textAlign = "center";
       ctx.fillText("No turnover data", barX + barW / 2, labelY);
     }
     ctx.restore();
-    return cy + barH + 26;
+    return cy + barH + 32;
   }
 
   // ── Derive acting side — who gained possession from this turnover event ───────
@@ -3635,13 +3636,7 @@ export function makeTurnoverPunishmentPage(
     let cy = drawPanelTitle(COL1_X, CONTENT_TOP, `${truncTeam(homeTeam, 18)} — Turnover Attack`, "#a78bfa");
 
     if (forWonTotal === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "18px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText("No attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
-      ctx.restore();
+      kit.emptyText("No attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
     } else {
       // Consequence summary
       cy = drawStatRow(COL1_X, cy, COL_W, "Turnovers won / gained",  String(forWonTotal),                    "#e2e8f0", false);
@@ -3676,13 +3671,7 @@ export function makeTurnoverPunishmentPage(
     let cy = drawPanelTitle(COL2_X, CONTENT_TOP, `${truncTeam(awayTeam, 18)} — Turnover Attack`, "#fb7185");
 
     if (oppWonTotal === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "18px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText("No attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
-      ctx.restore();
+      kit.emptyText("No attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
     } else {
       cy = drawStatRow(COL2_X, cy, COL_W, "Turnovers won / gained",  String(oppWonTotal),                    "#e2e8f0", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "→ Origin score",    withPct(oppWonToScore,   oppWonTotal),  "#4ade80", true);
@@ -3794,16 +3783,35 @@ export function makeTurnoverPunishmentPage(
     {
       const chainObs = derivePossessionChainObservations(report);
       if (chainObs.length > 0) {
-        let chainCy = cy + 26 + 16;  // advance past last row + spacing
+        let chainCy = cy + denseKit.rowH + 12;  // advance past last row + spacing
         chainCy = drawSubHeader(COL3_X, chainCy, COL_W, "POSSESSION CHAIN INSIGHTS", "#60a5fa");
+        // Wrapped to the column width (these lines previously ran off the
+        // right edge of the page). The largest size from 17px down to 12px
+        // whose wrapped lines fit above the panel bottom is used.
         ctx.save();
-        ctx.font         = "14px sans-serif";
-        ctx.fillStyle    = "#64748b";
+        ctx.fillStyle    = "#94a3b8";
         ctx.textBaseline = "middle";
         ctx.textAlign    = "left";
-        for (const ob of chainObs) {
-          ctx.fillText(`• ${ob}`, COL3_X + 14, chainCy + 13);
-          chainCy += 26;
+        const obsMaxW = COL_W - 28;
+        const availH  = CONTENT_BOT - 6 - chainCy;
+        let obsPx = 17;
+        let obsLines: string[][] = [];
+        for (; obsPx >= 12; obsPx--) {
+          ctx.font = `${obsPx}px sans-serif`;
+          obsLines = chainObs.map((ob) => wrapText(ctx, `• ${ob}`, obsMaxW));
+          const lineCount = obsLines.reduce((n, l) => n + l.length, 0);
+          if (lineCount * (obsPx + 5) + (chainObs.length - 1) * 4 <= availH) break;
+        }
+        obsPx = Math.max(obsPx, 12);
+        ctx.font = `${obsPx}px sans-serif`;
+        const obsLineH = obsPx + 5;
+        for (const lines of obsLines) {
+          for (const line of lines) {
+            if (chainCy + obsLineH > CONTENT_BOT) break;   // safety net only
+            ctx.fillText(line, COL3_X + 14, chainCy + obsLineH / 2);
+            chainCy += obsLineH;
+          }
+          chainCy += 4;
         }
         ctx.restore();
       }
@@ -3876,21 +3884,10 @@ export function makeMomentumRunsPage(
     ctx.restore();
   }
 
+  // Phone readability: shared readable chain-panel type scale (see makeReadablePanelKit).
+  const kit = makeReadablePanelKit(ctx, COL_W);
   function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
-    ctx.save();
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + 26);
-    ctx.lineTo(x + COL_W, y + 26);
-    ctx.stroke();
-    ctx.restore();
-    return y + 28;
+    return kit.title(x, y, label, accentColor);
   }
 
   function drawStatRow(
@@ -3898,36 +3895,14 @@ export function makeMomentumRunsPage(
     label: string, value: string, valueColor: string,
     isAlt: boolean,
   ): number {
-    const ROW_H = 26;
-    if (isAlt) {
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
-    }
-    const mid = cy + ROW_H / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, mid);
-    ctx.fillStyle = valueColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(value, x + w - 10, mid);
-    return cy + ROW_H;
+    return kit.statRow(x, cy, w, label, value, valueColor, isAlt);
   }
 
   function drawSubHeader(x: number, cy: number, w: number, label: string, accentColor: string): number {
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(x + 4, cy, w - 4, 20);
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 12px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 14, cy + 10);
-    ctx.restore();
-    return cy + 20;
+    return kit.subHeader(x, cy, w, label, accentColor);
   }
+
+
 
   // ── Clock formatting ──────────────────────────────────────────────────────────
   // Each end of a run is labelled in its own half, so a run that continues
@@ -4050,13 +4025,7 @@ export function makeMomentumRunsPage(
     let cy = drawPanelTitle(COL1_X, CONTENT_TOP, "Unanswered Scoring Runs (≥2 consecutive)", "#fbbf24");
 
     if (runs.length === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "18px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText("No unanswered scoring runs detected", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
-      ctx.restore();
+      kit.emptyText("No unanswered scoring runs detected", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
     } else {
       // Column labels
       cy = drawSubHeader(COL1_X, cy, COL_W, "TEAM  ×SCORES  WHEN  SCORE VALUE", "#fbbf24");
@@ -4065,7 +4034,7 @@ export function makeMomentumRunsPage(
       const visible = runs.slice(0, MAX_VISIBLE);
 
       visible.forEach((run, i) => {
-        const ROW_H   = 26;
+        const ROW_H   = kit.rowH;
         const isAlt   = i % 2 === 0;
         const team    = runTeamLabel(run);
         const color   = runColor(run);
@@ -4082,27 +4051,27 @@ export function makeMomentumRunsPage(
         ctx.save();
         ctx.textBaseline = "middle";
 
-        // Team name
+        // Team name (fitted 22→16px into its 220px slot)
         ctx.fillStyle = color;
-        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "left";
+        setFittedFont(ctx, team, 220, 22, 16, "bold");
         ctx.fillText(team, COL1_X + 14, mid);
 
         // Run count — centre-ish
         ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 15px sans-serif";
+        ctx.font = "bold 24px sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText(runStr, COL1_X + 190, mid);
+        ctx.fillText(runStr, COL1_X + 250, mid);
 
         // Time
-        ctx.fillStyle = "#64748b";
-        ctx.font = "14px sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "22px sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText(time, COL1_X + 260, mid);
+        ctx.fillText(time, COL1_X + 330, mid);
 
         // Score value
         ctx.fillStyle = color;
-        ctx.font = "bold 14px sans-serif";
+        ctx.font = "bold 22px sans-serif";
         ctx.textAlign = "right";
         ctx.fillText(score, COL1_X + COL_W - 10, mid);
 
@@ -4113,8 +4082,8 @@ export function makeMomentumRunsPage(
       if (runs.length > MAX_VISIBLE) {
         cy += 4;
         ctx.save();
-        ctx.fillStyle = "#64748b";
-        ctx.font = "14px sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "italic 18px sans-serif";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
         ctx.fillText(
@@ -4138,13 +4107,7 @@ export function makeMomentumRunsPage(
     let cy = drawPanelTitle(COL2_X, PANEL_Y1, "First Half — Scoring Runs", "#7dd3fc");
 
     if (h1Runs.length === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText("No unanswered runs in 1H", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
-      ctx.restore();
+      kit.emptyText("No unanswered runs in 1H", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
     } else {
       cy = drawStatRow(COL2_X, cy, COL_W, `${truncTeam(homeTeam, 16)} runs (≥2)`,   String(h1For.length),   "#22d3ee", false);
       cy = drawStatRow(COL2_X, cy, COL_W, `${truncTeam(homeTeam, 16)} run-scores`,  String(h1ForScore),     "#22d3ee", true);
@@ -4168,7 +4131,7 @@ export function makeMomentumRunsPage(
       const h1LateStr = h1LateRuns.length === 0
         ? "No burst in 1H closing phase"
         : `${truncTeam(homeTeam, 10)}: ${fmtScoreCount(h1LateFor)}  ${truncTeam(awayTeam, 10)}: ${fmtScoreCount(h1LateOpp)}`;
-      const h1LateCol = h1LateRuns.length === 0 ? "#64748b" : "#fbbf24";
+      const h1LateCol = h1LateRuns.length === 0 ? "#94a3b8" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "1H late burst (seg 3)", h1LateStr, h1LateCol, false);
     }
 
@@ -4177,13 +4140,7 @@ export function makeMomentumRunsPage(
     cy = drawPanelTitle(COL2_X, PANEL_Y2, "Second Half — Scoring Runs", "#a78bfa");
 
     if (h2Runs.length === 0) {
-      ctx.save();
-      ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText("No unanswered runs in 2H", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
-      ctx.restore();
+      kit.emptyText("No unanswered runs in 2H", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
     } else {
       cy = drawStatRow(COL2_X, cy, COL_W, `${truncTeam(homeTeam, 16)} runs (≥2)`,   String(h2For.length),   "#22d3ee", false);
       cy = drawStatRow(COL2_X, cy, COL_W, `${truncTeam(homeTeam, 16)} run-scores`,  String(h2ForScore),     "#22d3ee", true);
@@ -4207,7 +4164,7 @@ export function makeMomentumRunsPage(
       const h2LateStr = h2LateRuns.length === 0
         ? "No burst in 2H closing phase"
         : `${truncTeam(homeTeam, 10)}: ${fmtScoreCount(h2LateFor)}  ${truncTeam(awayTeam, 10)}: ${fmtScoreCount(h2LateOpp)}`;
-      const h2LateCol = h2LateRuns.length === 0 ? "#64748b" : "#fbbf24";
+      const h2LateCol = h2LateRuns.length === 0 ? "#94a3b8" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "2H late burst (seg 6)", h2LateStr, h2LateCol, false);
     }
   }
@@ -4227,7 +4184,7 @@ export function makeMomentumRunsPage(
         "#22d3ee", false,
       );
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} longest`, "No run ≥2", "#64748b", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} longest`, "No run ≥2", "#94a3b8", false);
     }
     if (lro) {
       cy = drawStatRow(COL3_X, cy, COL_W,
@@ -4236,7 +4193,7 @@ export function makeMomentumRunsPage(
         "#fb7185", true,
       );
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} longest`, "No run ≥2", "#64748b", true);
+      cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} longest`, "No run ≥2", "#94a3b8", true);
     }
 
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} total runs`,        String(forRunTotal),  "#22d3ee", false);
@@ -4255,7 +4212,7 @@ export function makeMomentumRunsPage(
     cy = drawSubHeader(COL3_X, cy, COL_W, "RESPONSE AFTER OPPOSITION RUN", "#f97316");
 
     if (responsePairs.length < 2) {
-      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#64748b", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#94a3b8", false);
       cy++;
     } else {
       // A single qualifying response is not an average — printing it as one
@@ -4299,7 +4256,7 @@ export function makeMomentumRunsPage(
       let controlColor: string;
       if (total === 0) {
         controlStr  = "No runs";
-        controlColor = "#64748b";
+        controlColor = "#94a3b8";
       } else if (forScore > oppScore) {
         controlStr  = `${truncTeam(homeTeam, 10)} +${forScore - oppScore}`;
         controlColor = "#22d3ee";
@@ -4427,25 +4384,33 @@ export function makeTacticalIntelligencePage(
     ctx.restore();
   }
 
+  // ── Phone readability type scale (this page only) ──────────────────────────
+  // Card heights are fixed (280 / 280 / 358), so rows grow 30→38px (36 in the
+  // Team Comparison table) and type 14–15→20–22px within that budget.
+  const TITLE_H    = 36;
+  const HERO_H     = 84;
+  const ROW_H_MET  = 38;
+  const VALUE_RAIL = 660;   // value right edge ≤ 660px from card left
+
   function drawCardTitle(x: number, y: number, w: number, label: string, accentColor: string): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 15px sans-serif";
+    ctx.font = "bold 20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 16, y + 14);
+    ctx.fillText(label.toUpperCase(), x + 16, y + (TITLE_H - 2) / 2);
     ctx.strokeStyle = "rgba(255,255,255,0.07)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x + 4, y + 28);
-    ctx.lineTo(x + w, y + 28);
+    ctx.moveTo(x + 4, y + TITLE_H - 2);
+    ctx.lineTo(x + w, y + TITLE_H - 2);
     ctx.stroke();
     ctx.restore();
-    return y + 30;
+    return y + TITLE_H;
   }
 
-  /** Large hero metric — primary value (42 px bold) + descriptor below.
-   *  Returns cy after the block (~76 px consumed). */
+  /** Large hero metric — primary value (50 px bold) + descriptor below.
+   *  Returns cy after the block (HERO_H px consumed). */
   function drawHeroMetric(
     x: number, cy: number, value: string, label: string, valueColor: string,
   ): number {
@@ -4453,62 +4418,64 @@ export function makeTacticalIntelligencePage(
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 42px sans-serif";
-    ctx.fillText(value, x + 20, cy + 46);
-    ctx.fillStyle = "#64748b";
-    ctx.font = "13px sans-serif";
-    ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
+    ctx.font = "bold 50px sans-serif";
+    ctx.fillText(value, x + 20, cy + 50);
+    ctx.fillStyle = "#94a3b8";
+    setFittedFont(ctx, label.toUpperCase(), L_COL_W - 40, 17, 14);
+    ctx.fillText(label.toUpperCase(), x + 20, cy + 74);
     ctx.restore();
-    return cy + 76;
+    return cy + HERO_H;
   }
 
-  /** Compact metric row — label left, value right. Returns cy after the row (30 px). */
+  /** Metric row — label left, value near the label (VALUE_RAIL). Returns cy after the row. */
   function drawMetricRow(
     x: number, cy: number, w: number,
     label: string, value: string, valueColor: string, isAlt: boolean,
   ): number {
-    const ROW_H = 30;
+    const ROW_H = ROW_H_MET;
     if (isAlt) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
       ctx.fillRect(x + 4, cy, w - 4, ROW_H);
     }
     const mid = cy + ROW_H / 2;
+    const valueRight = x + Math.min(w, VALUE_RAIL) - 14;
+    ctx.font = "bold 22px sans-serif";
+    const valueW = ctx.measureText(value).width;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
+    setFittedFont(ctx, label, valueRight - valueW - 24 - (x + 16), 20, 16);
     ctx.fillText(label, x + 16, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 15px sans-serif";
+    ctx.font = "bold 22px sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(value, x + w - 14, mid);
+    ctx.fillText(value, valueRight, mid);
     return cy + ROW_H;
   }
 
-  /** Single-line insight sentence (truncated with ellipsis if too wide).
-   *  Returns cy after the line (22 px consumed). */
+  /** Insight sentence, word-wrapped (up to 3 lines at 19px; previously one
+   *  line truncated with an ellipsis). Returns cy after the last line. */
   function drawInsightLine(
     x: number, cy: number, w: number, text: string, textColor: string,
   ): number {
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = "italic 16px sans-serif";
+    ctx.font = "italic 19px sans-serif";
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     const maxW = w - 32;  // 16 px margin each side
-    let display = text;
-    if (ctx.measureText(display).width > maxW) {
-      let iterations = 0;
-      const maxIterations = 1000;
-      while (display.length > 0 && ctx.measureText(display + "…").width > maxW && iterations < maxIterations) {
-        display = display.slice(0, -1);
-        iterations++;
-      }
-      display += "…";
+    const LINE_H = 24;
+    const lines = wrapText(ctx, text, maxW);
+    if (lines.length > 3) {
+      // Safety net only: keep the card within its height.
+      lines.length = 3;
+      let last = lines[2];
+      while (last.length > 0 && ctx.measureText(last + "…").width > maxW) last = last.slice(0, -1);
+      lines[2] = last + "…";
     }
-    ctx.fillText(display, x + 16, cy);
+    lines.forEach((line, li) => ctx.fillText(line, x + 16, cy + li * LINE_H));
     ctx.restore();
-    return cy + 22;
+    return cy + lines.length * LINE_H;
   }
 
   /** Flag chip — filled rect + bold label. Returns x after the chip + gap (8 px). */
@@ -4517,10 +4484,10 @@ export function makeTacticalIntelligencePage(
     label: string, bgColor: string, textColor: string,
   ): number {
     ctx.save();
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 16px sans-serif";
     const tw    = ctx.measureText(label).width;
     const chipW = tw + 20;
-    const chipH = 24;
+    const chipH = 30;
     ctx.fillStyle = bgColor;
     ctx.fillRect(x, cy, chipW, chipH);
     ctx.fillStyle = textColor;
@@ -4533,8 +4500,8 @@ export function makeTacticalIntelligencePage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "18px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
@@ -4628,14 +4595,37 @@ export function makeTacticalIntelligencePage(
   // Threshold chips — each names the recorded metric and threshold it marks,
   // anchored near the bottom of the card. No evaluative labels (no "Risk",
   // "Strength", "Clinical", "Control" — see the professional-language guard).
-  const flagsY = Math.max(cy + 8, card3Y + CARD_H_BOT - 52);
-  let fx = L_COL_X + 16;
-  if (koWinPct >= 55)    fx = drawFlagChip(fx, flagsY, `${koLabel(sport)} Share ≥55%`, "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (koNetAdv < -10)    fx = drawFlagChip(fx, flagsY, `${koLabel(sport)} Net <−10%pt`, "rgba(251,113,133,0.15)", "#fb7185");
-  if (tvConvPct >= 35)   fx = drawFlagChip(fx, flagsY, "Turnover Conversion ≥35%", "rgba(52,211,153,0.15)",  "#34d399");
-  if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "Turnover Concession >40%", "rgba(251,113,133,0.15)", "#fb7185");
-  if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, `${truncTeam(homeTeam, 12)} Run ≥4`, "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, `${truncTeam(awayTeam, 12)} Run ≥4`, "rgba(251,113,133,0.15)", "#fb7185");
+  // Chips flow onto a second row rather than running past the card edge.
+  const chips: Array<[string, string, string]> = [];
+  if (koWinPct >= 55)    chips.push([`${koLabel(sport)} Share ≥55%`, "rgba(34,211,238,0.15)",  "#22d3ee"]);
+  if (koNetAdv < -10)    chips.push([`${koLabel(sport)} Net <−10%pt`, "rgba(251,113,133,0.15)", "#fb7185"]);
+  if (tvConvPct >= 35)   chips.push(["Turnover Conversion ≥35%", "rgba(52,211,153,0.15)",  "#34d399"]);
+  if (tvDefExp > 40)     chips.push(["Turnover Concession >40%", "rgba(251,113,133,0.15)", "#fb7185"]);
+  if (maxConsFor >= 4)   chips.push([`${truncTeam(homeTeam, 12)} Run ≥4`, "rgba(34,211,238,0.15)",  "#22d3ee"]);
+  if (maxConsOpp >= 4)   chips.push([`${truncTeam(awayTeam, 12)} Run ≥4`, "rgba(251,113,133,0.15)", "#fb7185"]);
+  ctx.save();
+  ctx.font = "bold 16px sans-serif";
+  const chipRowRight = L_COL_X + L_COL_W - 16;
+  const chipRows: Array<Array<[string, string, string]>> = [[]];
+  {
+    let rx = L_COL_X + 16;
+    for (const chip of chips) {
+      const cw = ctx.measureText(chip[0]).width + 20;
+      if (rx + cw > chipRowRight && chipRows[chipRows.length - 1].length > 0) {
+        chipRows.push([]);
+        rx = L_COL_X + 16;
+      }
+      chipRows[chipRows.length - 1].push(chip);
+      rx += cw + 8;
+    }
+  }
+  ctx.restore();
+  const CHIP_ROW_H = 36;
+  const flagsY = Math.max(cy + 8, card3Y + CARD_H_BOT - 14 - chipRows.length * CHIP_ROW_H);
+  chipRows.forEach((row, ri) => {
+    let fx = L_COL_X + 16;
+    for (const [label, bg, fg] of row) fx = drawFlagChip(fx, flagsY + ri * CHIP_ROW_H, label, bg, fg);
+  });
 
   // ── RIGHT — CARD 1: SCORING RUNS ──────────────────────────────────────────
   drawCardBg(R_COL_X, card1Y, R_COL_W, CARD_H_TOP, "#22d3ee");
@@ -4681,21 +4671,23 @@ export function makeTacticalIntelligencePage(
   rcy += 12;
 
   // Two value columns: FOR (home) and OPP (away)
-  const FOR_X = R_COL_X + Math.round(R_COL_W * 0.70);  // centre of FOR value
-  const OPP_X = R_COL_X + Math.round(R_COL_W * 0.88);  // centre of OPP value
+  // Value columns brought nearer the labels (were at 70% / 88% of the card).
+  const FOR_X = R_COL_X + Math.round(R_COL_W * 0.48);  // centre of FOR value
+  const OPP_X = R_COL_X + Math.round(R_COL_W * 0.68);  // centre of OPP value
+  const CMP_HDR_H = 30;
 
   // Column header strip
   ctx.fillStyle = "rgba(255,255,255,0.06)";
-  ctx.fillRect(R_COL_X + 4, rcy, R_COL_W - 4, 24);
-  ctx.fillStyle = "#64748b";
-  ctx.font = "bold 12px sans-serif";
+  ctx.fillRect(R_COL_X + 4, rcy, R_COL_W - 4, CMP_HDR_H);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "bold 17px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText("METRIC", R_COL_X + 16, rcy + 12);
+  ctx.fillText("METRIC", R_COL_X + 16, rcy + CMP_HDR_H / 2);
   ctx.textAlign = "center";
-  ctx.fillText(truncTeam(homeTeam, 10), FOR_X, rcy + 12);
-  ctx.fillText(truncTeam(awayTeam, 10), OPP_X, rcy + 12);
-  rcy += 24;
+  ctx.fillText(truncTeam(homeTeam, 10), FOR_X, rcy + CMP_HDR_H / 2);
+  ctx.fillText(truncTeam(awayTeam, 10), OPP_X, rcy + CMP_HDR_H / 2);
+  rcy += CMP_HDR_H;
 
   const summaryRows: Array<{
     label: string;
@@ -4760,18 +4752,18 @@ export function makeTacticalIntelligencePage(
   ];
 
   summaryRows.forEach((row, i) => {
-    const ROW_H = 30;
+    const ROW_H = 36;
     if (i % 2 === 1) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
       ctx.fillRect(R_COL_X + 4, rcy, R_COL_W - 4, ROW_H);
     }
     const mid = rcy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
+    setFittedFont(ctx, row.label, FOR_X - 60 - (R_COL_X + 16), 20, 16);
     ctx.fillText(row.label, R_COL_X + 16, mid);
-    ctx.font = "bold 15px sans-serif";
+    ctx.font = "bold 22px sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = row.forColor;
     ctx.fillText(row.forVal, FOR_X, mid);
@@ -4835,8 +4827,8 @@ export function makeTacticalReviewGuidePage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (prompts.length === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "18px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText(
@@ -4850,9 +4842,11 @@ export function makeTacticalReviewGuidePage(
   const CONTENT_TOP  = 86;
   const STRIP_X      = 24;
   const STRIP_W      = CANVAS_W - 48;   // 1872 px  (24 px margin each side)
-  const STRIP_H      = 64;
+  // Phone readability: strips 64→80px so prompts can run to 24px (or wrap
+  // onto two lines at ≥20px). MAX_PROMPTS = 10 → last strip ends at y≈1042.
+  const STRIP_H      = 80;
   const STRIP_GAP    = 10;
-  const SUMMARY_H    = 30;
+  const SUMMARY_H    = 40;
   const SUMMARY_GAP  = 16;
 
   // ── Category helpers ───────────────────────────────────────────────────────
@@ -4890,7 +4884,7 @@ export function makeTacticalReviewGuidePage(
 
   let cx = STRIP_X;
   const summaryY = CONTENT_TOP;
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 18px sans-serif";
   for (const cat of ORDERED_CATS) {
     const count = countByCategory.get(cat) ?? 0;
     if (count === 0) continue;
@@ -4920,41 +4914,45 @@ export function makeTacticalReviewGuidePage(
     ctx.fillStyle = catColor;
     ctx.fillRect(STRIP_X, stripY, 4, STRIP_H);
 
-    // Vertical centre of the strip — content row 1
-    const ROW1_Y = stripY + 22;
+    // Vertical centre of the strip
+    const ROW1_Y = stripY + STRIP_H / 2;
 
-    // Category chip (row 1, left)
-    ctx.font = "bold 12px sans-serif";
+    // Category chip (left, vertically centred)
+    ctx.font = "bold 17px sans-serif";
     const chipLabel = p.category === "KICKOUT" ? koLabelUC(sport) : p.category;
     const chipTW    = ctx.measureText(chipLabel).width;
-    const chipW     = chipTW + 18;
+    const chipW     = chipTW + 22;
     const CHIP_X    = STRIP_X + 14;
-    const CHIP_TOP  = ROW1_Y - 10;  // chip h=20, centred on ROW1_Y
+    const CHIP_H    = 30;
+    const CHIP_TOP  = ROW1_Y - CHIP_H / 2;
     ctx.fillStyle = catBg;
-    ctx.fillRect(CHIP_X, CHIP_TOP, chipW, 20);
+    ctx.fillRect(CHIP_X, CHIP_TOP, chipW, CHIP_H);
     ctx.fillStyle = catColor;
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(chipLabel, CHIP_X + 9, ROW1_Y);
+    ctx.fillText(chipLabel, CHIP_X + 11, ROW1_Y);
 
     // Prompt text (row 1, after chip)
     const TEXT_X    = CHIP_X + chipW + 14;
     const MAX_TW    = STRIP_X + STRIP_W - TEXT_X - 14;  // right margin
     ctx.fillStyle = "#e2e8f0";
-    ctx.font = "15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    let display = p.text;
-    if (ctx.measureText(display).width > MAX_TW) {
-      let iterations = 0;
-      const maxIterations = 1000;
-      while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW && iterations < maxIterations) {
-        display = display.slice(0, -1);
-        iterations++;
+    // One line at up to 24px; otherwise two wrapped lines at 20px. Only a
+    // third line's worth of overflow (not expected) is truncated with "…".
+    setFittedFont(ctx, p.text, MAX_TW, 24, 20);
+    if (ctx.measureText(p.text).width <= MAX_TW) {
+      ctx.fillText(p.text, TEXT_X, ROW1_Y);
+    } else {
+      const lines = wrapText(ctx, p.text, MAX_TW);
+      let second = lines.slice(1).join(" ");
+      if (ctx.measureText(second).width > MAX_TW) {
+        while (second.length > 0 && ctx.measureText(second + "…").width > MAX_TW) second = second.slice(0, -1);
+        second += "…";
       }
-      display += "…";
+      ctx.fillText(lines[0], TEXT_X, ROW1_Y - 13);
+      ctx.fillText(second, TEXT_X, ROW1_Y + 13);
     }
-    ctx.fillText(display, TEXT_X, ROW1_Y);
 
   }
 
@@ -4980,60 +4978,96 @@ function oppDrawCardBg(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.restore();
 }
 
-function oppDrawCardTitle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, label: string, accentColor: string): number {
+/**
+ * Type scale for the shared opposition card helpers. COMPACT is the original
+ * geometry (Opposition Origin & Chain Analysis still uses it); READABLE is the
+ * phone-readability scale used by the Opposition Facts page.
+ */
+type OppTypeScale = {
+  titlePx: number; titleH: number;
+  heroPx: number; heroLabelPx: number; heroLabelColor: string; heroH: number;
+  rowH: number; labelPx: number; valuePx: number;
+  /** Max distance from card left to the value's right edge (keeps values near labels). */
+  valueRailW: number | null;
+};
+const OPP_TYPE_COMPACT: OppTypeScale = {
+  titlePx: 15, titleH: 30,
+  heroPx: 42, heroLabelPx: 13, heroLabelColor: "#64748b", heroH: 76,
+  rowH: 30, labelPx: 14, valuePx: 15, valueRailW: null,
+};
+const OPP_TYPE_READABLE: OppTypeScale = {
+  titlePx: 22, titleH: 44,
+  heroPx: 64, heroLabelPx: 18, heroLabelColor: "#94a3b8", heroH: 112,
+  rowH: 52, labelPx: 24, valuePx: 26, valueRailW: 680,
+};
+
+function oppDrawCardTitle(
+  ctx: CanvasRenderingContext2D, x: number, y: number, w: number, label: string, accentColor: string,
+  t: OppTypeScale = OPP_TYPE_COMPACT,
+): number {
   ctx.save();
   ctx.fillStyle = accentColor;
-  ctx.font = "bold 15px sans-serif";
+  ctx.font = `bold ${t.titlePx}px sans-serif`;
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText(label.toUpperCase(), x + 16, y + 14);
+  ctx.fillText(label.toUpperCase(), x + 16, y + (t.titleH - 2) / 2);
   ctx.strokeStyle = "rgba(255,255,255,0.07)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x + 4, y + 28);
-  ctx.lineTo(x + w, y + 28);
+  ctx.moveTo(x + 4, y + t.titleH - 2);
+  ctx.lineTo(x + w, y + t.titleH - 2);
   ctx.stroke();
   ctx.restore();
-  return y + 30;
+  return y + t.titleH;
 }
 
-/** Large hero value (42 px bold) + small descriptor below. Returns cy + 76. */
+/** Large hero value + small descriptor below. Returns cy + heroH (76 compact). */
 function oppDrawHeroStat(
   ctx: CanvasRenderingContext2D, x: number, cy: number, value: string, label: string, valueColor: string,
+  t: OppTypeScale = OPP_TYPE_COMPACT,
 ): number {
+  const k = t.heroH / 76;
   ctx.save();
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 42px sans-serif";
-  ctx.fillText(value, x + 20, cy + 46);
-  ctx.fillStyle = "#64748b";
-  ctx.font = "13px sans-serif";
-  ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
+  ctx.font = `bold ${t.heroPx}px sans-serif`;
+  ctx.fillText(value, x + 20, cy + Math.round(46 * k));
+  ctx.fillStyle = t.heroLabelColor;
+  ctx.font = `${t.heroLabelPx}px sans-serif`;
+  ctx.fillText(label.toUpperCase(), x + 20, cy + Math.round(63 * k) + (t.heroLabelPx - 13));
   ctx.restore();
-  return cy + 76;
+  return cy + t.heroH;
 }
 
-/** Compact label/value row. Returns cy + 30. */
+/** Label/value row. Returns cy + rowH (30 compact). */
 function oppDrawMetricRow(
   ctx: CanvasRenderingContext2D, x: number, cy: number, w: number,
   label: string, value: string, valueColor: string, isAlt: boolean,
+  t: OppTypeScale = OPP_TYPE_COMPACT,
 ): number {
-  const ROW_H = 30;
+  const ROW_H = t.rowH;
   if (isAlt) {
     ctx.fillStyle = "rgba(255,255,255,0.025)";
     ctx.fillRect(x + 4, cy, w - 4, ROW_H);
   }
   const mid = cy + ROW_H / 2;
+  const valueRight = x + (t.valueRailW !== null ? Math.min(w, t.valueRailW) : w) - 14;
+  ctx.font = `bold ${t.valuePx}px sans-serif`;
+  const valueW = ctx.measureText(value).width;
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "14px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
+  if (t.valueRailW !== null) {
+    setFittedFont(ctx, label, valueRight - valueW - 24 - (x + 16), t.labelPx, Math.min(t.labelPx, 18));
+  } else {
+    ctx.font = `${t.labelPx}px sans-serif`;
+  }
   ctx.fillText(label, x + 16, mid);
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 15px sans-serif";
+  ctx.font = `bold ${t.valuePx}px sans-serif`;
   ctx.textAlign = "right";
-  ctx.fillText(value, x + w - 14, mid);
+  ctx.fillText(value, valueRight, mid);
   return cy + ROW_H;
 }
 
@@ -5138,8 +5172,8 @@ export function makeOppositionFactsPage(
   const tvLost = tv.lost;
 
   if (analysis.totalEventsAnalysed === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "18px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
@@ -5148,21 +5182,21 @@ export function makeOppositionFactsPage(
 
   // ── LEFT: Scoring Profile (full column height) ─────────────────────────────
   oppDrawCardBg(ctx, L_COL_X, CONTENT_TOP, L_COL_W, CONTENT_H, OPP_ACCENT);
-  let cy = oppDrawCardTitle(ctx, L_COL_X, CONTENT_TOP, L_COL_W, `${truncTeam(awayTeam, 20)} — Scoring Profile`, OPP_ACCENT);
+  let cy = oppDrawCardTitle(ctx, L_COL_X, CONTENT_TOP, L_COL_W, `${truncTeam(awayTeam, 20)} — Scoring Profile`, OPP_ACCENT, OPP_TYPE_READABLE);
   if (oppScore.total === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No opposition scores recorded", L_COL_X + L_COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
   } else {
-    cy = oppDrawHeroStat(ctx, L_COL_X, cy, fmtScore(oppScore), "Full match score line", OPP_ACCENT);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals), "#f8fafc", false);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, isPuck(sport) ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true);
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score Conversion", oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false);
-    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score zone (avg position)", scoreZoneLabel, "#94a3b8", true);
+    cy = oppDrawHeroStat(ctx, L_COL_X, cy, fmtScore(oppScore), "Full match score line", OPP_ACCENT, OPP_TYPE_READABLE);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false, OPP_TYPE_READABLE);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true, OPP_TYPE_READABLE);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals), "#f8fafc", false, OPP_TYPE_READABLE);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, isPuck(sport) ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true, OPP_TYPE_READABLE);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score Conversion", oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false, OPP_TYPE_READABLE);
+    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score zone (avg position)", scoreZoneLabel, "#94a3b8", true, OPP_TYPE_READABLE);
   }
 
   // ── RIGHT CARD 1: Restart Share (possession-fact) ───────────────────────────
@@ -5172,29 +5206,29 @@ export function makeOppositionFactsPage(
   const rCard2Y = rCard1Y + R_CARD_H_1 + CARD_GAP;
 
   oppDrawCardBg(ctx, R_COL_X, rCard1Y, R_COL_W, R_CARD_H_1, "#fbbf24");
-  cy = oppDrawCardTitle(ctx, R_COL_X, rCard1Y, R_COL_W, `${koLabelPlural(sport)} — Restart Share`, "#fbbf24");
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard1Y, R_COL_W, `${koLabelPlural(sport)} — Restart Share`, "#fbbf24", OPP_TYPE_READABLE);
   if (ko.total === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText(`No ${koLabelLC(sport)} data recorded`, R_COL_X + R_COL_W / 2, rCard1Y + R_CARD_H_1 / 2);
   } else {
-    cy = oppDrawHeroStat(ctx, R_COL_X, cy, `${koOppWinPct}%`, "OPP restart share", "#fbbf24");
-    oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, `${restartMetricLabel("restartShare", sport)} won by OPP`, `${koOppWon} of ${ko.total}`, "#f8fafc", false);
+    cy = oppDrawHeroStat(ctx, R_COL_X, cy, `${koOppWinPct}%`, "OPP restart share", "#fbbf24", OPP_TYPE_READABLE);
+    oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, `${restartMetricLabel("restartShare", sport)} won by OPP`, `${koOppWon} of ${ko.total}`, "#f8fafc", false, OPP_TYPE_READABLE);
   }
 
   // ── RIGHT CARD 2: Turnovers Gifted (match-fact) ─────────────────────────────
   oppDrawCardBg(ctx, R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#a78bfa");
-  cy = oppDrawCardTitle(ctx, R_COL_X, rCard2Y, R_COL_W, "Turnovers Gifted", "#a78bfa");
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard2Y, R_COL_W, "Turnovers Gifted", "#a78bfa", OPP_TYPE_READABLE);
   if (tvLost === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No turnover data recorded", R_COL_X + R_COL_W / 2, rCard2Y + R_CARD_H_2 / 2);
   } else {
-    oppDrawHeroStat(ctx, R_COL_X, cy, String(tvLost), "Turnovers gifted to opposition", "#a78bfa");
+    oppDrawHeroStat(ctx, R_COL_X, cy, String(tvLost), "Turnovers gifted to opposition", "#a78bfa", OPP_TYPE_READABLE);
   }
 
   return canvas;
@@ -5796,13 +5830,14 @@ function makeMatchSwingTimelinePage(
   const L_COL_X      = 24;
   const L_COL_W      = 928;
   const R_COL_X      = 968;
-  const COL_HDR_H    = 36;
-  const ITEMS_TOP    = CONTENT_TOP + COL_HDR_H;    // 122
+  const COL_HDR_H    = 40;
+  const ITEMS_TOP    = CONTENT_TOP + COL_HDR_H;    // 126
   const ITEM_H       = 65;
   const MAX_ITEMS    = 13;
-  const DOT_OFFSET_X = 92;    // px from column left to dot centre
-  const CLOCK_MAX_X  = DOT_OFFSET_X - 12;   // 80 — right edge of clock label area (col-relative)
-  const DESC_OFFSET  = DOT_OFFSET_X + 16;   // 108 — left edge of description text (col-relative)
+  // Phone readability: wider clock gutter so 18px clock labels fit.
+  const DOT_OFFSET_X = 140;   // px from column left to dot centre
+  const CLOCK_MAX_X  = DOT_OFFSET_X - 14;   // 126 — right edge of clock label area (col-relative)
+  const DESC_OFFSET  = DOT_OFFSET_X + 18;   // 158 — left edge of description text (col-relative)
   const DOT_HALF     = 4;                   // half-size of filled-square dot → 8×8 px
   const RING_HALF    = DOT_HALF + 5;        // 9 — strokeRect halo half-size
   // Description text available width (same for both columns since L_COL_W === R_COL_W)
@@ -6083,7 +6118,7 @@ function makeMatchSwingTimelinePage(
     ctx.fillStyle    = "rgba(255,255,255,0.04)";
     ctx.fillRect(colX, CONTENT_TOP, L_COL_W, COL_HDR_H);
     ctx.fillStyle    = "#94a3b8";
-    ctx.font         = "bold 13px sans-serif";
+    ctx.font         = "bold 20px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 16, CONTENT_TOP + COL_HDR_H / 2);
@@ -6094,8 +6129,8 @@ function makeMatchSwingTimelinePage(
     const descX = colX + DESC_OFFSET;
 
     if (items.length === 0) {
-      ctx.fillStyle    = "#64748b";
-      ctx.font         = "14px sans-serif";
+      ctx.fillStyle    = "#94a3b8";
+      ctx.font         = "20px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(emptyText, colX + 16, ITEMS_TOP + 32);
@@ -6128,17 +6163,18 @@ function makeMatchSwingTimelinePage(
       ctx.globalAlpha = 1;
 
       // Clock / time label — right-aligned, left of the dot.
-      ctx.fillStyle    = "#64748b";
-      ctx.font         = "12px sans-serif";
+      ctx.fillStyle    = "#94a3b8";
       ctx.textAlign    = "right";
       ctx.textBaseline = "middle";
+      setFittedFont(ctx, s.sublabel, CLOCK_MAX_X - 8, 18, 14);
       ctx.fillText(s.sublabel, colX + CLOCK_MAX_X, midY);
 
-      // Primary description — coloured, slightly above centre.
+      // Primary description — coloured, slightly above centre. Fitted down
+      // to 16px (original was 15px); only truncated (…) if still too long.
       ctx.fillStyle    = color;
-      ctx.font         = "bold 15px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
+      setFittedFont(ctx, s.label, DESC_MAX_W, 24, 16, "bold");
       let primary = s.label;
       if (ctx.measureText(primary).width > DESC_MAX_W) {
         let iterations = 0;
@@ -6149,7 +6185,7 @@ function makeMatchSwingTimelinePage(
         }
         primary += "…";
       }
-      ctx.fillText(primary, descX, midY - 10);
+      ctx.fillText(primary, descX, midY - 11);
 
       // Kind badge — muted label below primary.
       const badge =
@@ -6158,18 +6194,18 @@ function makeMatchSwingTimelinePage(
         : s.kind === "TURNOVER_CLUSTER" ? "turnover"
         : s.kind === "LEAD_CHANGE"      ? "lead change"
         :                                 "equalised";
-      ctx.fillStyle    = "rgba(255,255,255,0.28)";
-      ctx.font         = "12px sans-serif";
+      ctx.fillStyle    = "#94a3b8";
+      ctx.font         = "17px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(badge.toUpperCase(), descX, midY + 12);
+      ctx.fillText(badge.toUpperCase(), descX, midY + 16);
     }
   }
 
   // Full-page empty-state guard.
   if (col1Items.length === 0 && col2Items.length === 0) {
-    ctx.fillStyle    = "#64748b";
-    ctx.font         = "18px sans-serif";
+    ctx.fillStyle    = "#94a3b8";
+    ctx.font         = "22px sans-serif";
     ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(
@@ -6257,11 +6293,15 @@ export function makeShotEfficiencyPage(
   const HEADLINE_H  = 112;
   const LABEL_PX    = 22;
   const VALUE_PX    = 24;
-  // Source breakdown sub-column right-edge positions (relative to column left)
-  const SRC_ATT_X   = 520;
-  const SRC_SC_X    = 640;
-  const SRC_MISS_X  = 756;
-  const SRC_CONV_X  = L_COL_W - 12;    // 916
+  // Source breakdown sub-column right-edge positions (relative to column left).
+  // Phone readability: values sit on a rail 500px from the column edge (was
+  // 916px) so a label and its value stay together when zoomed in.
+  const VALUE_RAIL  = 500;
+  const SRC_ATT_X   = 250;
+  const SRC_SC_X    = 335;
+  const SRC_MISS_X  = 420;
+  const SRC_CONV_X  = VALUE_RAIL;
+  const ROW_STRIPE_W = VALUE_RAIL + 14;  // row stripes end just past the values
 
   const FOR_COLOR = "#4ade80";
   const OPP_COLOR = "#f87171";
@@ -6366,7 +6406,7 @@ export function makeShotEfficiencyPage(
     ctx.fillStyle = accentColor;
     ctx.fillRect(colX, cy, 3, SEC_HDR_H);
     ctx.fillStyle    = accentColor;
-    ctx.font         = "bold 18px sans-serif";
+    ctx.font         = "bold 20px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 14, cy + SEC_HDR_H / 2);
@@ -6380,7 +6420,7 @@ export function makeShotEfficiencyPage(
   ): number {
     if (isAlt) {
       ctx.fillStyle = "rgba(255,255,255,0.022)";
-      ctx.fillRect(colX + 3, cy, L_COL_W - 3, ROW_H);
+      ctx.fillRect(colX + 3, cy, ROW_STRIPE_W - 3, ROW_H);
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle    = MUTED;
@@ -6391,7 +6431,7 @@ export function makeShotEfficiencyPage(
     ctx.fillStyle    = valueColor;
     ctx.font         = `bold ${VALUE_PX}px sans-serif`;
     ctx.textAlign    = "right";
-    ctx.fillText(value, colX + L_COL_W - 12, mid);
+    ctx.fillText(value, colX + VALUE_RAIL, mid);
     return cy + ROW_H;
   }
 
@@ -6425,7 +6465,7 @@ export function makeShotEfficiencyPage(
 
   function drawSrcHeader(colX: number, cy: number): number {
     ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(colX + 3, cy, L_COL_W - 3, SRC_HDR_H);
+    ctx.fillRect(colX + 3, cy, ROW_STRIPE_W - 3, SRC_HDR_H);
     const mid = cy + SRC_HDR_H / 2;
     ctx.fillStyle    = MUTED;
     ctx.font         = "bold 16px sans-serif";
@@ -6451,7 +6491,7 @@ export function makeShotEfficiencyPage(
   ): number {
     if (isAlt) {
       ctx.fillStyle = "rgba(255,255,255,0.022)";
-      ctx.fillRect(colX + 3, cy, L_COL_W - 3, ROW_H);
+      ctx.fillRect(colX + 3, cy, ROW_STRIPE_W - 3, ROW_H);
     }
     const mid      = cy + ROW_H / 2;
     const hasData  = row.att > 0;
@@ -7477,19 +7517,26 @@ export function makeRestartVisualPage(
   // ── Panel 3: Restart Intelligence ─────────────────────────────────────────
   {
     const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Restart Intelligence", "#14b8a6");
-    dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 26, "#22d3ee");
     // Attribution footnote — origin vs direct, with the computed bridge count
     // so this page and the ledger reconcile with the same number (Bug 2).
+    // Wrapped inside the panel (it was compressed to ~60% width and ran into
+    // the page footer); the intelligence text stops above it.
     ctx.save();
-    ctx.fillStyle = "#64748b";
-    ctx.font = "italic 12px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "italic 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(
+    const bridgeLines = wrapText(
+      ctx,
       xRestartStr(restartOriginBridgeNote(countPlacedRestartOriginScores(outcomes), homeTeam, awayTeam), sport),
-      DP_P3_X + 12, DP_STRIP_Y + DP_STRIP_H - 16, DP_P3_W - 24,
+      DP_P3_W - 24,
     );
+    const BRIDGE_LINE_H = 19;
+    const bridgeTop = DP_STRIP_Y + DP_STRIP_H - 26 - bridgeLines.length * BRIDGE_LINE_H;  // clear of the page footer
+    bridgeLines.forEach((line, i) =>
+      ctx.fillText(line, DP_P3_X + 12, bridgeTop + i * BRIDGE_LINE_H + BRIDGE_LINE_H / 2));
     ctx.restore();
+    dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, bridgeTop - 8, "#22d3ee");
   }
 
   drawEventCountFooter(ctx, forOwnedEvts.length + oppOwnedEvts.length);
@@ -13112,42 +13159,44 @@ function makeScoringBreakdownPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Scoring Breakdown", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   ctx.save();
-  ctx.fillStyle = "#64748b";
-  ctx.font = "italic 14px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "italic 20px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText("How was the score recorded? Direct event classification only — no restart or turnover attribution.", 24, 86);
+  ctx.fillText("How was the score recorded? Direct event classification only — no restart or turnover attribution.", 24, 96);
   ctx.restore();
 
   // ── The Margin ─────────────────────────────────────────────────────────────
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle    = "#f8fafc";
-  ctx.font         = "bold 44px sans-serif";
-  ctx.fillText(
-    `${truncTeam(homeTeam, 20)}  ${fmtScoreLine(breakdown.forScore)}   v   ${fmtScoreLine(breakdown.oppScore)}  ${truncTeam(awayTeam, 20)}`,
-    CANVAS_W / 2, 150,
-  );
+  {
+    const scoreLine =
+      `${truncTeam(homeTeam, 20)}  ${fmtScoreLine(breakdown.forScore)}   v   ${fmtScoreLine(breakdown.oppScore)}  ${truncTeam(awayTeam, 20)}`;
+    setFittedFont(ctx, scoreLine, CANVAS_W - 96, 52, 40, "bold");
+    ctx.fillText(scoreLine, CANVAS_W / 2, 168);
+  }
   ctx.fillStyle = breakdown.margin > 0 ? "#4ade80" : breakdown.margin < 0 ? "#f87171" : "#94a3b8";
-  ctx.font      = "bold 30px sans-serif";
-  ctx.fillText(fmtMarginLabel(breakdown.margin, homeTeam, awayTeam), CANVAS_W / 2, 200);
+  ctx.font      = "bold 36px sans-serif";
+  ctx.fillText(fmtMarginLabel(breakdown.margin, homeTeam, awayTeam), CANVAS_W / 2, 230);
 
   // ── The Table ──────────────────────────────────────────────────────────────
+  // Phone readability: rows 62→96px, text 22→32px, header 19→22px.
   const TBL_W    = 1500;
   const TBL_X    = Math.round((CANVAS_W - TBL_W) / 2);
   const COL_SRC  = TBL_X + 24;
   const COL_US   = TBL_X + Math.round(TBL_W * 0.46);
   const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);
   const COL_NET  = TBL_X + Math.round(TBL_W * 0.91);
-  const HDR_H    = 46;
-  const ROW_H    = 62;
-  let ty = 250;
+  const HDR_H    = 54;
+  const ROW_H    = 96;   // ≤5 rows → table ends by y≈824
+  let ty = 290;
 
   ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fillRect(TBL_X, ty, TBL_W, HDR_H);
   ctx.fillStyle = "#7dd3fc";
   ctx.fillRect(TBL_X, ty, 4, HDR_H);
-  ctx.font         = "bold 19px sans-serif";
+  ctx.font         = "bold 22px sans-serif";
   ctx.fillStyle    = "#94a3b8";
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
@@ -13173,33 +13222,33 @@ function makeScoringBreakdownPage(
     const mid = ty + ROW_H / 2;
     ctx.textBaseline = "middle";
     ctx.fillStyle = row.id === "UNATTRIBUTED" ? "#fbbf24" : "#e2e8f0";
-    ctx.font      = "bold 22px sans-serif";
     ctx.textAlign = "left";
+    setFittedFont(ctx, row.label, COL_US - 190 - COL_SRC, 32, 22, "bold");
     ctx.fillText(row.label, COL_SRC, mid);
 
-    ctx.font      = "22px sans-serif";
+    ctx.font      = "32px sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "#e2e8f0";
     ctx.fillText(fmtLedgerSide(row, row.us),   COL_US,   mid);
     ctx.fillText(fmtLedgerSide(row, row.them), COL_THEM, mid);
 
-    ctx.font      = "bold 24px sans-serif";
+    ctx.font      = "bold 36px sans-serif";
     ctx.fillStyle = row.net > 0 ? "#4ade80" : row.net < 0 ? "#f87171" : "#94a3b8";
     ctx.fillText(fmtNet(row.net), COL_NET, mid);
     ty += ROW_H;
   });
 
   // Sum line — the honesty check, printed on the page.
-  ty += 20;
+  ty += 24;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.font = "italic 18px sans-serif";
-  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 20px sans-serif";
+  ctx.fillStyle = "#94a3b8";
   const rowNetSum = breakdown.rows.reduce((s, r) => s + r.net, 0);
-  ctx.fillText(`Source nets sum to the final margin: ${fmtNet(rowNetSum)}`, TBL_X + TBL_W, ty + 10);
+  ctx.fillText(`Source nets sum to the final margin: ${fmtNet(rowNetSum)}`, TBL_X + TBL_W, ty + 12);
   ctx.fillText(
     "Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).",
-    TBL_X + TBL_W, ty + 32,
+    TBL_X + TBL_W, ty + 40,
   );
 
   drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
@@ -13240,12 +13289,12 @@ function makeScoringPossessionOriginsPage(
   // ── Game Origin explanation — must appear before any origin table ─────────
   ctx.save();
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "16px sans-serif";
+  ctx.font = "20px sans-serif";
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   const explainerLines = wrapText(ctx, xRestartStr(GAME_ORIGIN_EXPLANATION, sport), CANVAS_W - 48);
-  let ey = 88;
-  explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 22; });
+  let ey = 90;
+  explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 28; });
   ctx.restore();
 
   const usOrigins   = viewScoringPossessionOrigins(report, "FOR");
@@ -13254,17 +13303,20 @@ function makeScoringPossessionOriginsPage(
   const TBL_W    = 1500;
   const TBL_X    = Math.round((CANVAS_W - TBL_W) / 2);
   const COL_SRC  = TBL_X + 24;
-  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);
-  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);
-  const HDR_H    = 46;
-  const ROW_H    = 68;
-  let ty = ey + 30;
+  // Phone readability: team columns spread (were 46% / 70%) so the two long
+  // origin breakdowns read as separate cells.
+  const COL_US   = TBL_X + Math.round(TBL_W * 0.42);
+  const COL_THEM = TBL_X + Math.round(TBL_W * 0.75);
+  // Phone readability: rows 68→84px, text 22→28px, header 19→22px.
+  const HDR_H    = 54;
+  const ROW_H    = 84;
+  let ty = ey + 36;
 
   ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fillRect(TBL_X, ty, TBL_W, HDR_H);
   ctx.fillStyle = "#818cf8";
   ctx.fillRect(TBL_X, ty, 4, HDR_H);
-  ctx.font         = "bold 19px sans-serif";
+  ctx.font         = "bold 22px sans-serif";
   ctx.fillStyle    = "#94a3b8";
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
@@ -13294,23 +13346,41 @@ function makeScoringPossessionOriginsPage(
     const mid = ty + ROW_H / 2;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#e2e8f0";
-    ctx.font      = "bold 22px sans-serif";
     ctx.textAlign = "left";
+    setFittedFont(ctx, row.label, COL_US - 200 - COL_SRC, 28, 22, "bold");
     ctx.fillText(row.label, COL_SRC, mid);
+    const labelRight = COL_SRC + ctx.measureText(row.label).width;
 
-    ctx.font      = "22px sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "#e2e8f0";
-    ctx.fillText(formatScoringBreakdownOrDash(row.us),   COL_US,   mid);
-    ctx.fillText(formatScoringBreakdownOrDash(row.them), COL_THEM, mid);
+    {
+      const usTxt = formatScoringBreakdownOrDash(row.us);
+      const themTxt = formatScoringBreakdownOrDash(row.them);
+      // Both origin cells share one size so the comparison reads evenly:
+      // the largest size (28px down to 18px) at which the two centred cells
+      // keep a 48px gap, stay clear of the row label and inside the table.
+      let cellPx = 28;
+      for (; cellPx > 18; cellPx--) {
+        ctx.font = `${cellPx}px sans-serif`;
+        const wUs = ctx.measureText(usTxt).width;
+        const wThem = ctx.measureText(themTxt).width;
+        const clearOfEachOther = wUs / 2 + wThem / 2 + 48 <= COL_THEM - COL_US;
+        const insideTable = COL_THEM + wThem / 2 <= TBL_X + TBL_W - 12;
+        const clearOfLabel = COL_US - wUs / 2 >= labelRight + 32;
+        if (clearOfEachOther && insideTable && clearOfLabel) break;
+      }
+      ctx.font = `${cellPx}px sans-serif`;
+      ctx.fillText(usTxt, COL_US, mid);
+      ctx.fillText(themTxt, COL_THEM, mid);
+    }
     ty += ROW_H;
   });
 
   // Bridge footnote — explains, never "reconciles away", the overlap with Part 1.
-  ty += 26;
+  ty += 30;
   ctx.textAlign = "left";
-  ctx.fillStyle = "#64748b";
-  ctx.font = "italic 17px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "italic 20px sans-serif";
   const bridgeLines = wrapText(
     ctx,
     xRestartStr(
@@ -13322,8 +13392,8 @@ function makeScoringPossessionOriginsPage(
     ),
     TBL_W,
   );
-  bridgeLines.forEach((line) => { ctx.fillText(line, TBL_X, ty); ty += 22; });
-  ty += 10;
+  bridgeLines.forEach((line) => { ctx.fillText(line, TBL_X, ty); ty += 28; });
+  ty += 12;
   ctx.fillText(
     "Only restart and turnover origins are currently tracked — a score with neither origin has no row here.",
     TBL_X, ty,
