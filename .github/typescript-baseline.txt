@@ -1,0 +1,33 @@
+# PáircVision Guardian V1 — known TypeScript diagnostics (tsc -b).
+# These are EXISTING ERRORS, tolerated temporarily. This is not a clean type check.
+# Format: count<TAB>file<TAB>code<TAB>first message line (no line numbers).
+# Entries may only be removed (when fixed). Adding entries needs explicit owner approval.
+# Regenerate with: node .github/scripts/ts-baseline.mjs update
+1	src/backup/BackupRestoreView.tsx	TS2339	Property 'error' does not exist on type 'ParsedBackup'.
+1	src/backup/BackupRestoreView.tsx	TS2339	Property 'message' does not exist on type 'RestoreOutcome'.
+1	src/backup/BackupRestoreView.tsx	TS2339	Property 'rollbackMessage' does not exist on type 'RestoreOutcome'.
+1	src/backup/BackupRestoreView.tsx	TS2339	Property 'rolledBack' does not exist on type 'RestoreOutcome'.
+2	src/backup/backup-acceptance.test.ts	TS2339	Property 'error' does not exist on type 'ParsedBackup'.
+1	src/backup/backup-acceptance.test.ts	TS2339	Property 'rolledBack' does not exist on type 'RestoreOutcome'.
+2	src/backup/backup-restore.test.ts	TS2339	Property 'rollbackMessage' does not exist on type 'RestoreOutcome'.
+3	src/backup/backup-restore.test.ts	TS2339	Property 'rolledBack' does not exist on type 'RestoreOutcome'.
+11	src/backup/backup-validate.test.ts	TS2339	Property 'error' does not exist on type 'ParsedBackup'.
+1	src/features/shared/imageShare.test.ts	TS2339	Property 'message' does not exist on type 'BlobResult'.
+1	src/features/shared/imageShare.ts	TS2339	Property 'message' does not exist on type 'BlobResult'.
+1	src/internal-match-montage/AddToMontageSheet.tsx	TS2339	Property 'reason' does not exist on type 'MontageSave'.
+2	src/internal-match-montage/MontageMode.tsx	TS2339	Property 'reason' does not exist on type 'TrimResult'.
+2	src/internal-team-sheet/KitUploadSheet.tsx	TS2339	Property 'reason' does not exist on type 'RemovalAssessment'.
+2	src/internal-team-sheet/kit-image-processing.test.ts	TS2339	Property 'reason' does not exist on type 'RemovalAssessment'.
+1	src/movement-board/tokens/createCleanTokenAdapters.test.ts	TS2352	Conversion of type 'ContainerChild' to type '{ text: string; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+1	src/pro-tagger/ProTaggerJersey.test.tsx	TS2488	Type 'HTMLCollection' must have a '[Symbol.iterator]()' method that returns an iterator.
+4	src/pro-tagger/ProTaggerJersey.test.tsx	TS2488	Type 'NodeListOf<Element>' must have a '[Symbol.iterator]()' method that returns an iterator.
+1	src/pro-tagger/ProTaggerJersey.test.tsx	TS2488	Type 'NodeListOf<SVGSVGElement>' must have a '[Symbol.iterator]()' method that returns an iterator.
+3	src/pro-tagger/ProTaggerJersey.test.tsx	TS2488	Type 'NodeListOf<SVGTextElement>' must have a '[Symbol.iterator]()' method that returns an iterator.
+1	src/pro-tagger/ProTaggerSavedMatchesScreen.tsx	TS2339	Property 'reason' does not exist on type 'RepairMatchByIdResult'.
+1	src/pro-tagger/ProTaggerSquadScreen.tsx	TS2339	Property 'reason' does not exist on type 'SaveTeamResult'.
+2	src/pro-tagger/jerseyDesignerV2.workflow.test.tsx	TS2488	Type 'NodeListOf<Element>' must have a '[Symbol.iterator]()' method that returns an iterator.
+2	src/pro-tagger/pro-tagger-coordinate-repair.test.ts	TS2339	Property 'reason' does not exist on type 'RepairMatchByIdResult'.
+1	src/pro-tagger/pro-tagger-coordinate-repair.test.ts	TS2339	Property 'reason' does not exist on type 'RepairMatchResult'.
+1	src/rapid-capture/RapidCaptureLitePage.clockLifecycle.test.ts	TS6133	'clockSeconds' is declared but its value is never read.
+1	src/stats/reporting/pdfTurnoverTerritory.test.ts	TS2353	Object literal may only specify known properties, and 'x' does not exist in type 'Partial<ChainableEvent> & Pick<ChainableEvent, "teamSide" | "kind">'.
+2	src/tactics/pitch/gaa-goal-markings.test.ts	TS2339	Property 'strokeWidth' does not exist on type 'PitchMarking'.
