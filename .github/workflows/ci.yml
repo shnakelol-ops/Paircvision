@@ -1,16 +1,17 @@
 # PáircVision Guardian V1 — CI baseline (engineering infrastructure only).
 #
 # Runs the existing test suite, the production build (same command as
-# vercel.json) and a TypeScript report on every pull request to main and on
-# every push to main. It changes nothing: read-only token, no secrets, no
-# deployments, no merges.
+# vercel.json) and a TypeScript known-errors check on every pull request to
+# main and every push to main. It changes nothing: read-only token, no
+# secrets, no deployments, no merges.
 #
-# TypeScript: `tsc -b` currently reports 53 known errors on main (85c10d0).
-# All 12 in application code are `if (!result.ok)` narrowing errors caused by
-# `strict` being off; the other 41 are in test files. They are not fixed here.
-# The "TypeScript (no new errors)" check therefore does NOT claim the code
-# type-checks: it fails only if the error count rises above the known
-# baseline, and prints the real count on every run.
+# TypeScript: `tsc -b` reports pre-existing errors on main (53 at 85c10d0).
+# They are listed one by one in .github/typescript-baseline.txt and are NOT
+# fixed here. The TypeScript check fails on any new error, on a fixed error
+# still listed in the baseline, on baseline growth, or if tsc cannot run.
+# Passing it does NOT mean the code type-checks cleanly.
+#
+# Third-party actions are pinned to full commit SHAs (tag in the comment).
 
 name: CI
 
@@ -37,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -53,10 +54,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -65,45 +66,30 @@ jobs:
       - run: node node_modules/vite/bin/vite.js build
 
   typecheck:
-    name: TypeScript (no new errors)
+    name: TypeScript (known-errors baseline)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      TS_KNOWN_ERRORS: "53"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+          # Two commits: on a PR the merge commit's first parent is the base,
+          # so the baseline file can be compared with the base branch's copy.
+          fetch-depth: 2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: Count TypeScript errors (tsc -b)
+      - name: Self-test the baseline checker
+        run: node --test .github/scripts/ts-baseline.test.mjs
+      - name: Base branch copy of the baseline (pull requests only)
+        if: github.event_name == 'pull_request'
         run: |
-          set +e
-          npx tsc -b > tsc.log 2>&1
-          set -e
-          count=$(grep -c "error TS" tsc.log || true)
-          {
-            echo "## TypeScript report"
-            echo ""
-            echo "- Errors now: **${count}**"
-            echo "- Known errors on main: **${TS_KNOWN_ERRORS}**"
-            echo ""
-            echo "This check fails only if errors rise above the known count."
-            echo "It does not mean the code type-checks cleanly."
-            echo ""
-            echo '```'
-            grep "error TS" tsc.log | head -100
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "TypeScript errors: ${count} (known: ${TS_KNOWN_ERRORS})"
-          if [ "${count}" -gt "${TS_KNOWN_ERRORS}" ]; then
-            echo "::error::TypeScript errors rose from ${TS_KNOWN_ERRORS} to ${count}."
-            grep "error TS" tsc.log
-            exit 1
+          if git cat-file -e HEAD^1:.github/typescript-baseline.txt 2>/dev/null; then
+            git show HEAD^1:.github/typescript-baseline.txt > "$RUNNER_TEMP/base-baseline.txt"
+          else
+            echo "::notice::Base branch has no TypeScript baseline yet; growth check skipped."
           fi
-          if [ "${count}" -lt "${TS_KNOWN_ERRORS}" ]; then
-            echo "::notice::TypeScript errors fell to ${count}. Lower TS_KNOWN_ERRORS in ci.yml."
-          fi
+      - name: Compare tsc -b with the known-errors baseline
+        run: node .github/scripts/ts-baseline.mjs check --base-baseline "$RUNNER_TEMP/base-baseline.txt" --summary "$GITHUB_STEP_SUMMARY"
