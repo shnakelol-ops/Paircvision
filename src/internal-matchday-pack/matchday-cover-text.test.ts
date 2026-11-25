@@ -68,6 +68,21 @@ describe("fitText", () => {
     }
   });
 
+  it("breaks after a comma when it costs little size (preferBreakAfter)", () => {
+    const opts = { maxWidth: 700, maxSize: 46, minSize: 28, maxLines: 2 as const, wrapBelow: 40 };
+    const text = "PÁIRC UÍ CHAOIMH, BAILE AN CHOLLAIGH, CORCAIGH";
+    expect(fitText(measure, text, opts).lines).toEqual(["PÁIRC UÍ CHAOIMH, BAILE", "AN CHOLLAIGH, CORCAIGH"]);
+    const preferred = fitText(measure, text, { ...opts, preferBreakAfter: "," });
+    expect(preferred.lines).toEqual(["PÁIRC UÍ CHAOIMH,", "BAILE AN CHOLLAIGH, CORCAIGH"]);
+    expect(preferred.size).toBe(46); // no size lost
+  });
+
+  it("falls back to the balanced break when a comma break would cost too much size", () => {
+    const text = "A, BBBBBBBBBBBBBBBBBBBBBBBBB CCCCCCCCCCCCCCCCCCCCCCCC";
+    const fit = fitText(measure, text, { maxWidth: 700, maxSize: 46, minSize: 20, maxLines: 2, wrapBelow: 40, preferBreakAfter: ",", preferSlack: 4 });
+    expect(fit.lines[0].endsWith(",")).toBe(false);
+  });
+
   it("returns no lines for empty or whitespace-only text", () => {
     expect(fitText(measure, "   ", { maxWidth: 100, maxSize: 40, minSize: 20 }).lines).toEqual([]);
   });

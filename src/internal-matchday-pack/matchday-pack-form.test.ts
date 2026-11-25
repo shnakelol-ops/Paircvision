@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { PRESET_KITS, type TeamSheetKit } from "../internal-team-sheet/team-sheet-kits";
 import {
+  DEFAULT_MERIDIEM,
   coverFilename,
   defaultMatchdayPack,
   kitsForClub,
+  minuteOptions,
+  parseTime24,
   renameSide,
   saveBlocker,
   teamIdForClubName,
+  toTime24,
   updateFixture,
 } from "./matchday-pack-form";
 import { parseMatchdayPack } from "./matchday-pack-storage";
@@ -87,5 +91,44 @@ describe("default pack and saving", () => {
   it("names the image after both clubs", () => {
     const pack = defaultMatchdayPack();
     expect(coverFilename({ ...pack, away: { ...pack.away, name: "Cnoc Áine" } })).toBe("matchday-ballylanders-v-cnoc-aine.png");
+  });
+});
+
+describe("throw-in time conversion (12-hour editor ⇄ stored HH:mm)", () => {
+  it.each([
+    ["00:00", { hour: 12, minute: 0, period: "AM" }],
+    ["00:30", { hour: 12, minute: 30, period: "AM" }],
+    ["03:15", { hour: 3, minute: 15, period: "AM" }],
+    ["11:59", { hour: 11, minute: 59, period: "AM" }],
+    ["12:00", { hour: 12, minute: 0, period: "PM" }],
+    ["12:45", { hour: 12, minute: 45, period: "PM" }],
+    ["15:15", { hour: 3, minute: 15, period: "PM" }],
+    ["23:05", { hour: 11, minute: 5, period: "PM" }],
+  ] as const)("%s ⇄ %o", (hhmm, t12) => {
+    expect(parseTime24(hhmm)).toEqual(t12);
+    expect(toTime24(t12)).toBe(hhmm);
+  });
+
+  it("round-trips every minute of the day", () => {
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m++) {
+        const hhmm = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+        expect(toTime24(parseTime24(hhmm)!)).toBe(hhmm);
+      }
+    }
+  });
+
+  it("treats empty or malformed stored values as no time", () => {
+    for (const bad of ["", "3:15", "24:00", "15:60", "3pm", "15.30"]) expect(parseTime24(bad)).toBeNull();
+  });
+
+  it("defaults to PM — the usual GAA throw-in", () => {
+    expect(DEFAULT_MERIDIEM).toBe("PM");
+  });
+
+  it("offers 5-minute steps and keeps an off-grid saved minute", () => {
+    expect(minuteOptions(null)).toEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]);
+    expect(minuteOptions(7)).toEqual([0, 5, 7, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]);
+    expect(minuteOptions(15)).toHaveLength(12);
   });
 });
