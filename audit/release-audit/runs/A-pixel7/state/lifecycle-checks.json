@@ -1,0 +1,74 @@
+[
+ {
+  "op": "sub",
+  "team": "OPP",
+  "out": 5,
+  "in": 19,
+  "half": 1,
+  "clock": 1500,
+  "preview": "#5 off → #19 on (Nemo Rangers)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 5
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 10,
+  "in": 16,
+  "half": 2,
+  "clock": 300,
+  "preview": "#10 off → #16 on (Castlehaven)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 10
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "OPP",
+  "out": 9,
+  "in": 18,
+  "half": 2,
+  "clock": 600,
+  "preview": "#9 off → #18 on (Nemo Rangers)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 9
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 14,
+  "in": 17,
+  "half": 2,
+  "clock": 900,
+  "preview": "#14 off → #17 on (Castlehaven)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 14
+  },
+  "pass": true
+ }
+]

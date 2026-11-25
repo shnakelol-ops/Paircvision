@@ -1,0 +1,36 @@
+{
+ "s1_twentyFirstMatch": {
+  "savedBefore": 20,
+  "savedAfter": 20,
+  "newMatchSaved": true,
+  "firstMatchKept": false,
+  "evicted": [
+   "Saved Match 1"
+  ]
+ },
+ "s2_unreadableEventStatsStore": {
+  "pitchFooter": "✓ Event saved",
+  "stripWarning": null,
+  "storedValueUnchanged": false,
+  "olderMatchStillPresent": false
+ },
+ "s3_unreadableMatchStatsArchive_SaveMatch": {
+  "feedback": null,
+  "archiveUnchanged": false,
+  "eventStatsMatchesStored": 1
+ },
+ "s4_malformedRecordSurvives": {
+  "recordsStored": 2,
+  "malformedKept": false,
+  "malformedUnchanged": false,
+  "validOlderKept": true
+ },
+ "s5_storageFull": {
+  "pitchFooter": "✓ Event saved",
+  "stripWarning": null,
+  "existingMatchUnchangedWhileFull": false,
+  "warningClearedAfterSpaceFreed": true,
+  "eventsStoredAfterRecovery": 3,
+  "eventsInApp": 3
+ }
+}

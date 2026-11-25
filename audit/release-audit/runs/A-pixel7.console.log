@@ -1,0 +1,20 @@
+[A] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[A] match started 
+[A] substitution {"team":"OPP","out":5,"in":19,"pass":true}
+[A] captured Quick Review HT {"countsRows":19,"panes":3}
+[A] exported HT-snapshot-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-HT-snapshot-live.pdf","suggested":"Castlehaven_v_Nemo_Rangers_ht_snapshot.pdf","pages":5}
+[A] second half started 
+[A] substitution {"team":"FOR","out":10,"in":16,"pass":true}
+[A] substitution {"team":"OPP","out":9,"in":18,"pass":true}
+[A] substitution {"team":"FOR","out":14,"in":17,"pass":true}
+[A] captured Quick Review FT {"countsRows":19,"panes":3}
+[A] exported FT-snapshot-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-FT-snapshot-live.pdf","suggested":"Castlehaven_v_Nemo_Rangers_ft_snapshot.pdf","pages":8}
+[A] exported FullReview-live {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-FullReview-live.pdf","suggested":"Castlehaven_v_Nemo_Rangers_review.pdf","pages":30}
+[A] full time + saved 
+[A] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[A] exported HT-snapshot-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-HT-snapshot-reopened.pdf","suggested":"Castlehaven_v_Nemo_Rangers_ht_snapshot.pdf","pages":5}
+[A] exported FT-snapshot-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-FT-snapshot-reopened.pdf","suggested":"Castlehaven_v_Nemo_Rangers_ft_snapshot.pdf","pages":8}
+[A] exported FullReview-reopened {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-FullReview-reopened.pdf","suggested":"Castlehaven_v_Nemo_Rangers_review.pdf","pages":30}
+[A] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[A] exported FT-snapshot-reopened2 {"file":"/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-release/A-pixel7/pdf/A-FT-snapshot-reopened2.pdf","suggested":"Castlehaven_v_Nemo_Rangers_ft_snapshot.pdf","pages":8}
+[A] done 

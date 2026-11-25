@@ -1,0 +1,109 @@
+[
+ {
+  "op": "storageFail",
+  "check": "storage writes start failing",
+  "storedBefore": 92,
+  "liveCountBefore": 92
+ },
+ {
+  "op": "storageFailing",
+  "check": "while failing: stored match unchanged, failure shown, Home guarded, Stay keeps the match",
+  "stored": 92,
+  "expectedStored": 92,
+  "strip": "Save failed — storage full. Back up and delete old matches.",
+  "leaveDialog": true,
+  "stayedInMatch": true,
+  "pass": true
+ },
+ {
+  "op": "storageRestore",
+  "check": "first event after storage recovers stores every event",
+  "expectedStored": 96,
+  "stored": 96,
+  "strip": null,
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 7,
+  "in": 16,
+  "half": 1,
+  "clock": 1200,
+  "preview": "#7 off → #16 on (Corofin)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 7
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 13,
+  "in": 17,
+  "half": 2,
+  "clock": 300,
+  "preview": "#13 off → #17 on (Corofin)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 13
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "OPP",
+  "out": 11,
+  "in": 19,
+  "half": 2,
+  "clock": 900,
+  "preview": "#11 off → #19 on (Moycullen)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 11
+  },
+  "pass": true
+ },
+ {
+  "op": "close",
+  "check": "tab closed and app reopened: every event kept, clock resumes where it stopped",
+  "storedBefore": 260,
+  "stored": 260,
+  "expectedStored": 260,
+  "clockBefore": 1200,
+  "clockAfter": 1200,
+  "sawResumeScreen": true,
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 8,
+  "in": 18,
+  "half": 2,
+  "clock": 1500,
+  "preview": "#8 off → #18 on (Corofin)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 8
+  },
+  "pass": true
+ }
+]

@@ -1,0 +1,114 @@
+{
+ "label": "branch-pixel7",
+ "device": "Pixel 7",
+ "targets": [],
+ "filters": [],
+ "checks": {
+  "isolatedMarkers": {
+   "iso": [
+    {
+     "kind": "TURNOVER_WON",
+     "time": "00:33",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "TURNOVER_LOST",
+     "time": "00:47",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "SHOT",
+     "time": "01:09",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "SIDELINE_WON",
+     "time": "01:15",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "KICKOUT_WON",
+     "time": "01:34",
+     "opened": true,
+     "list": 0
+    },
+    {
+     "kind": "SIDELINE_WON",
+     "time": "10:33",
+     "opened": true,
+     "list": 0
+    }
+   ],
+   "pass": true
+  }
+ },
+ "footerCounts": {
+  "ALL/ALL/ALL": "331",
+  "ALL/ALL/SCORES": "331",
+  "ALL/ALL/SHOTS": "331",
+  "ALL/ALL/WIDES": "331",
+  "ALL/ALL/TURNOVERS": "331",
+  "ALL/ALL/KICKOUTS": "331",
+  "ALL/ALL/FREES": "331",
+  "ALL/FOR/ALL": "331",
+  "ALL/FOR/SCORES": "331",
+  "ALL/FOR/SHOTS": "331",
+  "ALL/FOR/WIDES": "331",
+  "ALL/FOR/TURNOVERS": "331",
+  "ALL/FOR/KICKOUTS": "331",
+  "ALL/FOR/FREES": "331",
+  "ALL/OPP/ALL": "331",
+  "ALL/OPP/SCORES": "331",
+  "ALL/OPP/SHOTS": "331",
+  "ALL/OPP/WIDES": "331",
+  "ALL/OPP/TURNOVERS": "331",
+  "ALL/OPP/KICKOUTS": "331",
+  "ALL/OPP/FREES": "331",
+  "H1/ALL/ALL": "331",
+  "H1/ALL/SCORES": "331",
+  "H1/ALL/SHOTS": "331",
+  "H1/ALL/WIDES": "331",
+  "H1/ALL/TURNOVERS": "331",
+  "H1/ALL/KICKOUTS": "331",
+  "H1/ALL/FREES": "331",
+  "H1/FOR/ALL": "331",
+  "H1/FOR/SCORES": "331",
+  "H1/FOR/SHOTS": "331",
+  "H1/FOR/WIDES": "331",
+  "H1/FOR/TURNOVERS": "331",
+  "H1/FOR/KICKOUTS": "331",
+  "H1/FOR/FREES": "331",
+  "H1/OPP/ALL": "331",
+  "H1/OPP/SCORES": "331",
+  "H1/OPP/SHOTS": "331",
+  "H1/OPP/WIDES": "331",
+  "H1/OPP/TURNOVERS": "331",
+  "H1/OPP/KICKOUTS": "331",
+  "H1/OPP/FREES": "331",
+  "H2/ALL/ALL": "331",
+  "H2/ALL/SCORES": "331",
+  "H2/ALL/SHOTS": "331",
+  "H2/ALL/WIDES": "331",
+  "H2/ALL/TURNOVERS": "331",
+  "H2/ALL/KICKOUTS": "331",
+  "H2/ALL/FREES": "331",
+  "H2/FOR/ALL": "331",
+  "H2/FOR/SCORES": "331",
+  "H2/FOR/SHOTS": "331",
+  "H2/FOR/WIDES": "331",
+  "H2/FOR/TURNOVERS": "331",
+  "H2/FOR/KICKOUTS": "331",
+  "H2/FOR/FREES": "331",
+  "H2/OPP/ALL": "331",
+  "H2/OPP/SCORES": "331",
+  "H2/OPP/SHOTS": "331",
+  "H2/OPP/WIDES": "331",
+  "H2/OPP/TURNOVERS": "331",
+  "H2/OPP/KICKOUTS": "331",
+  "H2/OPP/FREES": "331"
+ }
+}

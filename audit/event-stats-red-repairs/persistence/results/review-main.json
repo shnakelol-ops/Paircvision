@@ -1,0 +1,241 @@
+{
+ "shotToPoint": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "WIDE",
+   "TURNOVER_WON",
+   "TURNOVER_LOST",
+   "TWO_POINTER",
+   "FORTY_FIVE_TWO_POINT",
+   "SHOT",
+   "FREE_WON",
+   "FREE_CONCEDED",
+   "FREE_SCORED",
+   "FREE_MISSED",
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED",
+   "POSSESSION_WON",
+   "POSSESSION_LOST",
+   "FORTY_FIVE_WON",
+   "FORTY_FIVE_CONCEDED",
+   "SIDELINE_WON",
+   "SIDELINE_CONCEDED",
+   "YELLOW_CARD",
+   "SIN_BIN",
+   "RED_CARD"
+  ],
+  "requested": "POINT",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "tags": [
+    "BLOCK/SAVE"
+   ],
+   "player": null,
+   "squadId": null
+  }
+ },
+ "turnoverToPoint": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "WIDE",
+   "TURNOVER_WON",
+   "TURNOVER_LOST",
+   "TWO_POINTER",
+   "FORTY_FIVE_TWO_POINT",
+   "SHOT",
+   "FREE_WON",
+   "FREE_CONCEDED",
+   "FREE_SCORED",
+   "FREE_MISSED",
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED",
+   "POSSESSION_WON",
+   "POSSESSION_LOST",
+   "FORTY_FIVE_WON",
+   "FORTY_FIVE_CONCEDED",
+   "SIDELINE_WON",
+   "SIDELINE_CONCEDED",
+   "YELLOW_CARD",
+   "SIN_BIN",
+   "RED_CARD"
+  ],
+  "requested": "POINT",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "tags": [
+    "HP ERROR"
+   ],
+   "player": null,
+   "squadId": null
+  }
+ },
+ "kickoutFlipWithPlayer": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "WIDE",
+   "TURNOVER_WON",
+   "TURNOVER_LOST",
+   "TWO_POINTER",
+   "FORTY_FIVE_TWO_POINT",
+   "SHOT",
+   "FREE_WON",
+   "FREE_CONCEDED",
+   "FREE_SCORED",
+   "FREE_MISSED",
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED",
+   "POSSESSION_WON",
+   "POSSESSION_LOST",
+   "FORTY_FIVE_WON",
+   "FORTY_FIVE_CONCEDED",
+   "SIDELINE_WON",
+   "SIDELINE_CONCEDED",
+   "YELLOW_CARD",
+   "SIN_BIN",
+   "RED_CARD"
+  ],
+  "requested": "KICKOUT_CONCEDED",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "tags": [
+    "CLEAN"
+   ],
+   "player": 2,
+   "squadId": "home"
+  }
+ },
+ "kickoutFlipPlayerCleared": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "WIDE",
+   "TURNOVER_WON",
+   "TURNOVER_LOST",
+   "TWO_POINTER",
+   "FORTY_FIVE_TWO_POINT",
+   "SHOT",
+   "FREE_WON",
+   "FREE_CONCEDED",
+   "FREE_SCORED",
+   "FREE_MISSED",
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED",
+   "POSSESSION_WON",
+   "POSSESSION_LOST",
+   "FORTY_FIVE_WON",
+   "FORTY_FIVE_CONCEDED",
+   "SIDELINE_WON",
+   "SIDELINE_CONCEDED",
+   "YELLOW_CARD",
+   "SIN_BIN",
+   "RED_CARD"
+  ],
+  "requested": "KICKOUT_CONCEDED",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "tags": [
+    "CLEAN"
+   ],
+   "player": null,
+   "squadId": "home"
+  }
+ },
+ "fortyFiveToConceded": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "WIDE",
+   "TURNOVER_WON",
+   "TURNOVER_LOST",
+   "TWO_POINTER",
+   "FORTY_FIVE_TWO_POINT",
+   "SHOT",
+   "FREE_WON",
+   "FREE_CONCEDED",
+   "FREE_SCORED",
+   "FREE_MISSED",
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED",
+   "POSSESSION_WON",
+   "POSSESSION_LOST",
+   "FORTY_FIVE_WON",
+   "FORTY_FIVE_CONCEDED",
+   "SIDELINE_WON",
+   "SIDELINE_CONCEDED",
+   "YELLOW_CARD",
+   "SIN_BIN",
+   "RED_CARD"
+  ],
+  "requested": "FORTY_FIVE_CONCEDED",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "FORTY_FIVE_CONCEDED",
+   "teamSide": "FOR",
+   "tags": [
+    "WON"
+   ],
+   "player": null,
+   "squadId": null
+  }
+ },
+ "editWhileStorageFull": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "WIDE",
+   "TURNOVER_WON",
+   "TURNOVER_LOST",
+   "TWO_POINTER",
+   "FORTY_FIVE_TWO_POINT",
+   "SHOT",
+   "FREE_WON",
+   "FREE_CONCEDED",
+   "FREE_SCORED",
+   "FREE_MISSED",
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED",
+   "POSSESSION_WON",
+   "POSSESSION_LOST",
+   "FORTY_FIVE_WON",
+   "FORTY_FIVE_CONCEDED",
+   "SIDELINE_WON",
+   "SIDELINE_CONCEDED",
+   "YELLOW_CARD",
+   "SIN_BIN",
+   "RED_CARD"
+  ],
+  "requested": "WIDE",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "tags": [
+    "BLOCK/SAVE"
+   ],
+   "player": null,
+   "squadId": null
+  },
+  "alerts": [
+   "Change not saved. Save failed — storage full. Back up and delete old matches."
+  ],
+  "storedUnchanged": true,
+  "reviewShowsType": null
+ }
+}

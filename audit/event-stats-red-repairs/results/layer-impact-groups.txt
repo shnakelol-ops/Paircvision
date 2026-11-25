@@ -1,0 +1,40 @@
+core.direct.rows                                               C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.placedBalls.for                                           C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.placedBalls.opp                                           C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.restartTeams.for                                          A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.restartTeams.opp                                          A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.restarts.oppKickoutWinRate                                A-legacy|1H A-legacy|FULL
+core.restarts.ownKickoutRetention                              A-legacy|1H A-legacy|FULL
+core.summaryFOR.freeScored                                     C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryFOR.koFoulCon                                      A-live|1H A-live|FULL B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryFOR.koFoulWon                                      A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryFOR.ownRestartsRetained                            A-legacy|1H A-legacy|FULL
+core.summaryFOR.placedAttempts                                 C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryFOR.placedPoints                                   C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryFOR.placedScores                                   C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryFOR.shotBlock                                      A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryFOR.toSlackKpHp                                    A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryFOR.toSwarmInt                                     A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryOPP.freeScored                                     C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryOPP.koFoulCon                                      A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryOPP.koFoulWon                                      A-live|1H A-live|FULL B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryOPP.ownRestartsRetained                            A-legacy|1H A-legacy|FULL
+core.summaryOPP.placedAttempts                                 C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryOPP.placedPoints                                   C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryOPP.placedScores                                   C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryOPP.shotBlock                                      B-live|1H B-live|FULL C-live|1H C-live|FULL C-final|1H C-final|FULL
+core.summaryOPP.toSlackKpHp                                    A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryOPP.toSwarmInt                                     A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|FULL A-legacy|1H A-legacy|FULL
+intelligence.intelligenceSummary.coachingPriorities            A-legacy|1H A-legacy|FULL
+intelligence.intelligenceSummary.dangerInsights[]              A-legacy|1H A-legacy|FULL
+intelligence.intelligenceSummary.weaponInsights                A-legacy|1H A-legacy|FULL
+intelligence.ledger.rows                                       C-live|1H C-live|FULL C-final|1H C-final|FULL
+intelligence.ledger.rows[]                                     B-live|FULL B-final|FULL
+intelligence.ledger.verdicts[]                                 B-live|FULL C-live|1H B-final|FULL C-final|1H
+intelligence.possessions.ourKickouts                           A-legacy|1H A-legacy|FULL
+intelligence.possessions.theirKickouts                         A-legacy|1H A-legacy|FULL
+intelligence.prompts                                           B-live|FULL B-final|1H B-final|FULL
+intelligence.turnoverDataset.lostAllowedScore                  B-live|1H B-live|FULL B-final|1H B-final|FULL
+intelligence.turnoverDataset.outcomes[]                        A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+intelligence.turnovers.turnoverLossPunishment                  B-live|1H B-live|FULL B-final|1H B-final|FULL
+leaf diffs: 549

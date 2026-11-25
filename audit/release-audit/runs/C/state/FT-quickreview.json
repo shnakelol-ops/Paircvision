@@ -1,0 +1,99 @@
+{
+ "counts": [
+  [
+   "Kilmallock",
+   "",
+   "Ballygunner"
+  ],
+  [
+   "4",
+   "Goals",
+   "0"
+  ],
+  [
+   "24",
+   "Points",
+   "23"
+  ],
+  [
+   "35",
+   "Shots",
+   "36"
+  ],
+  [
+   "4",
+   "Wides",
+   "8"
+  ],
+  [
+   "10",
+   "Turnover Won",
+   "10"
+  ],
+  [
+   "10",
+   "Turnover Lost",
+   "10"
+  ],
+  [
+   "32",
+   "Kickout Won",
+   "30"
+  ],
+  [
+   "30",
+   "Kickout Lost",
+   "32"
+  ],
+  [
+   "9",
+   "Free Won",
+   "7"
+  ],
+  [
+   "7",
+   "Free Conceded",
+   "9"
+  ],
+  [
+   "0",
+   "65 Won",
+   "1"
+  ],
+  [
+   "1",
+   "65 Lost",
+   "0"
+  ],
+  [
+   "0",
+   "Sideline Won",
+   "1"
+  ],
+  [
+   "1",
+   "Sideline Lost",
+   "0"
+  ],
+  [
+   "1",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "2"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nKilmallock\n4-24\n—\n0-23\nBallygunner\nSHOOTING\nKilmallock\n28/35 (80%)\nBallygunner\n23/36 (64%)\nLONGEST SCORING RUN\nKilmallock\n5\nBallygunner\n4\nRESTARTS\nOUR KICKOUTS\n19/31 retained (61%)\nTHEIR KICKOUTS\n18/31 retained (58%)\nOur restart won\n→\n18 shots\n|\n14 scores\nOur restart lost\n→\n19 shots against\n|\n11 scores against\nTURNOVERS\nOUR TURNOVERS WON\n10\n→\n7 shots\n|\n5 scores\nOUR TURNOVERS LOST\n10\n→\n7 shots against\n|\n5 scores against\nFREES / PLACED BALLS\nFrees won\n9\nPlaced balls\n8/8 scored\nFrees conceded\n7",
+  "Counts Sheet\nKilmallock\nBallygunner\n4\nGoals\n0\n24\nPoints\n23\n35\nShots\n36\n4\nWides\n8\n10\nTurnover Won\n10\n10\nTurnover Lost\n10\n32\nKickout Won\n30\n30\nKickout Lost\n32\n9\nFree Won\n7\n7\nFree Conceded\n9\n0\n65 Won\n1\n1\n65 Lost\n0\n0\nSideline Won\n1\n1\nSideline Lost\n0\n1\nYellow Cards\n1\n0\nSin Bins\n0\n0\nRed Cards\n2",
+  "Segment Comparison — Full Time\nEarly 0–10 · Mid 10–20 · Late 20+\nFIRST HALF\nKILMALLOCK\nEARLY\nMID\nLATE\nScore\n1-03\n0-03\n2-06\nShots\n4\n7\n9\nWides\n0\n1\n1\nTurnovers Won\n1\n3\n1\n↳ Own Half\n1\n2\n0\n↳ Opposition Half\n0\n1\n1\nTurnovers Lost\n1\n1\n1\n↳ Own Half\n1\n1\n0\n↳ Opposition Half\n0\n0\n1\nOwn KO Retained\n2/4 (50%)\n2/3 (67%)\n5/7 (71%)\nOpposition KO Retained\n2/3 (67%)\n2/5 (40%)\n5/9 (56%)\nBALLYGUNNER\nEARLY\nMID\nLATE\nScore\n0-02\n0-03\n0-04\nShots\n4\n3\n8\nWides\n2\n0\n3\nTurnovers Won\n1\n1\n1\n↳ Own Half\n0\n0\n1\n↳ Opposition Half\n1\n1\n0\nTurnovers Lost\n1\n3\n1\n↳ Own Half\n0\n1\n1\n↳ Opposition Half\n1\n2\n0\nOwn KO Retained\n2/3 (67%)\n2/5 (40%)\n5/9 (56%)\nOpposition KO Retained\n2/4 (50%)\n2/3 (67%)\n5/7 (71%)\nSECOND HALF\nKILMALLOCK\nEARLY\nMID\nLATE\nScore\n0-05\n0-03\n1-04\nShots\n5\n3\n7\nWides\n0\n0\n2\nTurnovers Won\n4\n1\n0\n↳ Own Half\n2\n0\n0\n↳ Opposition Half\n2\n1\n0\nTurnovers Lost\n1\n2\n4\n↳ Own Half\n0\n0\n2\n↳ Opposition Half\n1\n2\n2\nOwn KO Retained\n2/3 (67%)\n3/8 (38%)\n5/6 (83%)\nOpposition KO Retained\n5/5 (100%)\n1/3 (33%)\n3/6 (50%)\nBALLYGUNNER\nEARLY\nMID\nLATE\nScore\n0-03\n0-06\n0-05\nShots\n3\n9\n9\nWides\n0\n2\n1\nTurnovers Won\n1\n2\n4\n↳ Own Half\n1\n2\n2\n↳ Opposition Half\n0\n0\n2\nTurnovers Lost\n4\n1\n0\n↳ Own Half\n2\n1\n0\n↳ Opposition Half\n2\n0\n0\nOwn KO Retained\n5/5 (100%)\n1/3 (33%)\n3/6 (50%)\nOpposition KO Retained\n2/3 (67%)\n3/8 (38%)\n5/6 (83%)"
+ ]
+}

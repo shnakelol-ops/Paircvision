@@ -1,0 +1,6253 @@
+[
+ {
+  "id": "8714aac5-ae34-4e1d-bd02-1b3ac56be300",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "00:51",
+  "nx": 0.4429999950320222,
+  "ny": 0.608999988644622,
+  "screen": {
+   "x": 192,
+   "y": 530.5,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 24,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 7.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "25:49",
+      "px": 8.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "02:16",
+      "px": 10
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 7.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "25:49",
+      "px": 8.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 11.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 24,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 7.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "25:49",
+      "px": 8.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "02:16",
+      "px": 10
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 7.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "25:49",
+      "px": 8.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 11.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 12,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 11.1
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "11:49",
+      "px": 15.5
+     },
+     {
+      "kind": "YELLOW_CARD",
+      "time": "11:52",
+      "px": 15.5
+     }
+    ],
+    "tapAreaFree": 0.11,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": 6,
+     "d": 6,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 11.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:23",
+      "px": 18.9
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "02:32",
+      "px": 20.1
+     }
+    ],
+    "tapAreaFree": 0.11,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": 6,
+     "d": 6,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 12,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 11.1
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "11:49",
+      "px": 15.5
+     },
+     {
+      "kind": "YELLOW_CARD",
+      "time": "11:52",
+      "px": 15.5
+     }
+    ],
+    "tapAreaFree": 0.11,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": 6,
+     "d": 6,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 11.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:23",
+      "px": 18.9
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "02:32",
+      "px": 20.1
+     }
+    ],
+    "tapAreaFree": 0.11,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": 6,
+     "d": 6,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "3b9f4819-a7d1-4f7d-a6f6-1288ccc38e90",
+  "kind": "POINT",
+  "teamSide": "OPP",
+  "half": "1H",
+  "time": "01:19",
+  "nx": 0.9050000212913336,
+  "ny": 0.4390000099359556,
+  "screen": {
+   "x": 378.7,
+   "y": 487.6,
+   "r": 7.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 16,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "WIDE",
+      "time": "17:54",
+      "px": 12.1
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     }
+    ],
+    "tapAreaFree": 0.003,
+    "dotFree": 0,
+    "best": {
+     "dx": 15,
+     "dy": -4,
+     "d": 15.524174696260024,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "SCORES",
+    "drawn": 45,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     },
+     {
+      "kind": "POINT",
+      "time": "14:08",
+      "px": 14.6
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "WIDE",
+      "time": "17:54",
+      "px": 12.1
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "SCORES",
+    "drawn": 20,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     },
+     {
+      "kind": "POINT",
+      "time": "25:19",
+      "px": 27.9
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "WIDE",
+      "time": "17:54",
+      "px": 12.1
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "SCORES",
+    "drawn": 21,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     },
+     {
+      "kind": "POINT",
+      "time": "25:19",
+      "px": 27.9
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 91,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "WIDE",
+      "time": "17:54",
+      "px": 12.1
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "SCORES",
+    "drawn": 10,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "22:08",
+      "px": 6
+     },
+     {
+      "kind": "POINT",
+      "time": "12:45",
+      "px": 12.4
+     },
+     {
+      "kind": "POINT",
+      "time": "25:19",
+      "px": 27.9
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": 11,
+     "dy": 5,
+     "d": 12.08304597359457,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "1da5fb11-9d99-4822-9e96-910bb781ce6f",
+  "kind": "KICKOUT_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "01:34",
+  "nx": 0.5600000425826671,
+  "ny": 0.32699996593386627,
+  "screen": {
+   "x": 239.3,
+   "y": 459.3,
+   "r": 5.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 19,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:39",
+      "px": 1.9
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "08:13",
+      "px": 8
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 77,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:39",
+      "px": 1.9
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "19:09",
+      "px": 14.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 17,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:39",
+      "px": 1.9
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "08:13",
+      "px": 8
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 55,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:39",
+      "px": 1.9
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "19:09",
+      "px": 14.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "19:09",
+      "px": 14.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 17.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 38,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "19:09",
+      "px": 14.4
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 24.5
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": -13,
+     "dy": 5,
+     "d": 13.92838827718412,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 12,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "19:09",
+      "px": 14.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 17.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 30,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "19:09",
+      "px": 14.4
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 24.5
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": -13,
+     "dy": 5,
+     "d": 13.92838827718412,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "3a6213f2-b6fc-4482-bb41-c1f4507c12ac",
+  "kind": "POINT",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "01:38",
+  "nx": 0.18700000851653345,
+  "ny": 0.6160000113553779,
+  "screen": {
+   "x": 88.5,
+   "y": 532.3,
+   "r": 7.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 21,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "POINT",
+      "time": "15:54",
+      "px": 10.9
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "15:29",
+      "px": 13
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "SCORES",
+    "drawn": 45,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "POINT",
+      "time": "15:54",
+      "px": 10.9
+     },
+     {
+      "kind": "POINT",
+      "time": "13:37",
+      "px": 19.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "15:29",
+      "px": 13
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "28:08",
+      "px": 14.2
+     }
+    ],
+    "tapAreaFree": 0.001,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": 16,
+     "d": 16,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "SCORES",
+    "drawn": 25,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "POINT",
+      "time": "04:41",
+      "px": 30.5
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": -4,
+     "dy": 15,
+     "d": 15.524174696260024,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "06:36",
+      "px": 17.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "06:24",
+      "px": 19.2
+     }
+    ],
+    "tapAreaFree": 0.011,
+    "dotFree": 0,
+    "best": {
+     "dx": -4,
+     "dy": 15,
+     "d": 15.524174696260024,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "SCORES",
+    "drawn": 21,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "POINT",
+      "time": "04:41",
+      "px": 30.5
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": -4,
+     "dy": 15,
+     "d": 15.524174696260024,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "06:36",
+      "px": 17.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "06:24",
+      "px": 19.2
+     }
+    ],
+    "tapAreaFree": 0.014,
+    "dotFree": 0,
+    "best": {
+     "dx": -4,
+     "dy": 15,
+     "d": 15.524174696260024,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "SCORES",
+    "drawn": 11,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "16:08",
+      "px": 0.6
+     },
+     {
+      "kind": "POINT",
+      "time": "04:41",
+      "px": 30.5
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": -4,
+     "dy": 15,
+     "d": 15.524174696260024,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "a4973b3d-a8a4-431e-aee8-5df4ded83d3f",
+  "kind": "KICKOUT_CONCEDED",
+  "teamSide": "OPP",
+  "half": "1H",
+  "time": "03:38",
+  "nx": 0.28999998403149985,
+  "ny": 0.35999997161155517,
+  "screen": {
+   "x": 130.1,
+   "y": 467.6,
+   "r": 5.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 23,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 6.1
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "33:27",
+      "px": 6.8
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "32:40",
+      "px": 7.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 77,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "18:33",
+      "px": 12.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 16,
+    "laterNearest": [
+     {
+      "kind": "TWO_POINTER",
+      "time": "33:27",
+      "px": 6.8
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "32:40",
+      "px": 7.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 7.7
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 55,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "18:33",
+      "px": 12.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 15,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 6.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 7.7
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "KICKOUTS",
+    "drawn": 54,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 13.7
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 11,
+    "laterNearest": [
+     {
+      "kind": "TWO_POINTER",
+      "time": "33:27",
+      "px": 6.8
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "32:40",
+      "px": 7.3
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     }
+    ],
+    "tapAreaFree": 0.008,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": 13,
+     "d": 14.317821063276352,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 38,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:36",
+      "px": 20.8
+     }
+    ],
+    "tapAreaFree": 0.117,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": 9,
+     "d": 9.055385138137417,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 9,
+    "laterNearest": [
+     {
+      "kind": "TWO_POINTER",
+      "time": "33:27",
+      "px": 6.8
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "32:40",
+      "px": 7.3
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     }
+    ],
+    "tapAreaFree": 0.024,
+    "dotFree": 0,
+    "best": {
+     "dx": -7,
+     "dy": 11,
+     "d": 13.038404810405298,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 30,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:36",
+      "px": 20.8
+     }
+    ],
+    "tapAreaFree": 0.136,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": 9,
+     "d": 9.055385138137417,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 91,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:36",
+      "px": 20.8
+     }
+    ],
+    "tapAreaFree": 0.117,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": 9,
+     "d": 9.055385138137417,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "KICKOUTS",
+    "drawn": 22,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 7.8
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "31:12",
+      "px": 11.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:36",
+      "px": 20.8
+     }
+    ],
+    "tapAreaFree": 0.117,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": 9,
+     "d": 9.055385138137417,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "0472b28d-f3b4-475f-840e-349e080489bb",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "04:31",
+  "nx": 0.7430000305175781,
+  "ny": 0.7530000021291333,
+  "screen": {
+   "x": 313.2,
+   "y": 566.9,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "09:22",
+      "px": 1.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     }
+    ],
+    "tapAreaFree": 0.003,
+    "dotFree": 0,
+    "best": {
+     "dx": -7,
+     "dy": 14,
+     "d": 15.652475842498529,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     }
+    ],
+    "tapAreaFree": 0.201,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 1,
+     "d": 11.045361017187261,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 10,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "25:34",
+      "px": 8.2
+     }
+    ],
+    "tapAreaFree": 0.023,
+    "dotFree": 0,
+    "best": {
+     "dx": -9,
+     "dy": 9,
+     "d": 12.727922061357857,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     }
+    ],
+    "tapAreaFree": 0.201,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 1,
+     "d": 11.045361017187261,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "POINT",
+      "time": "09:22",
+      "px": 1.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     }
+    ],
+    "tapAreaFree": 0.003,
+    "dotFree": 0,
+    "best": {
+     "dx": -7,
+     "dy": 14,
+     "d": 15.652475842498529,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     }
+    ],
+    "tapAreaFree": 0.201,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 1,
+     "d": 11.045361017187261,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "25:34",
+      "px": 8.2
+     }
+    ],
+    "tapAreaFree": 0.151,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 2,
+     "d": 11.180339887498947,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:16",
+      "px": 5.2
+     }
+    ],
+    "tapAreaFree": 0.201,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 1,
+     "d": 11.045361017187261,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "fe49b9a3-1e78-4a59-a3b3-3893749ae9a6",
+  "kind": "FORTY_FIVE_WON",
+  "teamSide": "OPP",
+  "half": "1H",
+  "time": "05:24",
+  "nx": 0.6899999574173329,
+  "ny": 0.5,
+  "screen": {
+   "x": 291.8,
+   "y": 503,
+   "r": 7.3,
+   "tap": 17.6
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 26,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "03:53",
+      "px": 4.7
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "11:55",
+      "px": 5.1
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "31:41",
+      "px": 8.6
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 17,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "03:53",
+      "px": 4.7
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "31:41",
+      "px": 8.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "31:26",
+      "px": 9.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "31:41",
+      "px": 8.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "31:26",
+      "px": 9.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "19:47",
+      "px": 9.7
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 91,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "31:41",
+      "px": 8.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "31:26",
+      "px": 9.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "19:47",
+      "px": 9.7
+     }
+    ],
+    "tapAreaFree": 0.005,
+    "dotFree": 0,
+    "best": {
+     "dx": 16.4173,
+     "dy": 0.4173000000000009,
+     "d": 16.422602673754245,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "5593294c-c31b-4431-94e9-a4617725bffd",
+  "kind": "KICKOUT_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "06:14",
+  "nx": 0.6400000106456668,
+  "ny": 0.3150000283884448,
+  "screen": {
+   "x": 271.6,
+   "y": 456.3,
+   "r": 5.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 20,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:25",
+      "px": 1.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "17:50",
+      "px": 2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 77,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "08:56",
+      "px": 16
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "21:10",
+      "px": 23.8
+     }
+    ],
+    "tapAreaFree": 0.221,
+    "dotFree": 0.072,
+    "best": {
+     "dx": 4,
+     "dy": 2,
+     "d": 4.47213595499958,
+     "onDot": true
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 16,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:25",
+      "px": 1.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "17:50",
+      "px": 2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     }
+    ],
+    "tapAreaFree": 0.004,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 11,
+     "d": 15.556349186104047,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 55,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "08:22",
+      "px": 28.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:21",
+      "px": 30.6
+     }
+    ],
+    "tapAreaFree": 0.399,
+    "dotFree": 0.072,
+    "best": {
+     "dx": 4,
+     "dy": 2,
+     "d": 4.47213595499958,
+     "onDot": true
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:25",
+      "px": 1.2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "07:50",
+      "px": 23.4
+     }
+    ],
+    "tapAreaFree": 0.008,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 11,
+     "d": 15.556349186104047,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 38,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "08:22",
+      "px": 28.1
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 31.7
+     }
+    ],
+    "tapAreaFree": 0.403,
+    "dotFree": 0.072,
+    "best": {
+     "dx": 4,
+     "dy": 2,
+     "d": 4.47213595499958,
+     "onDot": true
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:25",
+      "px": 1.2
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "07:50",
+      "px": 23.4
+     }
+    ],
+    "tapAreaFree": 0.008,
+    "dotFree": 0,
+    "best": {
+     "dx": -11,
+     "dy": 11,
+     "d": 15.556349186104047,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 30,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:29",
+      "px": 11.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "08:22",
+      "px": 28.1
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "32:28",
+      "px": 31.7
+     }
+    ],
+    "tapAreaFree": 0.403,
+    "dotFree": 0.072,
+    "best": {
+     "dx": 4,
+     "dy": 2,
+     "d": 4.47213595499958,
+     "onDot": true
+    }
+   }
+  ]
+ },
+ {
+  "id": "d8aff6b0-b0cc-45c6-9dac-c868cda806a3",
+  "kind": "SIDELINE_WON",
+  "teamSide": "OPP",
+  "half": "1H",
+  "time": "10:33",
+  "nx": 0.21699998545092206,
+  "ny": 0.9799999991128611,
+  "screen": {
+   "x": 100.6,
+   "y": 624.3,
+   "r": 7.3,
+   "tap": 17.6
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:37",
+      "px": 3.2
+     }
+    ],
+    "tapAreaFree": 0.112,
+    "dotFree": 0,
+    "best": {
+     "dx": -14.582699999999999,
+     "dy": 0.4173000000000009,
+     "d": 14.588669527410648,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:37",
+      "px": 3.2
+     }
+    ],
+    "tapAreaFree": 0.112,
+    "dotFree": 0,
+    "best": {
+     "dx": -14.582699999999999,
+     "dy": 0.4173000000000009,
+     "d": 14.588669527410648,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:37",
+      "px": 3.2
+     }
+    ],
+    "tapAreaFree": 0.112,
+    "dotFree": 0,
+    "best": {
+     "dx": -14.582699999999999,
+     "dy": 0.4173000000000009,
+     "d": 14.588669527410648,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 91,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:37",
+      "px": 3.2
+     }
+    ],
+    "tapAreaFree": 0.112,
+    "dotFree": 0,
+    "best": {
+     "dx": -14.582699999999999,
+     "dy": 0.4173000000000009,
+     "d": 14.588669527410648,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "7a713d38-017d-447e-be03-9c5c4cde40fd",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "11:20",
+  "nx": 0.30100001845248914,
+  "ny": 0.27800001987191136,
+  "screen": {
+   "x": 134.6,
+   "y": 446.9,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 16,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 11.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "10:38",
+      "px": 12.2
+     }
+    ],
+    "tapAreaFree": 0.014,
+    "dotFree": 0,
+    "best": {
+     "dx": 4,
+     "dy": -13,
+     "d": 13.601470508735444,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "10:38",
+      "px": 12.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 14.3
+     }
+    ],
+    "tapAreaFree": 0.014,
+    "dotFree": 0,
+    "best": {
+     "dx": 4,
+     "dy": -13,
+     "d": 13.601470508735444,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 12,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 11.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "10:38",
+      "px": 12.2
+     }
+    ],
+    "tapAreaFree": 0.014,
+    "dotFree": 0,
+    "best": {
+     "dx": 4,
+     "dy": -13,
+     "d": 13.601470508735444,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "10:38",
+      "px": 12.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 14.3
+     }
+    ],
+    "tapAreaFree": 0.014,
+    "dotFree": 0,
+    "best": {
+     "dx": 4,
+     "dy": -13,
+     "d": 13.601470508735444,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 14.9
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "32:40",
+      "px": 17.5
+     }
+    ],
+    "tapAreaFree": 0.174,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": 0,
+     "d": 7,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "23:40",
+      "px": 26.5
+     }
+    ],
+    "tapAreaFree": 0.358,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": 0,
+     "d": 7,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "20:44",
+      "px": 14.9
+     },
+     {
+      "kind": "TWO_POINTER",
+      "time": "32:40",
+      "px": 17.5
+     }
+    ],
+    "tapAreaFree": 0.174,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": 0,
+     "d": 7,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "12:32",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "23:40",
+      "px": 26.5
+     }
+    ],
+    "tapAreaFree": 0.358,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": 0,
+     "d": 7,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "debb0e42-3dcc-4671-9911-dbd545b33a38",
+  "kind": "YELLOW_CARD",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "11:52",
+  "nx": 0.4780000198719113,
+  "ny": 0.5839999886446221,
+  "screen": {
+   "x": 206.1,
+   "y": 524.2,
+   "r": 7.3,
+   "tap": 17.6
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 22,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 7.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:23",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_WON",
+      "time": "33:18",
+      "px": 13
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 22,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 7.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:23",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_WON",
+      "time": "33:18",
+      "px": 13
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 7.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:23",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_WON",
+      "time": "33:18",
+      "px": 13
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:28",
+      "px": 7.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:23",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_WON",
+      "time": "33:18",
+      "px": 13
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   }
+  ]
+ },
+ {
+  "id": "79284cb9-41f4-4147-9975-516fa141f9ed",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "14:00",
+  "nx": 0.5479999808377998,
+  "ny": 0.43100000425826673,
+  "screen": {
+   "x": 234.4,
+   "y": 485.6,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 12,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 1.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "14:05",
+      "px": 5.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 13.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   }
+  ]
+ },
+ {
+  "id": "3657be8c-88ef-477e-9418-f6c90af9bfe4",
+  "kind": "TURNOVER_LOST",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "14:05",
+  "nx": 0.5350000248398892,
+  "ny": 0.4299999858057776,
+  "screen": {
+   "x": 229.1,
+   "y": 485.3,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:46",
+      "px": 10.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:46",
+      "px": 10.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:46",
+      "px": 10.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "26:39",
+      "px": 16.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "TURNOVERS",
+    "drawn": 59,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 17.3
+     }
+    ],
+    "tapAreaFree": 0.006,
+    "dotFree": 0,
+    "best": {
+     "dx": 12,
+     "dy": 7,
+     "d": 13.892443989449806,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:46",
+      "px": 10.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:46",
+      "px": 10.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 5,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "28:43",
+      "px": 6.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 91,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "17:46",
+      "px": 10.8
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     }
+    ],
+    "tapAreaFree": 0.006,
+    "dotFree": 0,
+    "best": {
+     "dx": 12,
+     "dy": 7,
+     "d": 13.892443989449806,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "OPP",
+    "category": "TURNOVERS",
+    "drawn": 35,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "16:59",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "20:21",
+      "px": 17
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "24:35",
+      "px": 17.3
+     }
+    ],
+    "tapAreaFree": 0.006,
+    "dotFree": 0,
+    "best": {
+     "dx": 12,
+     "dy": 7,
+     "d": 13.892443989449806,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "60e7f1e1-7716-4348-a04a-3a419a51a841",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "14:09",
+  "nx": 0.34199998545092203,
+  "ny": 0.508999988644622,
+  "screen": {
+   "x": 151.1,
+   "y": 505.3,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "09:10",
+      "px": 10.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "09:10",
+      "px": 10.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     }
+    ],
+    "tapAreaFree": 0.003,
+    "dotFree": 0,
+    "best": {
+     "dx": -13,
+     "dy": -8,
+     "d": 15.264337522473749,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 11,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "09:10",
+      "px": 10.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "09:10",
+      "px": 10.7
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     }
+    ],
+    "tapAreaFree": 0.003,
+    "dotFree": 0,
+    "best": {
+     "dx": -13,
+     "dy": -8,
+     "d": 15.264337522473749,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     },
+     {
+      "kind": "FORTY_FIVE_WON",
+      "time": "14:26",
+      "px": 13.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "19:54",
+      "px": 19
+     }
+    ],
+    "tapAreaFree": 0.026,
+    "dotFree": 0,
+    "best": {
+     "dx": -14,
+     "dy": 0,
+     "d": 14,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     },
+     {
+      "kind": "FORTY_FIVE_WON",
+      "time": "14:26",
+      "px": 13.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 11.1
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "19:54",
+      "px": 19
+     }
+    ],
+    "tapAreaFree": 0.026,
+    "dotFree": 0,
+    "best": {
+     "dx": -14,
+     "dy": 0,
+     "d": 14,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "91b9e619-d09b-47db-9a78-43f732237f40",
+  "kind": "FORTY_FIVE_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "14:26",
+  "nx": 0.3099999982257222,
+  "ny": 0.5,
+  "screen": {
+   "x": 138.2,
+   "y": 503,
+   "r": 7.3,
+   "tap": 17.6
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 18,
+    "laterNearest": [
+     {
+      "kind": "TWO_POINTER",
+      "time": "25:57",
+      "px": 7.2
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "02:46",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "09:10",
+      "px": 13.5
+     }
+    ],
+    "tapAreaFree": 0.005,
+    "dotFree": 0,
+    "best": {
+     "dx": 5.417300000000001,
+     "dy": -13.582699999999999,
+     "d": 14.623162400110312,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "02:46",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "09:10",
+      "px": 13.5
+     },
+     {
+      "kind": "WIDE",
+      "time": "14:52",
+      "px": 13.9
+     }
+    ],
+    "tapAreaFree": 0.006,
+    "dotFree": 0,
+    "best": {
+     "dx": 0.4173000000000009,
+     "dy": -7.582699999999999,
+     "d": 7.594173989315755,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "14:52",
+      "px": 13.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 15.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 18.1
+     }
+    ],
+    "tapAreaFree": 0.28,
+    "dotFree": 0.181,
+    "best": {
+     "dx": -0.5826999999999991,
+     "dy": -2.582699999999999,
+     "d": 2.6476175290249144,
+     "onDot": true
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "14:52",
+      "px": 13.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "33:52",
+      "px": 15.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "18:45",
+      "px": 18.1
+     }
+    ],
+    "tapAreaFree": 0.28,
+    "dotFree": 0.181,
+    "best": {
+     "dx": -0.5826999999999991,
+     "dy": -2.582699999999999,
+     "d": 2.6476175290249144,
+     "onDot": true
+    }
+   }
+  ]
+ },
+ {
+  "id": "9a559a93-9a33-40d5-82a2-2a667206ba03",
+  "kind": "SIDELINE_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "17:05",
+  "nx": 0.3649999929028888,
+  "ny": 0.02000001419422233,
+  "screen": {
+   "x": 160.4,
+   "y": 381.7,
+   "r": 7.3,
+   "tap": 17.6
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:48",
+      "px": 2
+     },
+     {
+      "kind": "SIDELINE_WON",
+      "time": "12:27",
+      "px": 27.5
+     }
+    ],
+    "tapAreaFree": 0.029,
+    "dotFree": 0,
+    "best": {
+     "dx": -11.582699999999999,
+     "dy": 11.417300000000001,
+     "d": 16.26387649301359,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:48",
+      "px": 2
+     },
+     {
+      "kind": "SIDELINE_WON",
+      "time": "12:27",
+      "px": 27.5
+     }
+    ],
+    "tapAreaFree": 0.029,
+    "dotFree": 0,
+    "best": {
+     "dx": -11.582699999999999,
+     "dy": 11.417300000000001,
+     "d": 16.26387649301359,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:48",
+      "px": 2
+     }
+    ],
+    "tapAreaFree": 0.073,
+    "dotFree": 0,
+    "best": {
+     "dx": -15.582699999999999,
+     "dy": 0.4173000000000009,
+     "d": 15.588286582559354,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "SIDELINE_WON",
+      "time": "22:48",
+      "px": 2
+     }
+    ],
+    "tapAreaFree": 0.073,
+    "dotFree": 0,
+    "best": {
+     "dx": -15.582699999999999,
+     "dy": 0.4173000000000009,
+     "d": 15.588286582559354,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "5039dc38-066f-48a4-b00c-5ca78d57783b",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "18:37",
+  "nx": 0.8409999581270441,
+  "ny": 0.3620000085165334,
+  "screen": {
+   "x": 352.8,
+   "y": 468.1,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 18,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "FREE_WON",
+      "time": "19:26",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "17:58",
+      "px": 15.9
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "FREE_WON",
+      "time": "19:26",
+      "px": 13.3
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "17:58",
+      "px": 15.9
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     },
+     {
+      "kind": "SHOT",
+      "time": "30:38",
+      "px": 17.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:13",
+      "px": 18.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:13",
+      "px": 18.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 61,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "28:33",
+      "px": 11.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "27:17",
+      "px": 14.5
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:13",
+      "px": 18.1
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   }
+  ]
+ },
+ {
+  "id": "45e7173b-999e-4efa-b71f-d54c6c755128",
+  "kind": "KICKOUT_WON",
+  "teamSide": "FOR",
+  "half": "1H",
+  "time": "25:34",
+  "nx": 0.7600000070971112,
+  "ny": 0.7709999971611555,
+  "screen": {
+   "x": 320.1,
+   "y": 571.5,
+   "r": 5.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 12,
+    "laterNearest": [
+     {
+      "kind": "FREE_WON",
+      "time": "29:03",
+      "px": 2.4
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     },
+     {
+      "kind": "POINT",
+      "time": "33:25",
+      "px": 6.9
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": -7,
+     "dy": 12,
+     "d": 13.892443989449806,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 77,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "24:20",
+      "px": 30.3
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "25:27",
+      "px": 31.9
+     }
+    ],
+    "tapAreaFree": 0.233,
+    "dotFree": 0,
+    "best": {
+     "dx": 2,
+     "dy": 10,
+     "d": 10.19803902718557,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 9,
+    "laterNearest": [
+     {
+      "kind": "FREE_WON",
+      "time": "29:03",
+      "px": 2.4
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     },
+     {
+      "kind": "POINT",
+      "time": "33:25",
+      "px": 6.9
+     }
+    ],
+    "tapAreaFree": 0.048,
+    "dotFree": 0,
+    "best": {
+     "dx": -7,
+     "dy": 12,
+     "d": 13.892443989449806,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 55,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     }
+    ],
+    "tapAreaFree": 0.233,
+    "dotFree": 0,
+    "best": {
+     "dx": 2,
+     "dy": 10,
+     "d": 10.19803902718557,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 169,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     },
+     {
+      "kind": "WIDE",
+      "time": "26:37",
+      "px": 27.4
+     }
+    ],
+    "tapAreaFree": 0.212,
+    "dotFree": 0,
+    "best": {
+     "dx": 2,
+     "dy": 10,
+     "d": 10.19803902718557,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 38,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     }
+    ],
+    "tapAreaFree": 0.233,
+    "dotFree": 0,
+    "best": {
+     "dx": 2,
+     "dy": 10,
+     "d": 10.19803902718557,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 132,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     }
+    ],
+    "tapAreaFree": 0.233,
+    "dotFree": 0,
+    "best": {
+     "dx": 2,
+     "dy": 10,
+     "d": 10.19803902718557,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H1",
+    "team": "FOR",
+    "category": "KICKOUTS",
+    "drawn": 30,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "34:31",
+      "px": 5.9
+     }
+    ],
+    "tapAreaFree": 0.233,
+    "dotFree": 0,
+    "best": {
+     "dx": 2,
+     "dy": 10,
+     "d": 10.19803902718557,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "2536c82b-abdb-4ecb-bde8-7943e461a5d8",
+  "kind": "WIDE",
+  "teamSide": "OPP",
+  "half": "2H",
+  "time": "02:00",
+  "nx": 0.3060000220010447,
+  "ny": 0.3360000255496003,
+  "screen": {
+   "x": 136.6,
+   "y": 461.6,
+   "r": 5.8,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 10,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 4.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 7.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "WIDES",
+    "drawn": 32,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     },
+     {
+      "kind": "WIDE",
+      "time": "09:50",
+      "px": 31.1
+     }
+    ],
+    "tapAreaFree": 0.326,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -8,
+     "d": 8,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "FREES",
+    "drawn": 46,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "06:47",
+      "px": 28.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "09:50",
+      "px": 31.1
+     }
+    ],
+    "tapAreaFree": 0.289,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -8,
+     "d": 8,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 4.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 7.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "WIDES",
+    "drawn": 17,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     },
+     {
+      "kind": "WIDE",
+      "time": "09:50",
+      "px": 31.1
+     }
+    ],
+    "tapAreaFree": 0.326,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -8,
+     "d": 8,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 10,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 4.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 7.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "WIDES",
+    "drawn": 15,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     },
+     {
+      "kind": "WIDE",
+      "time": "09:50",
+      "px": 31.1
+     }
+    ],
+    "tapAreaFree": 0.326,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -8,
+     "d": 8,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "FREES",
+    "drawn": 29,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "06:47",
+      "px": 28.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "09:50",
+      "px": 31.1
+     }
+    ],
+    "tapAreaFree": 0.289,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -8,
+     "d": 8,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 88,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "07:44",
+      "px": 4.9
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "02:40",
+      "px": 7.8
+     },
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     }
+    ],
+    "tapAreaFree": 0,
+    "dotFree": 0,
+    "best": null
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "WIDES",
+    "drawn": 6,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "03:07",
+      "px": 8.4
+     },
+     {
+      "kind": "WIDE",
+      "time": "09:50",
+      "px": 31.1
+     }
+    ],
+    "tapAreaFree": 0.326,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -8,
+     "d": 8,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "f93ecd3a-e7ea-4efe-9d5b-54afc7741ac5",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "2H",
+  "time": "02:29",
+  "nx": 0.45399998509606654,
+  "ny": 0.716999994322311,
+  "screen": {
+   "x": 196.4,
+   "y": 557.8,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "16:10",
+      "px": 13.2
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "06:54",
+      "px": 14.8
+     }
+    ],
+    "tapAreaFree": 0.051,
+    "dotFree": 0,
+    "best": {
+     "dx": 3,
+     "dy": 7,
+     "d": 7.615773105863909,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "10:43",
+      "px": 17.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 20.4
+     }
+    ],
+    "tapAreaFree": 0.193,
+    "dotFree": 0.056,
+    "best": {
+     "dx": 2,
+     "dy": 3,
+     "d": 3.6055512754639896,
+     "onDot": true
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "16:10",
+      "px": 13.2
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "06:54",
+      "px": 14.8
+     }
+    ],
+    "tapAreaFree": 0.051,
+    "dotFree": 0,
+    "best": {
+     "dx": 3,
+     "dy": 7,
+     "d": 7.615773105863909,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "10:43",
+      "px": 17.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 20.4
+     }
+    ],
+    "tapAreaFree": 0.193,
+    "dotFree": 0.056,
+    "best": {
+     "dx": 2,
+     "dy": 3,
+     "d": 3.6055512754639896,
+     "onDot": true
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "16:10",
+      "px": 13.2
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "06:54",
+      "px": 14.8
+     }
+    ],
+    "tapAreaFree": 0.051,
+    "dotFree": 0,
+    "best": {
+     "dx": 3,
+     "dy": 7,
+     "d": 7.615773105863909,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "10:43",
+      "px": 17.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 20.4
+     }
+    ],
+    "tapAreaFree": 0.193,
+    "dotFree": 0.056,
+    "best": {
+     "dx": 2,
+     "dy": 3,
+     "d": 3.6055512754639896,
+     "onDot": true
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 126,
+    "laterOverlapping": 14,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "16:10",
+      "px": 13.2
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "06:54",
+      "px": 14.8
+     }
+    ],
+    "tapAreaFree": 0.051,
+    "dotFree": 0,
+    "best": {
+     "dx": 3,
+     "dy": 7,
+     "d": 7.615773105863909,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 7,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "24:31",
+      "px": 12.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "10:43",
+      "px": 17.2
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 20.4
+     }
+    ],
+    "tapAreaFree": 0.193,
+    "dotFree": 0.056,
+    "best": {
+     "dx": 2,
+     "dy": 3,
+     "d": 3.6055512754639896,
+     "onDot": true
+    }
+   }
+  ]
+ },
+ {
+  "id": "4ae91128-c33f-479e-b57c-937a28b18b96",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "2H",
+  "time": "04:07",
+  "nx": 0.8299999680629997,
+  "ny": 0.7040000028388446,
+  "screen": {
+   "x": 348.4,
+   "y": 554.5,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "20:56",
+      "px": 4.3
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "POINT",
+      "time": "23:18",
+      "px": 13.8
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": -10,
+     "d": 12.206555615733702,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:45",
+      "px": 16.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:37",
+      "px": 23.8
+     }
+    ],
+    "tapAreaFree": 0.206,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -7,
+     "d": 7,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "20:56",
+      "px": 4.3
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "POINT",
+      "time": "23:18",
+      "px": 13.8
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": -10,
+     "d": 12.206555615733702,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:45",
+      "px": 16.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:37",
+      "px": 23.8
+     }
+    ],
+    "tapAreaFree": 0.206,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -7,
+     "d": 7,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "20:56",
+      "px": 4.3
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "POINT",
+      "time": "23:18",
+      "px": 13.8
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": -10,
+     "d": 12.206555615733702,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:45",
+      "px": 16.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:37",
+      "px": 23.8
+     }
+    ],
+    "tapAreaFree": 0.206,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -7,
+     "d": 7,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 126,
+    "laterOverlapping": 13,
+    "laterNearest": [
+     {
+      "kind": "WIDE",
+      "time": "20:56",
+      "px": 4.3
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "POINT",
+      "time": "23:18",
+      "px": 13.8
+     }
+    ],
+    "tapAreaFree": 0.015,
+    "dotFree": 0,
+    "best": {
+     "dx": 7,
+     "dy": -10,
+     "d": 12.206555615733702,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "07:58",
+      "px": 9.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:45",
+      "px": 16.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "30:37",
+      "px": 23.8
+     }
+    ],
+    "tapAreaFree": 0.206,
+    "dotFree": 0,
+    "best": {
+     "dx": 0,
+     "dy": -7,
+     "d": 7,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "3a84508a-163c-4c49-a719-7d2543fa06fb",
+  "kind": "KICKOUT_WON",
+  "teamSide": "OPP",
+  "half": "2H",
+  "time": "04:23",
+  "nx": 0.7969999978708666,
+  "ny": 0.2519999659338663,
+  "screen": {
+   "x": 335,
+   "y": 440.3,
+   "r": 5.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "POINT",
+      "time": "33:52",
+      "px": 20.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "17:58",
+      "px": 23.6
+     }
+    ],
+    "tapAreaFree": 0.322,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 77,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "14:28",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.378,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "17:58",
+      "px": 23.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "14:28",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.376,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "KICKOUTS",
+    "drawn": 54,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "14:28",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.378,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 8,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "POINT",
+      "time": "33:52",
+      "px": 20.2
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "17:58",
+      "px": 23.6
+     }
+    ],
+    "tapAreaFree": 0.322,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 39,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "14:28",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.378,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 88,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "17:58",
+      "px": 23.6
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "14:28",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.376,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "KICKOUTS",
+    "drawn": 32,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "34:17",
+      "px": 10.1
+     },
+     {
+      "kind": "KICKOUT_WON",
+      "time": "14:28",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.378,
+    "dotFree": 0,
+    "best": {
+     "dx": -1,
+     "dy": -6,
+     "d": 6.0827625302982185,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "00ee1a28-dae6-47cc-a77e-007894d3f28f",
+  "kind": "TURNOVER_LOST",
+  "teamSide": "FOR",
+  "half": "2H",
+  "time": "07:22",
+  "nx": 0.13900000550026118,
+  "ny": 0.2700000141942223,
+  "screen": {
+   "x": 69.1,
+   "y": 444.9,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "27:24",
+      "px": 14
+     }
+    ],
+    "tapAreaFree": 0.084,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:16",
+      "px": 31.8
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "27:24",
+      "px": 14
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:16",
+      "px": 31.8
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "27:24",
+      "px": 14
+     }
+    ],
+    "tapAreaFree": 0.084,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "TURNOVERS",
+    "drawn": 59,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:16",
+      "px": 31.8
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "27:24",
+      "px": 14
+     }
+    ],
+    "tapAreaFree": 0.084,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:16",
+      "px": 31.8
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 126,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "27:24",
+      "px": 14
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:16",
+      "px": 31.8
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 88,
+    "laterOverlapping": 6,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "FREE_CONCEDED",
+      "time": "27:24",
+      "px": 14
+     }
+    ],
+    "tapAreaFree": 0.084,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "TURNOVERS",
+    "drawn": 24,
+    "laterOverlapping": 3,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "26:58",
+      "px": 4.4
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "11:41",
+      "px": 10.6
+     },
+     {
+      "kind": "TURNOVER_LOST",
+      "time": "27:16",
+      "px": 31.8
+     }
+    ],
+    "tapAreaFree": 0.113,
+    "dotFree": 0,
+    "best": {
+     "dx": -10,
+     "dy": 6,
+     "d": 11.6619037896906,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "423935db-3f28-4bd4-a9ca-ab3ed1e482f4",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "2H",
+  "time": "17:32",
+  "nx": 0.5029999932577444,
+  "ny": 0.48399998864462207,
+  "screen": {
+   "x": 216.2,
+   "y": 499,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "26:39",
+      "px": 20.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:11",
+      "px": 24.8
+     }
+    ],
+    "tapAreaFree": 0.019,
+    "dotFree": 0,
+    "best": {
+     "dx": -5,
+     "dy": 12,
+     "d": 13,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "23:12",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.143,
+    "dotFree": 0,
+    "best": {
+     "dx": 1,
+     "dy": 12,
+     "d": 12.041594578792294,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "26:39",
+      "px": 20.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:11",
+      "px": 24.8
+     }
+    ],
+    "tapAreaFree": 0.019,
+    "dotFree": 0,
+    "best": {
+     "dx": -5,
+     "dy": 12,
+     "d": 13,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "23:12",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.143,
+    "dotFree": 0,
+    "best": {
+     "dx": 1,
+     "dy": 12,
+     "d": 12.041594578792294,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "26:39",
+      "px": 20.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:11",
+      "px": 24.8
+     }
+    ],
+    "tapAreaFree": 0.019,
+    "dotFree": 0,
+    "best": {
+     "dx": -5,
+     "dy": 12,
+     "d": 13,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "23:12",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.143,
+    "dotFree": 0,
+    "best": {
+     "dx": 1,
+     "dy": 12,
+     "d": 12.041594578792294,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 126,
+    "laterOverlapping": 4,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "26:39",
+      "px": 20.6
+     },
+     {
+      "kind": "KICKOUT_CONCEDED",
+      "time": "33:11",
+      "px": 24.8
+     }
+    ],
+    "tapAreaFree": 0.019,
+    "dotFree": 0,
+    "best": {
+     "dx": -5,
+     "dy": 12,
+     "d": 13,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "31:49",
+      "px": 4.1
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "23:12",
+      "px": 29.5
+     }
+    ],
+    "tapAreaFree": 0.143,
+    "dotFree": 0,
+    "best": {
+     "dx": 1,
+     "dy": 12,
+     "d": 12.041594578792294,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "9acaf3ae-dcb9-431b-a78d-d86ea6683765",
+  "kind": "TURNOVER_WON",
+  "teamSide": "FOR",
+  "half": "2H",
+  "time": "28:45",
+  "nx": 0.38599999006404434,
+  "ny": 0.6609999900640443,
+  "screen": {
+   "x": 168.9,
+   "y": 543.7,
+   "r": 5.3,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 258,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 115,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "ALL",
+    "drawn": 126,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "FOR",
+    "category": "TURNOVERS",
+    "drawn": 54,
+    "laterOverlapping": 2,
+    "laterNearest": [
+     {
+      "kind": "TURNOVER_WON",
+      "time": "29:58",
+      "px": 6.6
+     },
+     {
+      "kind": "TURNOVER_WON",
+      "time": "32:41",
+      "px": 25.8
+     }
+    ],
+    "tapAreaFree": 0.256,
+    "dotFree": 0,
+    "best": {
+     "dx": -8,
+     "dy": -5,
+     "d": 9.433981132056603,
+     "onDot": false
+    }
+   }
+  ]
+ },
+ {
+  "id": "37cf05de-f102-4ee3-b4e0-80989f157bac",
+  "kind": "KICKOUT_WON",
+  "teamSide": "OPP",
+  "half": "2H",
+  "time": "29:51",
+  "nx": 0.6280000376146894,
+  "ny": 0.7070000049679779,
+  "screen": {
+   "x": 266.7,
+   "y": 555.3,
+   "r": 5.6,
+   "tap": 16
+  },
+  "views": [
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 331,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 77,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 179,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "ALL",
+    "team": "OPP",
+    "category": "KICKOUTS",
+    "drawn": 54,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "ALL",
+    "drawn": 162,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "ALL",
+    "category": "KICKOUTS",
+    "drawn": 39,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "ALL",
+    "drawn": 88,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   },
+   {
+    "half": "H2",
+    "team": "OPP",
+    "category": "KICKOUTS",
+    "drawn": 32,
+    "laterOverlapping": 1,
+    "laterNearest": [
+     {
+      "kind": "KICKOUT_WON",
+      "time": "31:28",
+      "px": 3.6
+     }
+    ],
+    "tapAreaFree": 0.139,
+    "dotFree": 0,
+    "best": {
+     "dx": -6,
+     "dy": -11,
+     "d": 12.529964086141668,
+     "onDot": false
+    }
+   }
+  ]
+ }
+]

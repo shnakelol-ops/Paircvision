@@ -1,0 +1,104 @@
+{
+ "counts": [
+  [
+   "Castlehaven",
+   "",
+   "Nemo Rangers"
+  ],
+  [
+   "0",
+   "Goals",
+   "2"
+  ],
+  [
+   "6",
+   "Points",
+   "7"
+  ],
+  [
+   "3",
+   "2PT",
+   "3"
+  ],
+  [
+   "11",
+   "Shots",
+   "15"
+  ],
+  [
+   "2",
+   "Wides",
+   "1"
+  ],
+  [
+   "1",
+   "Turnover Won",
+   "4"
+  ],
+  [
+   "4",
+   "Turnover Lost",
+   "1"
+  ],
+  [
+   "11",
+   "Kickout Won",
+   "12"
+  ],
+  [
+   "12",
+   "Kickout Lost",
+   "11"
+  ],
+  [
+   "7",
+   "Free Won",
+   "4"
+  ],
+  [
+   "4",
+   "Free Conceded",
+   "7"
+  ],
+  [
+   "0",
+   "45 Won",
+   "0"
+  ],
+  [
+   "0",
+   "45 Lost",
+   "0"
+  ],
+  [
+   "0",
+   "Sideline Won",
+   "0"
+  ],
+  [
+   "0",
+   "Sideline Lost",
+   "0"
+  ],
+  [
+   "0",
+   "Yellow Cards",
+   "1"
+  ],
+  [
+   "0",
+   "Sin Bins",
+   "0"
+  ],
+  [
+   "0",
+   "Red Cards",
+   "0"
+  ]
+ ],
+ "panes": [
+  "SCORE & SHOOTING\nCastlehaven\n0-12\n—\n2-13\nNemo Rangers\nSHOOTING\nCastlehaven\n9/11 (82%)\nNemo Rangers\n12/15 (80%)\nLONGEST SCORING RUN\nCastlehaven\n5\nNemo Rangers\n6\nRESTARTS\nOUR KICKOUTS\n8/13 retained (62%)\nTHEIR KICKOUTS\n7/10 retained (70%)\nOur restart won\n→\n4 shots\n|\n3 scores\nOur restart lost\n→\n7 shots against\n|\n5 scores against\nTURNOVERS\nOUR TURNOVERS WON\n1\n→\n1 shot\n|\n1 score\nOUR TURNOVERS LOST\n4\n→\n3 shots against\n|\n3 scores against\nFREES / PLACED BALLS\nFrees won\n7\nPlaced balls\n2/3 scored\nFrees conceded\n4",
+  "Counts Sheet\nCastlehaven\nNemo Rangers\n0\nGoals\n2\n6\nPoints\n7\n3\n2PT\n3\n11\nShots\n15\n2\nWides\n1\n1\nTurnover Won\n4\n4\nTurnover Lost\n1\n11\nKickout Won\n12\n12\nKickout Lost\n11\n7\nFree Won\n4\n4\nFree Conceded\n7\n0\n45 Won\n0\n0\n45 Lost\n0\n0\nSideline Won\n0\n0\nSideline Lost\n0\n0\nYellow Cards\n1\n0\nSin Bins\n0\n0\nRed Cards\n0",
+  "Segment Comparison — First Half\nEarly 0–10 · Mid 10–20 · Late 20+\nCASTLEHAVEN\nEARLY\nMID\nLATE\nScore\n0-00\n0-03\n0-09\nShots\n1\n4\n6\nWides\n1\n1\n0\nTurnovers Won\n0\n0\n1\n↳ Own Half\n0\n0\n0\n↳ Opposition Half\n0\n0\n1\nTurnovers Lost\n2\n1\n1\n↳ Own Half\n1\n0\n0\n↳ Opposition Half\n1\n1\n1\nOwn KO Retained\n2/5 (40%)\n4/6 (67%)\n2/2 (100%)\nOpposition KO Retained\n1/1 (100%)\n2/3 (67%)\n4/6 (67%)\nNEMO RANGERS\nEARLY\nMID\nLATE\nScore\n1-07\n1-04\n0-02\nShots\n7\n5\n3\nWides\n0\n1\n0\nTurnovers Won\n2\n1\n1\n↳ Own Half\n1\n1\n1\n↳ Opposition Half\n1\n0\n0\nTurnovers Lost\n0\n0\n1\n↳ Own Half\n0\n0\n1\n↳ Opposition Half\n0\n0\n0\nOwn KO Retained\n1/1 (100%)\n2/3 (67%)\n4/6 (67%)\nOpposition KO Retained\n2/5 (40%)\n4/6 (67%)\n2/2 (100%)"
+ ]
+}

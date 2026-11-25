@@ -1,0 +1,10 @@
+{
+ "s5_storageFull": {
+  "pitchFooter": "Save failed — storage unavailable.",
+  "stripWarning": "Save failed — storage unavailable.",
+  "existingMatchUnchangedWhileFull": true,
+  "warningClearedAfterSpaceFreed": true,
+  "eventsStoredAfterRecovery": 3,
+  "eventsInApp": 3
+ }
+}

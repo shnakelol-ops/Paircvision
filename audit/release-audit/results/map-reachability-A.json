@@ -1,0 +1,1328 @@
+{
+ "summary": {
+  "events": 134,
+  "reachable": 129,
+  "taps": 3060,
+  "byKind": {
+   "TWO_POINTER": {
+    "total": 9,
+    "reachable": 9
+   },
+   "KICKOUT_CONCEDED": {
+    "total": 14,
+    "reachable": 14
+   },
+   "FREE_CONCEDED": {
+    "total": 7,
+    "reachable": 7
+   },
+   "POINT": {
+    "total": 25,
+    "reachable": 24
+   },
+   "KICKOUT_WON": {
+    "total": 28,
+    "reachable": 25
+   },
+   "WIDE": {
+    "total": 4,
+    "reachable": 4
+   },
+   "TURNOVER_LOST": {
+    "total": 11,
+    "reachable": 11
+   },
+   "SHOT": {
+    "total": 3,
+    "reachable": 3
+   },
+   "FREE_WON": {
+    "total": 12,
+    "reachable": 11
+   },
+   "GOAL": {
+    "total": 5,
+    "reachable": 5
+   },
+   "YELLOW_CARD": {
+    "total": 2,
+    "reachable": 2
+   },
+   "TURNOVER_WON": {
+    "total": 9,
+    "reachable": 9
+   },
+   "SIDELINE_WON": {
+    "total": 2,
+    "reachable": 2
+   },
+   "FORTY_FIVE_WON": {
+    "total": 1,
+    "reachable": 1
+   },
+   "FORTY_FIVE_TWO_POINT": {
+    "total": 1,
+    "reachable": 1
+   },
+   "SIN_BIN": {
+    "total": 1,
+    "reachable": 1
+   }
+  }
+ },
+ "unreachable": [
+  {
+   "id": "c98f7641-c239-488c-818f-769898d4fe8c",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "02:52",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "4e5b450e-5aa9-48e7-b6f3-d563b105b5b2",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "20:47",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "e8e670c0-6720-4f45-b4e8-36f03e60f4f8",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "22:08",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "fda4f024-6230-427e-8e8f-1601ad6ac523",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "01:42",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "5e15751a-8a5b-495e-a189-165a060c58dd",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "03:10",
+   "reachable": false,
+   "labelKnown": true
+  }
+ ],
+ "rows": [
+  {
+   "id": "415e282b-c505-4d91-a6d3-a2ade5a6d6f7",
+   "kind": "TWO_POINTER",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "00:57",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "919729ff-fcc1-4043-ae29-52a3917a44ae",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "01:28",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "32047a32-5fa8-4ab5-9b78-25d7db55ab1d",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "02:00",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "da6f4c70-521b-426a-a148-a57c3ed580c6",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "02:23",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "c98f7641-c239-488c-818f-769898d4fe8c",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "02:52",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "0a338f35-016e-41e2-9604-1073b383f569",
+   "kind": "WIDE",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "03:25",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "701e7d7e-b51a-445f-9345-0be619b201a6",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "03:55",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "43463e0b-cd0d-48c9-854e-0a352eaad96f",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "04:19",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2d26aecd-9cc6-437c-9943-18c722d3263e",
+   "kind": "TWO_POINTER",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "04:52",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "cc1b9533-1a91-4fe4-b43b-326480e50430",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "05:23",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "6913d184-a6a2-4229-bd16-15578119e595",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "05:59",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "045f2d4d-4342-405d-bd5d-8d5ebe256f07",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "06:22",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e4da6101-ad9a-4b45-b654-1a38a63cbd1e",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "07:01",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "887b937c-410f-47a7-aabb-223210d17e4d",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "07:31",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e0bd7902-29d5-462e-b251-edb0fc8dabdf",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "07:53",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "5928f1c0-52fd-4bbc-a758-7d5095614f24",
+   "kind": "SHOT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "08:19",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "ddfdee05-211e-4bb8-8f5e-105f34c7f8b0",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "08:43",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "4c852b01-5321-4bcb-bff8-7cf5bb875085",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "09:15",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "6ab4f4b6-7fec-4673-864e-ad05093fbc55",
+   "kind": "GOAL",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "09:46",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "eb6435f2-2bc5-45c2-a19a-25624aadacc6",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "10:16",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e0b8c1f3-ab44-4e74-9046-5bf9ba1a1d94",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "10:38",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e66c471c-4c84-4be0-b4c5-e520e0dd4c09",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "11:06",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f410039e-aecb-4956-81a8-30ba0a62e823",
+   "kind": "WIDE",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "11:34",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a3f9a784-cd2e-4619-a218-d18439b9889f",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "12:01",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f610bde3-5db7-41be-bee3-6419b405a00a",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "12:26",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "c49cd5c4-b046-4de2-a1b8-569bf2d051db",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "12:54",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f5dbc92b-cafc-458c-b445-60b72215ad86",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "13:17",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a0da7b09-bb6e-473c-a791-d95b87ed6e50",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "13:47",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "0a703b69-0dae-4fa6-9ffc-1af18cbf6fbc",
+   "kind": "GOAL",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "14:20",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "07d54a6b-7469-4e59-8e05-d82446ec5c3a",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "14:46",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "c34465e0-0821-4799-88d8-d462dc22afee",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "15:12",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e6a21641-2d93-483f-8c85-30e85f2de718",
+   "kind": "YELLOW_CARD",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "15:15",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "14ea3172-2882-41a7-b54e-d89de3793085",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "15:41",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "d5074e78-57d5-46c2-8e2c-f965ffd46150",
+   "kind": "WIDE",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "16:07",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "9a1397fa-332a-471e-8e9d-98008ac5e050",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "16:36",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "aa3bc713-0f3a-4526-a0d7-83eb55c14a04",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "16:51",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2b031a52-5636-4ec4-a60b-67093e09a64e",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "16:52",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "d98255d7-61e8-4f66-bda9-590e83517fb3",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "17:19",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "dbfb30d0-ea2f-4a7b-870f-c5aa08a9805e",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "17:40",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "df1b4a90-091d-4b06-92d4-f405dc788e9b",
+   "kind": "TWO_POINTER",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "18:14",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "04e3622c-00fa-4983-8dca-f8a9dd78fb3c",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "18:48",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "df25d0bc-007a-4dbf-a466-f02fec7d6212",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "19:05",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "084faf39-7ea9-4d54-9f84-de73f579112b",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "19:28",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "ffdafa90-8020-4133-a3ea-7257adb31e8a",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "19:57",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "959f03ef-4021-4cba-8161-1cb8ab0ed718",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "20:21",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "4e5b450e-5aa9-48e7-b6f3-d563b105b5b2",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "20:47",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "82991a6e-91d3-4095-a749-b34995e16b50",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "21:15",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "3ac5ac44-7850-40f4-bd2d-8a3994c52b25",
+   "kind": "TWO_POINTER",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "21:37",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e8e670c0-6720-4f45-b4e8-36f03e60f4f8",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "22:08",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "02c33f7a-ccc6-460c-b672-4ec110a29d51",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "22:32",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a4ff644d-d8d2-4a9f-a419-04fd142c4575",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "22:54",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "1885c028-c0a5-4738-b634-2d0249b520a3",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "23:25",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a04f9f3f-31b9-41f0-a940-d8dfbe34b272",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "23:48",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "69592f39-ea2f-49da-a196-bd27c03cf172",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "24:04",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a4e0af4e-2d97-4899-a0e1-3f8b4e6f8417",
+   "kind": "TWO_POINTER",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "24:27",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "13693bb2-cb5f-4041-8546-834613eb8779",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "24:51",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "3c414328-c906-4e7c-9ebd-988409884ce6",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "25:17",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "ac78c497-52c1-47e3-ab2f-a4f3d2343e71",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "25:52",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "af976fe4-b743-4ae0-9abf-c7662e8398b1",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "26:16",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "16f88de3-41f7-41f7-b2b7-acfa68b72d90",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "26:41",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f47e3c0a-94e5-456e-8e9d-512f66f907bc",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "27:17",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "9318b4b9-3a3d-412c-a0df-c2649b597787",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "27:40",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2c834747-fe67-42f5-94a3-b6ccd6b78985",
+   "kind": "SHOT",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "28:10",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "15d86ec3-a153-40d7-9a71-47f9945850c4",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "28:42",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "be553dd9-9425-43c0-9f5f-37c3590a94c1",
+   "kind": "TWO_POINTER",
+   "teamSide": "FOR",
+   "half": "1H",
+   "time": "29:10",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "db866505-b4e1-468f-ab63-cb874b990dc8",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "1H",
+   "time": "29:42",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "b9a8911e-916f-42ff-8a68-b944ef1092c6",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "00:51",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2553047e-b6fe-43ee-9288-a0ee7908bad9",
+   "kind": "TWO_POINTER",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "01:08",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "fda4f024-6230-427e-8e8f-1601ad6ac523",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "01:42",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "49c50105-4742-4985-9440-38332d51b27d",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "02:02",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "9218df44-53fa-4df7-99fb-5a47c35130f5",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "02:34",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "5e15751a-8a5b-495e-a189-165a060c58dd",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "03:10",
+   "reachable": false,
+   "labelKnown": true
+  },
+  {
+   "id": "a038e003-b93c-4516-8da6-fb4aca7ae707",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "03:40",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "5d04ce6f-3fd6-4327-83df-00646ed5931a",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "04:08",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e99e4812-b942-4474-9f8e-1a6fa00f438c",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "04:33",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a5c4919e-278f-476b-953e-44d864726932",
+   "kind": "SIDELINE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "04:52",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2c44a77f-6bc1-4911-a547-9ec0f5adf328",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "05:09",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "b950e5f6-dcca-41c8-85f5-b6534520c2d8",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "05:37",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "8f93410a-cd9b-43e6-a409-dbae61508dcf",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "06:15",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "d7046288-b506-41ec-b5d4-7b8e9d263d14",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "06:46",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a251b57d-0ea0-4153-9f19-68494c7fa3f2",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "07:23",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "56e82c7c-d8a0-4e32-9944-2db8e244c991",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "07:51",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "0a910dea-ec17-41bb-adfa-8df42b68ff38",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "08:19",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "4d3e96f8-141e-4cec-b688-f45fab5ac136",
+   "kind": "WIDE",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "08:34",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "44ecc674-39d7-48ce-91b5-ca578b198351",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "08:57",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "89accb44-6a9f-4d77-8be6-d626498c177b",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "09:22",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2a3e36d0-4cd8-491d-837d-bba0fced32a1",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "10:01",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "99f41563-30e2-4d96-a7de-9f32023f72ac",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "10:38",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "bfc6c512-376c-4920-b004-95bbbd6ca2cf",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "11:07",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e09802b2-cd95-4d47-aaf0-d3e55dfbe33a",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "11:42",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "51ec700b-aee8-40ca-a6f8-2f0d2bb73d1a",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "12:13",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "6dc77ed0-bc70-42a2-9757-448629a20a37",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "12:53",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "42027353-420e-42dd-84ac-fec8dada2fdf",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "13:07",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e1f754ca-610f-438f-9bae-b31d999a1d0f",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "13:21",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "ca65e192-5876-4c52-bd9a-22a109feabce",
+   "kind": "SHOT",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "13:59",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "3dbcae6b-5795-47c1-89f7-abc40687108a",
+   "kind": "FORTY_FIVE_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "14:04",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "0a442160-890b-4ce9-8285-fc686684ebcd",
+   "kind": "FORTY_FIVE_TWO_POINT",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "14:33",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "32307eb5-0a93-4386-abdc-790388462ee5",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "14:59",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "3fd21e86-b58b-474c-87af-46223e8c0428",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "15:29",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "48b4c2d7-cef1-4c68-8749-0475ba5b2b5e",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "15:54",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "d86d9198-e401-4943-9962-77d9252fff65",
+   "kind": "TWO_POINTER",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "16:10",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f039a780-922d-43af-8de2-3e2666a0f6b0",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "16:32",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "57fba593-5ffd-49e4-86fd-3f4179cc2007",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "17:04",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "e4f1b9de-8e33-42c0-9400-7388df915aa1",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "17:27",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "4d213fac-0882-46c4-ba9c-9e72dacdf6d6",
+   "kind": "POINT",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "17:43",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f2b08e7b-586a-4b84-8a92-947b4cc1adda",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "18:06",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "23f4e83f-a551-4472-9985-d16629611877",
+   "kind": "SIDELINE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "18:31",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "1f0b9967-2f70-481b-94e6-f9b46b8b54f0",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "19:06",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "518b34e2-ed13-4dfa-9252-c6635bca5dfd",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "19:39",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "51af1be7-276a-4acb-b958-a3e31cbbad30",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "20:01",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "2e68cbbf-a53a-4a27-854d-989743aea954",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "20:27",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "37ea7684-d8c5-4c87-ad16-3f5ed4511b2b",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "20:42",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "a979ef0c-1d85-4df4-acf4-de21c695c6f0",
+   "kind": "YELLOW_CARD",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "20:45",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "9529e6c9-f4e4-4aea-a36c-ce9676195ee6",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "21:18",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "472f95a3-4cc9-459e-bb26-b3f8e6cc44ff",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "21:56",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "885cde6c-26b0-464c-8df6-5f4531bebbd7",
+   "kind": "FREE_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "22:18",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "4df51d78-e659-4e94-b672-46f0ace93f3a",
+   "kind": "SIN_BIN",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "22:21",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "0ae26a49-3cf4-4306-a499-e0e6221dfda8",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "22:48",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "340bbcc0-79c5-4b93-930b-f8e0fd969a3b",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "23:20",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "0ef54a40-0f94-47f5-93e5-2ce281100c53",
+   "kind": "GOAL",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "23:23",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "484ffe5f-f095-4756-a32e-f920717f751b",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "23:51",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "b3146ffa-ade4-4512-9b52-3b9d71c40693",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "24:25",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "5ee6adea-396c-41f1-a097-8d536591ccb7",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "25:00",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "73a57289-11cb-41d9-9bb2-3ca471ebd1b0",
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "25:18",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "ffca3c4b-3149-4974-9609-73cd95a1640f",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "25:47",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "4be46e38-35c7-428b-8349-cf1cdf305516",
+   "kind": "GOAL",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "26:07",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "60689030-627b-4bce-bdf9-c944d459ce19",
+   "kind": "KICKOUT_WON",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "26:31",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "128259cb-fc9b-408e-8dda-5a943b02867e",
+   "kind": "TWO_POINTER",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "26:58",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "605e6f2d-6368-47a9-85ad-b1d319c32039",
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "27:29",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "3821215a-54ce-4cb4-a914-84821c08e8b4",
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "28:07",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "f9d1e9f6-6e9b-4cf7-b660-b117a5d19195",
+   "kind": "FREE_CONCEDED",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "28:30",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "89a74c9c-25c0-4502-8dd1-5a3d4d4fbb34",
+   "kind": "GOAL",
+   "teamSide": "OPP",
+   "half": "2H",
+   "time": "28:46",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "8fdcd545-967f-4ba3-b84e-a3bcd1436d02",
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "29:15",
+   "reachable": true,
+   "labelKnown": true
+  },
+  {
+   "id": "8374c625-2393-41eb-810d-b70cf114e44e",
+   "kind": "TURNOVER_WON",
+   "teamSide": "FOR",
+   "half": "2H",
+   "time": "29:30",
+   "reachable": true,
+   "labelKnown": true
+  }
+ ]
+}

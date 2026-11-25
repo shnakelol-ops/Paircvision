@@ -1,0 +1,36 @@
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] match started 
+[B] pause/resume {"before":277,"afterPause":277,"realSeconds":150}
+[B] undo {"undoes":"B-025-WRONG"}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] reload + resume {"clockBefore":591,"clockAfter":591,"events":45}
+[B] undo {"undoes":"B-045-WRONG"}
+[B] undo {"undoes":"B-048-WRONG"}
+[B] undo {"undoes":"B-057-WRONG"}
+[B] pause/resume {"before":922,"afterPause":922,"realSeconds":90}
+[B] undo {"undoes":"B-073-WRONG"}
+[B] captured Quick Review HT {"countsRows":19,"panes":3}
+[B] exported HT-snapshot-live {"file":"runs/B/pdf/B-HT-snapshot-live.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_ht_snapshot.pdf","pages":5}
+[B] second half started 
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] reload + resume {"clockBefore":1,"clockAfter":1,"events":154}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] reload + resume {"clockBefore":418,"clockAfter":418,"events":185}
+[B] pause/resume {"before":820,"afterPause":820,"realSeconds":200}
+[B] captured Quick Review FT {"countsRows":19,"panes":3}
+[B] exported FT-snapshot-live {"file":"runs/B/pdf/B-FT-snapshot-live.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_ft_snapshot.pdf","pages":8}
+[B] exported FullReview-live {"file":"runs/B/pdf/B-FullReview-live.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_review.pdf","pages":29}
+[B] full time + saved 
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] review edit applied {"targetId":"B-266","kind":"WIDE","newKind":"POINT"}
+[B] review edit applied {"targetId":"B-176","kind":"KICKOUT_WON","newKind":"KICKOUT_CONCEDED"}
+[B] review edit applied {"targetId":"B-151","kind":"SHOT","newKind":"POINT"}
+[B] review edit applied {"targetId":"B-006","kind":"TURNOVER_WON","newKind":"TURNOVER_LOST"}
+[B] review delete applied {"targetId":"B-093","kind":"SIDELINE_WON","newKind":null}
+[B] review delete applied {"targetId":"B-173","kind":"POINT","newKind":null}
+[B] exported HT-snapshot-reopened {"file":"runs/B/pdf/B-HT-snapshot-reopened.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_ht_snapshot.pdf","pages":5}
+[B] exported FT-snapshot-reopened {"file":"runs/B/pdf/B-FT-snapshot-reopened.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_ft_snapshot.pdf","pages":8}
+[B] exported FullReview-reopened {"file":"runs/B/pdf/B-FullReview-reopened.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_review.pdf","pages":29}
+[B] CONSOLE ERROR {"text":"The script has an unsupported MIME type ('text/html')."}
+[B] exported FT-snapshot-reopened2 {"file":"runs/B/pdf/B-FT-snapshot-reopened2.pdf","suggested":"Kilmacud_Crokes_v_St_Brigids_ft_snapshot.pdf","pages":8}
+[B] done 

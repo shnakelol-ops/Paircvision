@@ -1,0 +1,10 @@
+{
+ "s5_storageFull": {
+  "pitchFooter": "Save failed — storage full. Back up and delete old matches.",
+  "stripWarning": "Save failed — storage full. Back up and delete old matches.",
+  "existingMatchUnchangedWhileFull": true,
+  "warningClearedAfterSpaceFreed": true,
+  "eventsStoredAfterRecovery": 3,
+  "eventsInApp": 3
+ }
+}

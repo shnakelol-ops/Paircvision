@@ -1,0 +1,279 @@
+{
+ "summary": {
+  "total": 27,
+  "pass": 27,
+  "fail": 0
+ },
+ "checks": [
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Clean Won",
+   "team": "FOR",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Clean Won",
+   "team": "FOR",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Clean Won",
+   "team": "OPP",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Break Won",
+   "team": "FOR",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Break Won",
+   "team": "FOR",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Break Won",
+   "team": "OPP",
+   "expected": "2",
+   "actual": "2",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Foul Won",
+   "team": "FOR",
+   "expected": "2",
+   "actual": "2",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Foul Won",
+   "team": "FOR",
+   "expected": "2",
+   "actual": "2",
+   "status": "PASS"
+  },
+  {
+   "match": "A",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Foul Won",
+   "team": "OPP",
+   "expected": "0",
+   "actual": "0",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Clean Won",
+   "team": "FOR",
+   "expected": "16",
+   "actual": "16",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Clean Won",
+   "team": "FOR",
+   "expected": "16",
+   "actual": "16",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Clean Won",
+   "team": "OPP",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Break Won",
+   "team": "FOR",
+   "expected": "5",
+   "actual": "5",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Break Won",
+   "team": "FOR",
+   "expected": "5",
+   "actual": "5",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Break Won",
+   "team": "OPP",
+   "expected": "10",
+   "actual": "10",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Foul Won",
+   "team": "FOR",
+   "expected": "1",
+   "actual": "1",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Foul Won",
+   "team": "FOR",
+   "expected": "1",
+   "actual": "1",
+   "status": "PASS"
+  },
+  {
+   "match": "B",
+   "sport": "football",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Foul Won",
+   "team": "OPP",
+   "expected": "1",
+   "actual": "1",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Clean Won",
+   "team": "FOR",
+   "expected": "4",
+   "actual": "4",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Clean Won",
+   "team": "FOR",
+   "expected": "4",
+   "actual": "4",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Clean Won",
+   "team": "OPP",
+   "expected": "5",
+   "actual": "5",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Break Won",
+   "team": "FOR",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Break Won",
+   "team": "FOR",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Break Won",
+   "team": "OPP",
+   "expected": "7",
+   "actual": "7",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Analysis — HOW WON",
+   "stat": "Foul Won",
+   "team": "FOR",
+   "expected": "1",
+   "actual": "1",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Foul Won",
+   "team": "FOR",
+   "expected": "1",
+   "actual": "1",
+   "status": "PASS"
+  },
+  {
+   "match": "C",
+   "sport": "hurling",
+   "surface": "Restart Chain Analysis — own kickouts retained",
+   "stat": "Foul Won",
+   "team": "OPP",
+   "expected": "2",
+   "actual": "2",
+   "status": "PASS"
+  }
+ ]
+}

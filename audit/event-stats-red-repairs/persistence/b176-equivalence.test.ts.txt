@@ -1,0 +1,69 @@
+// Scratch check (not part of the app): the B-176 event as corrected by Review
+// Edit vs the same event entered through normal live capture.
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { adaptProTaggerAction } from "../pro-tagger/pro-tagger-adapter";
+import { buildMatchReport } from "../stats/reporting/matchReport";
+import { selectChainAnalysis, selectPossessionOutcomeSummary } from "../stats/chains/chain-selectors";
+import { buildMatchIntelligence } from "../stats/chains/possession-outcomes-engine";
+import { deriveReviewPrompts } from "../stats/chains/review-prompts";
+import { buildInfluenceAnalysis } from "../stats/players/influence";
+import { buildMatchIntelligenceSummary } from "../stats/matchIntelligenceSummary";
+import { buildQuickReviewSegmentBreakdown } from "../stats/reporting/quickReviewSegmentBreakdown";
+import { collectPlayerStats } from "../stats/reviewPdfExport";
+
+const RUN = process.env.B_FINAL ?? "/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad/runs-fix/B/state/final.json";
+const raw = JSON.parse(readFileSync(RUN, "utf8"));
+const m = Array.isArray(raw) ? raw.reduce((a: any, x: any) => ((x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a)) : raw;
+// fixture B-176: 2nd half, 04:34, our kickout, Clean (ids differ per run)
+const ID = m.events.find((e: any) => e.half === 2 && e.matchClockSeconds === 274 && e.restartOwner === "FOR" && (e.kind === "KICKOUT_CONCEDED" || e.kind === "KICKOUT_WON")).id;
+const H = m.homeTeamName, A = m.awayTeamName;
+
+describe("B-176: Review-edited event vs the same event from live capture", () => {
+  const edited = m.events.find((e: any) => e.id === ID);
+  // Live capture: Restart tile "Clean", OUR K/O (owner FOR), the opposition row tapped, no player.
+  const cap = adaptProTaggerAction({ familyId: "RESTART" as any, tileLabel: "Clean", teamSide: "OPP", restartOwner: "FOR",
+    nx: edited.nx, ny: edited.ny, half: edited.half, matchClockSeconds: edited.matchClockSeconds });
+  // id / createdAt are per-tap values; matchTimeSeconds / halfSegment are added by the live screen after the adapter.
+  const captured = { ...cap, id: ID, createdAt: edited.createdAt, matchTimeSeconds: edited.matchTimeSeconds, halfSegment: edited.halfSegment } as any;
+  const evE = m.events, evC = m.events.map((e: any) => (e.id === ID ? captured : e));
+  const noSquad = (r: any) => JSON.parse(JSON.stringify(r, (k, v) => (k === "squadId" ? undefined : v)));
+
+  it("stored event: identical except squadId (edited = opposition squad, capture = none)", () => {
+    const { squadId, ...rest } = edited;
+    expect(rest).toEqual(captured);
+    expect(squadId).toBe(m.awaySquad.id);
+    expect(edited).toMatchObject({ kind: "KICKOUT_CONCEDED", teamSide: "FOR", restartOwner: "FOR", tags: ["CLEAN"] });
+    expect(edited.playerId ?? edited.playerNumber ?? edited.playerName).toBeUndefined();
+  });
+
+  for (const scope of ["FULL", "1H", "2H"] as const) {
+    it(`match report ${scope} (incl. restart ownership/retention, chains, possessions, placed balls, score ledger)`, () => {
+      const e = buildMatchReport({ events: evE, homeTeam: H, awayTeam: A, scope } as any);
+      const c = buildMatchReport({ events: evC, homeTeam: H, awayTeam: A, scope } as any);
+      expect(noSquad(e)).toEqual(noSquad(c));
+      expect(e.restarts).toEqual(c.restarts);
+      expect(e.restartTeams).toEqual(c.restartTeams);
+    });
+  }
+
+  it("Intelligence: possession summary, match intelligence, review prompts, HT/FT intelligence summary", () => {
+    expect(noSquad(selectPossessionOutcomeSummary(evE))).toEqual(noSquad(selectPossessionOutcomeSummary(evC)));
+    expect(noSquad(buildMatchIntelligence(selectPossessionOutcomeSummary(evE)))).toEqual(noSquad(buildMatchIntelligence(selectPossessionOutcomeSummary(evC))));
+    for (const sport of [undefined, m.sport]) expect(deriveReviewPrompts(selectChainAnalysis(evE), H, A, sport)).toEqual(deriveReviewPrompts(selectChainAnalysis(evC), H, A, sport));
+    for (const mode of ["HT", "FT"] as const) expect(noSquad(buildMatchIntelligenceSummary(evE, H, A, mode, "Kickout"))).toEqual(noSquad(buildMatchIntelligenceSummary(evC, H, A, mode, "Kickout")));
+  });
+
+  it("Quick Review segment breakdown, both halves", () => {
+    for (const half of [1, 2] as const) for (const dir of ["LEFT", "RIGHT"] as any[])
+      expect(noSquad(buildQuickReviewSegmentBreakdown(evE, H, A, dir, half))).toEqual(noSquad(buildQuickReviewSegmentBreakdown(evC, H, A, dir, half)));
+  });
+
+  it("player statistics and influence", () => {
+    const pe = collectPlayerStats(evE, m.homeSquadLiveState, m.awaySquadLiveState);
+    expect(pe).toEqual(collectPlayerStats(evC, m.homeSquadLiveState, m.awaySquadLiveState));
+    expect(pe.find((p: any) => p.teamSide === "FOR" && p.number === 8)).toMatchObject({ koWon: 8, koCon: 0, actions: 16 });
+    const ie = buildInfluenceAnalysis(evE, selectChainAnalysis(evE), H, A, m.homeSquadLiveState, m.awaySquadLiveState);
+    expect(noSquad(ie)).toEqual(noSquad(buildInfluenceAnalysis(evC, selectChainAnalysis(evC), H, A, m.homeSquadLiveState, m.awaySquadLiveState)));
+  });
+});

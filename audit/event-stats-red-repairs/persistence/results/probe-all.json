@@ -1,0 +1,165 @@
+{
+ "killAfterEvent": [
+  {
+   "delayMs": 0,
+   "liveEventsShown": "(confirmation)",
+   "storedEvents": 1,
+   "secondEventPersisted": false
+  },
+  {
+   "delayMs": 250,
+   "liveEventsShown": "(confirmation)",
+   "storedEvents": 1,
+   "secondEventPersisted": false
+  },
+  {
+   "delayMs": 500,
+   "liveEventsShown": "(confirmation)",
+   "storedEvents": 1,
+   "secondEventPersisted": false
+  },
+  {
+   "delayMs": 750,
+   "liveEventsShown": 2,
+   "storedEvents": 1,
+   "secondEventPersisted": false
+  },
+  {
+   "delayMs": 1000,
+   "liveEventsShown": 2,
+   "storedEvents": 1,
+   "secondEventPersisted": false
+  },
+  {
+   "delayMs": 1150,
+   "liveEventsShown": 2,
+   "storedEvents": 1,
+   "secondEventPersisted": false
+  },
+  {
+   "delayMs": 1199,
+   "liveEventsShown": 2,
+   "storedEvents": 2,
+   "secondEventPersisted": true
+  },
+  {
+   "delayMs": 1200,
+   "liveEventsShown": 2,
+   "storedEvents": 2,
+   "secondEventPersisted": true
+  },
+  {
+   "delayMs": 1250,
+   "liveEventsShown": 2,
+   "storedEvents": 2,
+   "secondEventPersisted": true
+  },
+  {
+   "delayMs": 1500,
+   "liveEventsShown": 2,
+   "storedEvents": 2,
+   "secondEventPersisted": true
+  },
+  {
+   "delayMs": 3000,
+   "liveEventsShown": 2,
+   "storedEvents": 2,
+   "secondEventPersisted": true
+  }
+ ],
+ "rapidSequence": [
+  {
+   "gapBetweenEventsMs": 800,
+   "eventsInApp": 6,
+   "storedBeforeKill": 1,
+   "storedAfterKill": 1,
+   "lost": 5
+  },
+  {
+   "gapBetweenEventsMs": 1000,
+   "eventsInApp": 6,
+   "storedBeforeKill": 1,
+   "storedAfterKill": 1,
+   "lost": 5
+  },
+  {
+   "gapBetweenEventsMs": 1500,
+   "eventsInApp": 6,
+   "storedBeforeKill": 6,
+   "storedAfterKill": 6,
+   "lost": 0
+  },
+  {
+   "gapBetweenEventsMs": 2500,
+   "eventsInApp": 6,
+   "storedBeforeKill": 6,
+   "storedAfterKill": 6,
+   "lost": 0
+  }
+ ],
+ "htFt": {
+  "error": "TimeoutError: locator.waitFor: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('✓ Event saved') to be visible\u001b[22m\n"
+ },
+ "backgrounded": {
+  "firedEvents": [
+   "visibilitychange(hidden)",
+   "pagehide",
+   "freeze"
+  ],
+  "killAfterMs": 200,
+  "storedEvents": 1,
+  "expected": 2
+ },
+ "beforeunloadPath": {
+  "killAfterMs": 200,
+  "storedEvents": 2,
+  "expected": 2
+ },
+ "staleClock": {
+  "clockWhenKilled": "08:02",
+  "storedClockSeconds": 61,
+  "reopenedPausedAt": "01:01"
+ },
+ "storageFailure": {
+  "warningShown": "Save failed — storage unavailable.",
+  "warningPersistsWhileFailing": true,
+  "clearedAfterRecovery": true,
+  "storedAfterRecovery": 4,
+  "eventsInApp": 4
+ },
+ "matchCap": {
+  "savedBefore": 20,
+  "savedAfter": 20,
+  "newMatchSaved": true,
+  "evicted": [
+   "Saved Match 1"
+  ],
+  "warningShownToCoach": false
+ },
+ "corruptStore": {
+  "before": "[{\"id\":\"older-match\",\"createdAt\":1,\"homeTeamName\":\"Older\",\"a…",
+  "afterContainsOlder": false,
+  "afterMatches": [
+   "Home FC"
+  ]
+ },
+ "reopenConsistency": {
+  "stored": {
+   "events": 4,
+   "eventCount": 4,
+   "state": "FIRST_HALF",
+   "clock": 49,
+   "score": "Home FC 0-02 (2) v Away FC 0-00 (0)"
+  },
+  "shownAfterResume": 4,
+  "afterNewEvent": {
+   "matches": 1,
+   "events": 5,
+   "eventCount": 5,
+   "state": "FIRST_HALF",
+   "clock": 56,
+   "score": "Home FC 0-03 (3) v Away FC 0-00 (0)"
+  },
+  "idsUnique": true
+ }
+}

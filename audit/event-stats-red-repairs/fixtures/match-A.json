@@ -1,0 +1,3842 @@
+{
+ "matchId": "A",
+ "title": "Match A — Football: Realistic Championship",
+ "sport": "football",
+ "homeTeam": "Ballyboden",
+ "awayTeam": "Na Fianna",
+ "venue": "Parnell Park",
+ "matchType": "Championship",
+ "halfMinutes": 35,
+ "attackDirection": "right",
+ "squads": {
+  "FOR": [
+   {
+    "number": 1,
+    "name": "Paddy Durcan"
+   },
+   {
+    "number": 2,
+    "name": "Darragh Ryan"
+   },
+   {
+    "number": 3,
+    "name": "Eoin O'Hara"
+   },
+   {
+    "number": 4,
+    "name": "Ross Kelly"
+   },
+   {
+    "number": 5,
+    "name": "Ciaran Hogan"
+   },
+   {
+    "number": 6,
+    "name": "Alan Byrne"
+   },
+   {
+    "number": 7,
+    "name": "Shane Clarke"
+   },
+   {
+    "number": 8,
+    "name": "Brian Fenton"
+   },
+   {
+    "number": 9,
+    "name": "Cian Murphy"
+   },
+   {
+    "number": 10,
+    "name": "Ronan Doyle"
+   },
+   {
+    "number": 11,
+    "name": "Conor Keane"
+   },
+   {
+    "number": 12,
+    "name": "Sean Bugler"
+   },
+   {
+    "number": 13,
+    "name": "Aaron Lyons"
+   },
+   {
+    "number": 14,
+    "name": "Colm Basquel"
+   },
+   {
+    "number": 15,
+    "name": "Dara Kearns"
+   },
+   {
+    "number": 16,
+    "name": "Luke Ward"
+   },
+   {
+    "number": 17,
+    "name": "Niall Coakley"
+   },
+   {
+    "number": 18,
+    "name": "Rob McDaid"
+   },
+   {
+    "number": 19,
+    "name": "Ian Kelly"
+   },
+   {
+    "number": 20,
+    "name": "Tom Rice"
+   }
+  ],
+  "OPP": [
+   {
+    "number": 1,
+    "name": "Mark Gaffney"
+   },
+   {
+    "number": 2,
+    "name": "Ger Brennan"
+   },
+   {
+    "number": 3,
+    "name": "Joe Fogarty"
+   },
+   {
+    "number": 4,
+    "name": "Kev Doran"
+   },
+   {
+    "number": 5,
+    "name": "Jack Walsh"
+   },
+   {
+    "number": 6,
+    "name": "Liam Hayes"
+   },
+   {
+    "number": 7,
+    "name": "Matt Ryan"
+   },
+   {
+    "number": 8,
+    "name": "Gareth Quinn"
+   },
+   {
+    "number": 9,
+    "name": "Ciaran Dowd"
+   },
+   {
+    "number": 10,
+    "name": "Eoin Lowry"
+   },
+   {
+    "number": 11,
+    "name": "Tom Kelly"
+   },
+   {
+    "number": 12,
+    "name": "Paul Kirwan"
+   },
+   {
+    "number": 13,
+    "name": "Dan Byrne"
+   },
+   {
+    "number": 14,
+    "name": "Sam Hughes"
+   },
+   {
+    "number": 15,
+    "name": "Kieran Mahon"
+   },
+   {
+    "number": 16,
+    "name": "Ed Nolan"
+   },
+   {
+    "number": 17,
+    "name": "Fergal Tuite"
+   },
+   {
+    "number": 18,
+    "name": "Hugh Doyle"
+   },
+   {
+    "number": 19,
+    "name": "Pat Lyons"
+   },
+   {
+    "number": 20,
+    "name": "Dave Shiels"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-001",
+    "half": 1,
+    "clock": 55,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Interception",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.413,
+    "ny": 0.502,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Interception"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-002",
+    "half": 1,
+    "clock": 91,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.484,
+    "ny": 0.474,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-003",
+    "half": 1,
+    "clock": 129,
+    "family": "WIDE",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 15
+    },
+    "nx": 0.128,
+    "ny": 0.524,
+    "truth": {
+     "action": "wide",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-002"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-004",
+    "half": 1,
+    "clock": 155,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Foul",
+    "player": {
+     "team": "OPP",
+     "number": 12
+    },
+    "nx": 0.199,
+    "ny": 0.563,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Foul"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-005",
+    "half": 1,
+    "clock": 185,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Conceded",
+    "player": {
+     "team": "FOR",
+     "number": 6
+    },
+    "nx": 0.223,
+    "ny": 0.397,
+    "truth": {
+     "action": "free",
+     "awardedTo": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-006",
+    "half": 1,
+    "clock": 206,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Free",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.223,
+    "ny": 0.708,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-005"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-007",
+    "half": 1,
+    "clock": 234,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": null,
+    "nx": 0.45,
+    "ny": 0.229,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-008",
+    "half": 1,
+    "clock": 274,
+    "family": "SIDELINE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.233,
+    "ny": 0.02,
+    "truth": {
+     "action": "sideline",
+     "winner": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-009",
+    "half": 1,
+    "clock": 296,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.801,
+    "ny": 0.607,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "SIDELINE",
+      "id": "A-008"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-010",
+    "half": 1,
+    "clock": 318,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.513,
+    "ny": 0.469,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-011",
+    "half": 1,
+    "clock": 335,
+    "family": "SHOT",
+    "row": "FOR",
+    "tile": "Block/Save",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.904,
+    "ny": 0.748,
+    "truth": {
+     "action": "shot",
+     "team": "FOR",
+     "source": "Block/Save",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-010"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-012",
+    "half": 1,
+    "clock": 357,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.481,
+    "ny": 0.283,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-013",
+    "half": 1,
+    "clock": 380,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.875,
+    "ny": 0.711,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-014",
+    "half": 1,
+    "clock": 410,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Free",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.875,
+    "ny": 0.314,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-013"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-015",
+    "half": 1,
+    "clock": 435,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.613,
+    "ny": 0.306,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-016",
+    "half": 1,
+    "clock": 459,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 4
+    },
+    "nx": 0.64,
+    "ny": 0.591,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-017",
+    "half": 1,
+    "clock": 499,
+    "family": "SHOT",
+    "row": "FOR",
+    "tile": "Block/Save",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.714,
+    "ny": 0.356,
+    "truth": {
+     "action": "shot",
+     "team": "FOR",
+     "source": "Block/Save",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-016"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-018",
+    "half": 1,
+    "clock": 519,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.83,
+    "ny": 0.764,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-019",
+    "half": 1,
+    "clock": 544,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.825,
+    "ny": 0.4,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-020",
+    "half": 1,
+    "clock": 559,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "HP Error",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.777,
+    "ny": 0.243,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "HP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-021",
+    "half": 1,
+    "clock": 593,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.741,
+    "ny": 0.657,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-020"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-022",
+    "half": 1,
+    "clock": 628,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.792,
+    "ny": 0.599,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-023",
+    "half": 1,
+    "clock": 665,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.81,
+    "ny": 0.743,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-022"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-024",
+    "half": 1,
+    "clock": 697,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.608,
+    "ny": 0.261,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-025",
+    "half": 1,
+    "clock": 714,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.168,
+    "ny": 0.705,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-024"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-026",
+    "half": 1,
+    "clock": 744,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": null,
+    "nx": 0.201,
+    "ny": 0.553,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-027",
+    "half": 1,
+    "clock": 776,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.779,
+    "ny": 0.594,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-026"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-028",
+    "half": 1,
+    "clock": 808,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.763,
+    "ny": 0.289,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-029",
+    "half": 1,
+    "clock": 841,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.452,
+    "ny": 0.62,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-030",
+    "half": 1,
+    "clock": 862,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "Interception",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.287,
+    "ny": 0.532,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "Interception"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-031",
+    "half": 1,
+    "clock": 902,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.585,
+    "ny": 0.308,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-032",
+    "half": 1,
+    "clock": 930,
+    "family": "SIDELINE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.324,
+    "ny": 0.02,
+    "truth": {
+     "action": "sideline",
+     "winner": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-033",
+    "half": 1,
+    "clock": 952,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.662,
+    "ny": 0.673,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-034",
+    "half": 1,
+    "clock": 955,
+    "family": "DISCIPLINE",
+    "row": "OPP",
+    "tile": "Yellow",
+    "player": {
+     "team": "OPP",
+     "number": 6
+    },
+    "nx": 0.662,
+    "ny": 0.673,
+    "truth": {
+     "action": "card",
+     "team": "OPP",
+     "card": "Yellow"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-035",
+    "half": 1,
+    "clock": 992,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.835,
+    "ny": 0.297,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "FREE",
+      "id": "A-033"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-036",
+    "half": 1,
+    "clock": 1020,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.603,
+    "ny": 0.71,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-037",
+    "half": 1,
+    "clock": 1053,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.36,
+    "ny": 0.702,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-038",
+    "half": 1,
+    "clock": 1080,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.104,
+    "ny": 0.57,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-037"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-039",
+    "half": 1,
+    "clock": 1102,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Break",
+    "player": {
+     "team": "OPP",
+     "number": 10
+    },
+    "nx": 0.357,
+    "ny": 0.45,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-X01",
+    "half": 1,
+    "clock": 1111,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Mark",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.72,
+    "ny": 0.5,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Mark",
+     "placed": true,
+     "origin": {
+      "type": "OTHER",
+      "id": null
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-040",
+    "half": 1,
+    "clock": 1134,
+    "family": "WIDE",
+    "row": "OPP",
+    "tile": "Play",
+    "player": null,
+    "nx": 0.185,
+    "ny": 0.486,
+    "truth": {
+     "action": "wide",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-039"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-041",
+    "half": 1,
+    "clock": 1158,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": null,
+    "nx": 0.278,
+    "ny": 0.459,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-042",
+    "half": 1,
+    "clock": 1178,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.819,
+    "ny": 0.7,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-041"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-043",
+    "half": 1,
+    "clock": 1204,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": null,
+    "nx": 0.81,
+    "ny": 0.63,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-044",
+    "half": 1,
+    "clock": 1225,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.521,
+    "ny": 0.329,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-045",
+    "half": 1,
+    "clock": 1246,
+    "family": "TWO_POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 13
+    },
+    "nx": 0.291,
+    "ny": 0.265,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-044"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-046",
+    "half": 1,
+    "clock": 1273,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": null,
+    "nx": 0.256,
+    "ny": 0.583,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-047",
+    "half": 1,
+    "clock": 1299,
+    "family": "TWO_POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.321,
+    "ny": 0.485,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-046"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-048",
+    "half": 1,
+    "clock": 1331,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Break",
+    "player": {
+     "team": "OPP",
+     "number": 12
+    },
+    "nx": 0.415,
+    "ny": 0.655,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-049",
+    "half": 1,
+    "clock": 1369,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Tackle",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.583,
+    "ny": 0.323,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Tackle"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-050",
+    "half": 1,
+    "clock": 1385,
+    "family": "SHOT",
+    "row": "FOR",
+    "tile": "Block/Save",
+    "player": {
+     "team": "FOR",
+     "number": 12
+    },
+    "nx": 0.858,
+    "ny": 0.381,
+    "truth": {
+     "action": "shot",
+     "team": "FOR",
+     "source": "Block/Save",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-049"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-051",
+    "half": 1,
+    "clock": 1395,
+    "family": "FORTY_FIVE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.69,
+    "ny": 0.5,
+    "truth": {
+     "action": "fortyFive",
+     "winner": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-052",
+    "half": 1,
+    "clock": 1420,
+    "family": "TWO_POINT",
+    "row": "FOR",
+    "tile": "45",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.69,
+    "ny": 0.667,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "45",
+     "origin": {
+      "type": "FORTY_FIVE",
+      "id": "A-051"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-053",
+    "half": 1,
+    "clock": 1442,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.526,
+    "ny": 0.631,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-054",
+    "half": 1,
+    "clock": 1482,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Overcarried",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.564,
+    "ny": 0.332,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Overcarried"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-055",
+    "half": 1,
+    "clock": 1509,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 12
+    },
+    "nx": 0.152,
+    "ny": 0.548,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-056",
+    "half": 1,
+    "clock": 1539,
+    "family": "WIDE",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 15
+    },
+    "nx": 0.162,
+    "ny": 0.546,
+    "truth": {
+     "action": "wide",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-055"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-057",
+    "half": 1,
+    "clock": 1574,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 12
+    },
+    "nx": 0.349,
+    "ny": 0.751,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-058",
+    "half": 1,
+    "clock": 1609,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "HP Error",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.432,
+    "ny": 0.656,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "HP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-059",
+    "half": 1,
+    "clock": 1639,
+    "family": "TWO_POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.322,
+    "ny": 0.779,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-058"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-060",
+    "half": 1,
+    "clock": 1674,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.37,
+    "ny": 0.773,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-061",
+    "half": 1,
+    "clock": 1713,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "HP Error",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.562,
+    "ny": 0.379,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "HP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-062",
+    "half": 1,
+    "clock": 1751,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Conceded",
+    "player": {
+     "team": "FOR",
+     "number": 2
+    },
+    "nx": 0.285,
+    "ny": 0.544,
+    "truth": {
+     "action": "free",
+     "awardedTo": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-063",
+    "half": 1,
+    "clock": 1780,
+    "family": "TWO_POINT",
+    "row": "OPP",
+    "tile": "Free",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.285,
+    "ny": 0.699,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-062"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-064",
+    "half": 1,
+    "clock": 1805,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.372,
+    "ny": 0.703,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-065",
+    "half": 1,
+    "clock": 1819,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.537,
+    "ny": 0.52,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-066",
+    "half": 1,
+    "clock": 1853,
+    "family": "SIDELINE",
+    "row": "OPP",
+    "tile": "Won",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.515,
+    "ny": 0.02,
+    "truth": {
+     "action": "sideline",
+     "winner": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-067",
+    "half": 1,
+    "clock": 1884,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Conceded",
+    "player": {
+     "team": "FOR",
+     "number": 4
+    },
+    "nx": 0.164,
+    "ny": 0.347,
+    "truth": {
+     "action": "free",
+     "awardedTo": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-068",
+    "half": 1,
+    "clock": 1905,
+    "family": "WIDE",
+    "row": "OPP",
+    "tile": "Free",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.164,
+    "ny": 0.385,
+    "truth": {
+     "action": "wide",
+     "team": "OPP",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-067"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-069",
+    "half": 1,
+    "clock": 1932,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 12
+    },
+    "nx": 0.296,
+    "ny": 0.26,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-070",
+    "half": 1,
+    "clock": 1962,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 13
+    },
+    "nx": 0.157,
+    "ny": 0.5,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-069"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-071",
+    "half": 1,
+    "clock": 1990,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Foul",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.383,
+    "ny": 0.443,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Foul"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-072",
+    "half": 1,
+    "clock": 2004,
+    "family": "GOAL",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.932,
+    "ny": 0.774,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-071"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-073",
+    "half": 1,
+    "clock": 2028,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.629,
+    "ny": 0.438,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-074",
+    "half": 1,
+    "clock": 2059,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.626,
+    "ny": 0.67,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "halftime",
+   "clock": 2119
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-075",
+    "half": 2,
+    "clock": 39,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Conceded",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.834,
+    "ny": 0.577,
+    "truth": {
+     "action": "free",
+     "awardedTo": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-076",
+    "half": 2,
+    "clock": 68,
+    "family": "WIDE",
+    "row": "OPP",
+    "tile": "Free",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.834,
+    "ny": 0.342,
+    "truth": {
+     "action": "wide",
+     "team": "OPP",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-075"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-077",
+    "half": 2,
+    "clock": 90,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Break",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.558,
+    "ny": 0.478,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-078",
+    "half": 2,
+    "clock": 109,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Interception",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.855,
+    "ny": 0.52,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Interception"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-079",
+    "half": 2,
+    "clock": 147,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.409,
+    "ny": 0.275,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-080",
+    "half": 2,
+    "clock": 161,
+    "family": "SHOT",
+    "row": "FOR",
+    "tile": "Block/Save",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.232,
+    "ny": 0.657,
+    "truth": {
+     "action": "shot",
+     "team": "FOR",
+     "source": "Block/Save",
+     "origin": {
+      "type": "FREE",
+      "id": "A-079"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-081",
+    "half": 2,
+    "clock": 196,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 11
+    },
+    "nx": 0.914,
+    "ny": 0.701,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "OTHER",
+      "id": null
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-082",
+    "half": 2,
+    "clock": 220,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.66,
+    "ny": 0.413,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-083",
+    "half": 2,
+    "clock": 236,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.483,
+    "ny": 0.229,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-084",
+    "half": 2,
+    "clock": 259,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.427,
+    "ny": 0.694,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-085",
+    "half": 2,
+    "clock": 287,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Conceded",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.834,
+    "ny": 0.777,
+    "truth": {
+     "action": "free",
+     "awardedTo": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-086",
+    "half": 2,
+    "clock": 311,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Free",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.834,
+    "ny": 0.603,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-085"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-087",
+    "half": 2,
+    "clock": 335,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.669,
+    "ny": 0.774,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-088",
+    "half": 2,
+    "clock": 368,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.193,
+    "ny": 0.605,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-087"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-089",
+    "half": 2,
+    "clock": 401,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": null,
+    "nx": 0.455,
+    "ny": 0.391,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-090",
+    "half": 2,
+    "clock": 425,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.142,
+    "ny": 0.766,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-089"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-091",
+    "half": 2,
+    "clock": 455,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.472,
+    "ny": 0.571,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-092",
+    "half": 2,
+    "clock": 488,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.121,
+    "ny": 0.447,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-091"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-093",
+    "half": 2,
+    "clock": 513,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.311,
+    "ny": 0.261,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-094",
+    "half": 2,
+    "clock": 543,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Overcarried",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.585,
+    "ny": 0.679,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Overcarried"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-095",
+    "half": 2,
+    "clock": 570,
+    "family": "SIDELINE",
+    "row": "OPP",
+    "tile": "Won",
+    "player": {
+     "team": "OPP",
+     "number": 2
+    },
+    "nx": 0.747,
+    "ny": 0.02,
+    "truth": {
+     "action": "sideline",
+     "winner": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-096",
+    "half": 2,
+    "clock": 610,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "Interception",
+    "player": {
+     "team": "FOR",
+     "number": 7
+    },
+    "nx": 0.402,
+    "ny": 0.504,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "Interception"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-097",
+    "half": 2,
+    "clock": 627,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.386,
+    "ny": 0.627,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-098",
+    "half": 2,
+    "clock": 659,
+    "family": "SHOT",
+    "row": "FOR",
+    "tile": "Short",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.255,
+    "ny": 0.592,
+    "truth": {
+     "action": "shot",
+     "team": "FOR",
+     "source": "Short",
+     "origin": {
+      "type": "FREE",
+      "id": "A-097"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-099",
+    "half": 2,
+    "clock": 693,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.774,
+    "ny": 0.657,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "OTHER",
+      "id": null
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-100",
+    "half": 2,
+    "clock": 721,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Break",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.678,
+    "ny": 0.47,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-101",
+    "half": 2,
+    "clock": 736,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 13
+    },
+    "nx": 0.882,
+    "ny": 0.363,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-100"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-102",
+    "half": 2,
+    "clock": 764,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Foul",
+    "player": {
+     "team": "OPP",
+     "number": 11
+    },
+    "nx": 0.812,
+    "ny": 0.659,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Foul"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-103",
+    "half": 2,
+    "clock": 780,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "HP Error",
+    "player": {
+     "team": "FOR",
+     "number": 4
+    },
+    "nx": 0.372,
+    "ny": 0.6,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "HP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-104",
+    "half": 2,
+    "clock": 805,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "HP Error",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.306,
+    "ny": 0.451,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "HP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-105",
+    "half": 2,
+    "clock": 820,
+    "family": "TWO_POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 13
+    },
+    "nx": 0.692,
+    "ny": 0.556,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-104"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-106",
+    "half": 2,
+    "clock": 855,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.799,
+    "ny": 0.533,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-107",
+    "half": 2,
+    "clock": 891,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 14
+    },
+    "nx": 0.449,
+    "ny": 0.753,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-108",
+    "half": 2,
+    "clock": 926,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 10
+    },
+    "nx": 0.247,
+    "ny": 0.266,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "FREE",
+      "id": "A-107"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-109",
+    "half": 2,
+    "clock": 956,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": null,
+    "nx": 0.482,
+    "ny": 0.521,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-110",
+    "half": 2,
+    "clock": 987,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.269,
+    "ny": 0.686,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-111",
+    "half": 2,
+    "clock": 1008,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 12
+    },
+    "nx": 0.766,
+    "ny": 0.276,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-110"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-112",
+    "half": 2,
+    "clock": 1042,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Foul",
+    "player": {
+     "team": "FOR",
+     "number": 10
+    },
+    "nx": 0.772,
+    "ny": 0.303,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Foul"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-113",
+    "half": 2,
+    "clock": 1075,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.428,
+    "ny": 0.43,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-114",
+    "half": 2,
+    "clock": 1108,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.155,
+    "ny": 0.677,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "FREE",
+      "id": "A-113"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-115",
+    "half": 2,
+    "clock": 1141,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Foul",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.287,
+    "ny": 0.731,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Foul"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-116",
+    "half": 2,
+    "clock": 1168,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.228,
+    "ny": 0.526,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-115"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-117",
+    "half": 2,
+    "clock": 1192,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Break",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.412,
+    "ny": 0.436,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-118",
+    "half": 2,
+    "clock": 1210,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Conceded",
+    "player": {
+     "team": "FOR",
+     "number": 6
+    },
+    "nx": 0.783,
+    "ny": 0.281,
+    "truth": {
+     "action": "free",
+     "awardedTo": "OPP"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-119",
+    "half": 2,
+    "clock": 1213,
+    "family": "DISCIPLINE",
+    "row": "FOR",
+    "tile": "Yellow",
+    "player": {
+     "team": "FOR",
+     "number": 3
+    },
+    "nx": 0.783,
+    "ny": 0.281,
+    "truth": {
+     "action": "card",
+     "team": "FOR",
+     "card": "Yellow"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-120",
+    "half": 2,
+    "clock": 1242,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Free",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.783,
+    "ny": 0.298,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Free",
+     "origin": {
+      "type": "FREE",
+      "id": "A-118"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-121",
+    "half": 2,
+    "clock": 1274,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.737,
+    "ny": 0.507,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-122",
+    "half": 2,
+    "clock": 1313,
+    "family": "WIDE",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.239,
+    "ny": 0.643,
+    "truth": {
+     "action": "wide",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-121"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-123",
+    "half": 2,
+    "clock": 1337,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": null,
+    "nx": 0.28,
+    "ny": 0.749,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-124",
+    "half": 2,
+    "clock": 1377,
+    "family": "GOAL",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 15
+    },
+    "nx": 0.945,
+    "ny": 0.377,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-123"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-125",
+    "half": 2,
+    "clock": 1412,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Break",
+    "player": null,
+    "nx": 0.535,
+    "ny": 0.574,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-126",
+    "half": 2,
+    "clock": 1427,
+    "family": "TWO_POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 15
+    },
+    "nx": 0.669,
+    "ny": 0.401,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-125"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-127",
+    "half": 2,
+    "clock": 1462,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.817,
+    "ny": 0.318,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-128",
+    "half": 2,
+    "clock": 1493,
+    "family": "FREE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.485,
+    "ny": 0.44,
+    "truth": {
+     "action": "free",
+     "awardedTo": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-129",
+    "half": 2,
+    "clock": 1496,
+    "family": "DISCIPLINE",
+    "row": "OPP",
+    "tile": "Sin Bin",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.485,
+    "ny": 0.44,
+    "truth": {
+     "action": "card",
+     "team": "OPP",
+     "card": "Sin Bin"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-X02",
+    "half": 2,
+    "clock": 1503,
+    "family": "GOAL",
+    "row": "OPP",
+    "tile": "Penalty",
+    "player": {
+     "team": "OPP",
+     "number": 14
+    },
+    "nx": 0.92,
+    "ny": 0.5,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Penalty",
+     "placed": true,
+     "origin": {
+      "type": "OTHER",
+      "id": null
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-130",
+    "half": 2,
+    "clock": 1525,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 8
+    },
+    "nx": 0.209,
+    "ny": 0.73,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "FREE",
+      "id": "A-128"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-131",
+    "half": 2,
+    "clock": 1555,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Break",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.262,
+    "ny": 0.527,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-132",
+    "half": 2,
+    "clock": 1583,
+    "family": "GOAL",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 15
+    },
+    "nx": 0.978,
+    "ny": 0.55,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-131"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-133",
+    "half": 2,
+    "clock": 1610,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.675,
+    "ny": 0.365,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-134",
+    "half": 2,
+    "clock": 1649,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.486,
+    "ny": 0.623,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-135",
+    "half": 2,
+    "clock": 1681,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 11
+    },
+    "nx": 0.733,
+    "ny": 0.364,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "TURNOVER",
+      "id": "A-134"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-136",
+    "half": 2,
+    "clock": 1703,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.686,
+    "ny": 0.732,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-137",
+    "half": 2,
+    "clock": 1722,
+    "family": "TWO_POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 10
+    },
+    "nx": 0.324,
+    "ny": 0.559,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-136"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-138",
+    "half": 2,
+    "clock": 1744,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "FOR",
+    "tile": "Break",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.443,
+    "ny": 0.713,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "FOR",
+     "method": "Break"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-139",
+    "half": 2,
+    "clock": 1759,
+    "family": "SHOT",
+    "row": "FOR",
+    "tile": "Block/Save",
+    "player": {
+     "team": "FOR",
+     "number": 13
+    },
+    "nx": 0.086,
+    "ny": 0.742,
+    "truth": {
+     "action": "shot",
+     "team": "FOR",
+     "source": "Block/Save",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-138"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-140",
+    "half": 2,
+    "clock": 1766,
+    "family": "FORTY_FIVE",
+    "row": "FOR",
+    "tile": "Won",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.31,
+    "ny": 0.5,
+    "truth": {
+     "action": "fortyFive",
+     "winner": "FOR"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-141",
+    "half": 2,
+    "clock": 1798,
+    "family": "TWO_POINT",
+    "row": "FOR",
+    "tile": "45",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.31,
+    "ny": 0.241,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "45",
+     "origin": {
+      "type": "FORTY_FIVE",
+      "id": "A-140"
+     },
+     "placed": true
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-142",
+    "half": 2,
+    "clock": 1825,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.223,
+    "ny": 0.636,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-143",
+    "half": 2,
+    "clock": 1865,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.795,
+    "ny": 0.688,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-142"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-144",
+    "half": 2,
+    "clock": 1892,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "FOR",
+    "tile": "Clean",
+    "player": {
+     "team": "FOR",
+     "number": 11
+    },
+    "nx": 0.783,
+    "ny": 0.7,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "FOR",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-145",
+    "half": 2,
+    "clock": 1923,
+    "family": "POINT",
+    "row": "FOR",
+    "tile": "Play",
+    "player": {
+     "team": "FOR",
+     "number": 9
+    },
+    "nx": 0.14,
+    "ny": 0.501,
+    "truth": {
+     "action": "score",
+     "team": "FOR",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-144"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-146",
+    "half": 2,
+    "clock": 1956,
+    "family": "RESTART",
+    "owner": "OPP",
+    "row": "OPP",
+    "tile": "Clean",
+    "player": {
+     "team": "OPP",
+     "number": 9
+    },
+    "nx": 0.373,
+    "ny": 0.777,
+    "truth": {
+     "action": "restart",
+     "owner": "OPP",
+     "winner": "OPP",
+     "method": "Clean"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-147",
+    "half": 2,
+    "clock": 1987,
+    "family": "POINT",
+    "row": "OPP",
+    "tile": "Play",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.834,
+    "ny": 0.221,
+    "truth": {
+     "action": "score",
+     "team": "OPP",
+     "source": "Play",
+     "origin": {
+      "type": "RESTART",
+      "id": "A-146"
+     }
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-148",
+    "half": 2,
+    "clock": 2010,
+    "family": "RESTART",
+    "owner": "FOR",
+    "row": "OPP",
+    "tile": "Foul",
+    "player": {
+     "team": "OPP",
+     "number": 8
+    },
+    "nx": 0.637,
+    "ny": 0.648,
+    "truth": {
+     "action": "restart",
+     "owner": "FOR",
+     "winner": "OPP",
+     "method": "Foul"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-149",
+    "half": 2,
+    "clock": 2034,
+    "family": "TURNOVER",
+    "row": "FOR",
+    "tile": "KP Error",
+    "player": {
+     "team": "FOR",
+     "number": 6
+    },
+    "nx": 0.303,
+    "ny": 0.535,
+    "truth": {
+     "action": "turnover",
+     "winner": "FOR",
+     "loser": "OPP",
+     "method": "KP Error"
+    }
+   }
+  },
+  {
+   "op": "tag",
+   "ev": {
+    "id": "A-150",
+    "half": 2,
+    "clock": 2072,
+    "family": "TURNOVER",
+    "row": "OPP",
+    "tile": "HP Error",
+    "player": {
+     "team": "FOR",
+     "number": 15
+    },
+    "nx": 0.629,
+    "ny": 0.405,
+    "truth": {
+     "action": "turnover",
+     "winner": "OPP",
+     "loser": "FOR",
+     "method": "HP Error"
+    }
+   }
+  },
+  {
+   "op": "fulltime",
+   "clock": 2100
+  }
+ ],
+ "reviewOps": [],
+ "summary": {
+  "tagSteps": 152,
+  "liveEvents": 152,
+  "finalEventsAfterReviewOps": 152,
+  "byFamily": {
+   "TURNOVER": 26,
+   "WIDE": 12,
+   "RESTART": 46,
+   "FREE": 17,
+   "POINT": 23,
+   "SIDELINE": 4,
+   "SHOT": 6,
+   "DISCIPLINE": 3,
+   "TWO_POINT": 9,
+   "FORTY_FIVE": 2,
+   "GOAL": 4
+  }
+ }
+}

@@ -1,0 +1,225 @@
+{
+ "counts": {
+  "PASS→PASS": 29,
+  "FAIL→FAIL": 2
+ },
+ "changes": [
+  {
+   "change": "PASS→PASS",
+   "key": "Quick Review p1 (Overview) ¦ FT ¦ FULL ¦ restarts won → shots (possession) ¦ FOR",
+   "expected": "12 shots",
+   "beforeActual": "11 shots",
+   "afterActual": "12 shots"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Won → Score (origin) ¦ FOR",
+   "expected": "5 (12%)",
+   "beforeActual": "11 (27%)",
+   "afterActual": "5 (12%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Won → Shot attempt ¦ FOR",
+   "expected": "12 (29%)",
+   "beforeActual": "25 (61%)",
+   "afterActual": "12 (29%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Won → No shot ¦ FOR",
+   "expected": "29",
+   "beforeActual": "16",
+   "afterActual": "29"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Lost → Score against (origin) ¦ FOR",
+   "expected": "5 (14%)",
+   "beforeActual": "18 (51%)",
+   "afterActual": "5 (14%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Lost → No score ¦ FOR",
+   "expected": "30",
+   "beforeActual": "17",
+   "afterActual": "30"
+  },
+  {
+   "change": "FAIL→FAIL",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Avg secs to score (won) ¦ FOR",
+   "expected": "9s",
+   "beforeActual": "30s",
+   "afterActual": "8s"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Scoring Possession Origins ¦ FULL ¦ restart-origin scores ¦ FOR",
+   "expected": "2 Goals, 3 Points (9 pts)",
+   "beforeActual": "2 Goals, 7 Points (13 pts)",
+   "afterActual": "2 Goals, 3 Points (9 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Scoring Possession Origins ¦ FULL ¦ restart-origin scores ¦ OPP",
+   "expected": "4 Points, 1 Two-Point score (6 pts)",
+   "beforeActual": "6 Points, 3 Two-Point scores (12 pts)",
+   "afterActual": "4 Points, 1 Two-Point score (6 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores for OPP ¦ OPP",
+   "expected": "4 Points, 1 Two-Point score (6 pts)",
+   "beforeActual": "6 Points, 3 Two-Point scores (12 pts)",
+   "afterActual": "4 Points, 1 Two-Point score (6 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores conceded ¦ OPP",
+   "expected": "4 Points, 1 Two-Point score (6 pts) (14%)",
+   "beforeActual": "2 Goals, 13 Points, 3 Two-Point scores (25 pts) (51%)",
+   "afterActual": "4 Points, 1 Two-Point score (6 pts) (14%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores from our kickout losses ¦ OPP",
+   "expected": "2 Points, 1 Two-Point score (4 pts)",
+   "beforeActual": "5 Points, 3 Two-Point scores (11 pts)",
+   "afterActual": "2 Points, 1 Two-Point score (4 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Intelligence Summary ¦ FULL ¦ kickout wins → origin score ¦ FOR",
+   "expected": "12%",
+   "beforeActual": "27%",
+   "afterActual": "12%"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Intelligence Summary ¦ FULL ¦ kickout losses → origin score against ¦ FOR",
+   "expected": "14%",
+   "beforeActual": "51%",
+   "afterActual": "14%"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Intelligence Summary ¦ FULL ¦ net kickout advantage (%pt) ¦ FOR",
+   "expected": "-2 %pt",
+   "beforeActual": "-24 %pt",
+   "afterActual": "-2 %pt"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ Won → Origin score ¦ FOR",
+   "expected": "5 (12%)",
+   "beforeActual": "11 (27%)",
+   "afterActual": "5 (12%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Won → Score (origin) ¦ FOR",
+   "expected": "6 (15%)",
+   "beforeActual": "12 (30%)",
+   "afterActual": "6 (15%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Won → Shot attempt ¦ FOR",
+   "expected": "12 (30%)",
+   "beforeActual": "25 (63%)",
+   "afterActual": "12 (30%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Won → No shot ¦ FOR",
+   "expected": "28",
+   "beforeActual": "15",
+   "afterActual": "28"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Lost → Score against (origin) ¦ FOR",
+   "expected": "5 (14%)",
+   "beforeActual": "20 (56%)",
+   "afterActual": "5 (14%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Lost → No score ¦ FOR",
+   "expected": "31",
+   "beforeActual": "16",
+   "afterActual": "31"
+  },
+  {
+   "change": "FAIL→FAIL",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Avg secs to score (won) ¦ FOR",
+   "expected": "10s",
+   "beforeActual": "30s",
+   "afterActual": "9s"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Scoring Possession Origins ¦ FULL ¦ restart-origin scores ¦ FOR",
+   "expected": "2 Goals, 4 Points (10 pts)",
+   "beforeActual": "2 Goals, 8 Points (14 pts)",
+   "afterActual": "2 Goals, 4 Points (10 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Scoring Possession Origins ¦ FULL ¦ restart-origin scores ¦ OPP",
+   "expected": "4 Points, 1 Two-Point score (6 pts)",
+   "beforeActual": "6 Points, 3 Two-Point scores (12 pts)",
+   "afterActual": "4 Points, 1 Two-Point score (6 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores for OPP ¦ OPP",
+   "expected": "4 Points, 1 Two-Point score (6 pts)",
+   "beforeActual": "6 Points, 3 Two-Point scores (12 pts)",
+   "afterActual": "4 Points, 1 Two-Point score (6 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores conceded ¦ OPP",
+   "expected": "4 Points, 1 Two-Point score (6 pts) (14%)",
+   "beforeActual": "2 Goals, 15 Points, 3 Two-Point scores (27 pts) (56%)",
+   "afterActual": "4 Points, 1 Two-Point score (6 pts) (14%)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores from our kickout losses ¦ OPP",
+   "expected": "2 Points, 1 Two-Point score (4 pts)",
+   "beforeActual": "6 Points, 3 Two-Point scores (12 pts)",
+   "afterActual": "2 Points, 1 Two-Point score (4 pts)"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Intelligence Summary ¦ FULL ¦ kickout wins → origin score ¦ FOR",
+   "expected": "15%",
+   "beforeActual": "30%",
+   "afterActual": "15%"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Intelligence Summary ¦ FULL ¦ kickout losses → origin score against ¦ FOR",
+   "expected": "14%",
+   "beforeActual": "56%",
+   "afterActual": "14%"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Intelligence Summary ¦ FULL ¦ net kickout advantage (%pt) ¦ FOR",
+   "expected": "+1 %pt",
+   "beforeActual": "-26 %pt",
+   "afterActual": "+1 %pt"
+  },
+  {
+   "change": "PASS→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ Won → Origin score ¦ FOR",
+   "expected": "6 (15%)",
+   "beforeActual": "12 (30%)",
+   "afterActual": "6 (15%)"
+  }
+ ]
+}

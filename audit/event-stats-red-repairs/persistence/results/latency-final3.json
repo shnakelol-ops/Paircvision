@@ -1,0 +1,128 @@
+[
+ {
+  "cpuThrottle": "1x",
+  "storedMatches": 0,
+  "storeChars": 10450,
+  "writesPerEvent": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "writeMs": {
+   "median": 0.4,
+   "max": 0.4
+  },
+  "tapToSavedMs": {
+   "median": 19.6,
+   "max": 25.2
+  },
+  "longestTaskMs": 0
+ },
+ {
+  "cpuThrottle": "1x",
+  "storedMatches": 10,
+  "storeChars": 1564690,
+  "writesPerEvent": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "writeMs": {
+   "median": 19.7,
+   "max": 23.8
+  },
+  "tapToSavedMs": {
+   "median": 44.9,
+   "max": 50.9
+  },
+  "longestTaskMs": 0
+ },
+ {
+  "cpuThrottle": "1x",
+  "storedMatches": 19,
+  "storeChars": 2963524,
+  "writesPerEvent": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "writeMs": {
+   "median": 39,
+   "max": 48.4
+  },
+  "tapToSavedMs": {
+   "median": 57.8,
+   "max": 68.6
+  },
+  "longestTaskMs": 56
+ },
+ {
+  "cpuThrottle": "4x",
+  "storedMatches": 0,
+  "storeChars": 10450,
+  "writesPerEvent": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "writeMs": {
+   "median": 1.5,
+   "max": 2.5
+  },
+  "tapToSavedMs": {
+   "median": 81.6,
+   "max": 101.2
+  },
+  "longestTaskMs": 0
+ },
+ {
+  "cpuThrottle": "4x",
+  "storedMatches": 10,
+  "storeChars": 1564690,
+  "writesPerEvent": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "writeMs": {
+   "median": 95.8,
+   "max": 122.5
+  },
+  "tapToSavedMs": {
+   "median": 249.1,
+   "max": 251.3
+  },
+  "longestTaskMs": 155
+ },
+ {
+  "cpuThrottle": "4x",
+  "storedMatches": 19,
+  "storeChars": 2963524,
+  "writesPerEvent": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "writeMs": {
+   "median": 183.7,
+   "max": 210.5
+  },
+  "tapToSavedMs": {
+   "median": 342.7,
+   "max": 378.7
+  },
+  "longestTaskMs": 242
+ }
+]

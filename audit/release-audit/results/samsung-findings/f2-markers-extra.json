@@ -1,0 +1,78 @@
+{
+ "2H Point from 45": {
+  "stored": {
+   "kind": "POINT",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#4ade80×1",
+   "Opposition Shot Profile": "not drawn"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#4ade80×1",
+   "1H Pitch Overview": "not drawn",
+   "2H Pitch Overview": "DRAWN dot:#4ade80×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "2H 45 two-pointer": {
+  "stored": {
+   "kind": "FORTY_FIVE_TWO_POINT",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#fbbf24×1",
+   "Opposition Shot Profile": "not drawn"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#fbbf24×1",
+   "1H Pitch Overview": "not drawn",
+   "2H Pitch Overview": "DRAWN dot:#fbbf24×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "OPP 45 two-pointer": {
+  "stored": {
+   "kind": "FORTY_FIVE_TWO_POINT",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "OPP"
+  },
+  "snapshot": {
+   "Our Shot Profile": "not drawn",
+   "Opposition Shot Profile": "DRAWN dot:#fbbf24×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#fbbf24×1",
+   "1H Pitch Overview": "DRAWN dot:#fbbf24×3",
+   "2H Pitch Overview": "not drawn",
+   "Free Kick Analysis": "DRAWN dot:#f472b699×2,dot:#4ade8099×1"
+  }
+ },
+ "Legacy TWO_POINTER tagged 45": {
+  "stored": {
+   "kind": "TWO_POINTER",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#fbbf24×1",
+   "Opposition Shot Profile": "not drawn"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#fbbf24×1",
+   "1H Pitch Overview": "DRAWN dot:#fbbf24×3",
+   "2H Pitch Overview": "not drawn",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ }
+}

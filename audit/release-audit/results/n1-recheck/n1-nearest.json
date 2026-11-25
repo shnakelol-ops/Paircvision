@@ -1,0 +1,184 @@
+[
+ {
+  "kind": "TURNOVER_WON",
+  "half": "1H",
+  "clock": 51,
+  "nearestOtherPxInBestView": 11.1,
+  "bestView": "H1/ALL/ALL"
+ },
+ {
+  "kind": "POINT",
+  "half": "1H",
+  "clock": 79,
+  "nearestOtherPxInBestView": 6,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "KICKOUT_WON",
+  "half": "1H",
+  "clock": 94,
+  "nearestOtherPxInBestView": 10.1,
+  "bestView": "H1/ALL/ALL"
+ },
+ {
+  "kind": "POINT",
+  "half": "1H",
+  "clock": 98,
+  "nearestOtherPxInBestView": 0.6,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "KICKOUT_CONCEDED",
+  "half": "1H",
+  "clock": 218,
+  "nearestOtherPxInBestView": 7.8,
+  "bestView": "ALL/ALL/KICKOUTS"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "1H",
+  "clock": 271,
+  "nearestOtherPxInBestView": 5.2,
+  "bestView": "ALL/ALL/TURNOVERS"
+ },
+ {
+  "kind": "FORTY_FIVE_WON",
+  "half": "1H",
+  "clock": 324,
+  "nearestOtherPxInBestView": 8.6,
+  "bestView": "H1/ALL/ALL"
+ },
+ {
+  "kind": "KICKOUT_WON",
+  "half": "1H",
+  "clock": 374,
+  "nearestOtherPxInBestView": 11.6,
+  "bestView": "ALL/ALL/KICKOUTS"
+ },
+ {
+  "kind": "SIDELINE_WON",
+  "half": "1H",
+  "clock": 633,
+  "nearestOtherPxInBestView": 3.2,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "1H",
+  "clock": 680,
+  "nearestOtherPxInBestView": 9.2,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "YELLOW_CARD",
+  "half": "1H",
+  "clock": 712,
+  "nearestOtherPxInBestView": 0,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "1H",
+  "clock": 840,
+  "nearestOtherPxInBestView": 1.7,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_LOST",
+  "half": "1H",
+  "clock": 845,
+  "nearestOtherPxInBestView": 13.3,
+  "bestView": "ALL/OPP/TURNOVERS"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "1H",
+  "clock": 849,
+  "nearestOtherPxInBestView": 4.1,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "FORTY_FIVE_WON",
+  "half": "1H",
+  "clock": 866,
+  "nearestOtherPxInBestView": 7.7,
+  "bestView": "ALL/FOR/ALL"
+ },
+ {
+  "kind": "SIDELINE_WON",
+  "half": "1H",
+  "clock": 1025,
+  "nearestOtherPxInBestView": 2,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "1H",
+  "clock": 1117,
+  "nearestOtherPxInBestView": 9.7,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "KICKOUT_WON",
+  "half": "1H",
+  "clock": 1534,
+  "nearestOtherPxInBestView": 5.9,
+  "bestView": "ALL/ALL/KICKOUTS"
+ },
+ {
+  "kind": "WIDE",
+  "half": "2H",
+  "clock": 120,
+  "nearestOtherPxInBestView": 8.4,
+  "bestView": "ALL/ALL/WIDES"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "2H",
+  "clock": 149,
+  "nearestOtherPxInBestView": 12.6,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "2H",
+  "clock": 247,
+  "nearestOtherPxInBestView": 9.2,
+  "bestView": "H2/ALL/TURNOVERS"
+ },
+ {
+  "kind": "KICKOUT_WON",
+  "half": "2H",
+  "clock": 263,
+  "nearestOtherPxInBestView": 10.1,
+  "bestView": "H2/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_LOST",
+  "half": "2H",
+  "clock": 442,
+  "nearestOtherPxInBestView": 4.4,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "2H",
+  "clock": 1052,
+  "nearestOtherPxInBestView": 4.1,
+  "bestView": "ALL/ALL/ALL"
+ },
+ {
+  "kind": "TURNOVER_WON",
+  "half": "2H",
+  "clock": 1725,
+  "nearestOtherPxInBestView": 6.6,
+  "bestView": "ALL/ALL/TURNOVERS"
+ },
+ {
+  "kind": "KICKOUT_WON",
+  "half": "2H",
+  "clock": 1791,
+  "nearestOtherPxInBestView": 3.6,
+  "bestView": "ALL/ALL/ALL"
+ }
+]

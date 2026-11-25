@@ -1,0 +1,302 @@
+[
+ {
+  "afterEvent": "A-010",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-015",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-022",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-024",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-028",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-036",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-043",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-053",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-073",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-089",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-091",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-093",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-109",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-115",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-117",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-123",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-131",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-138",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-142",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ },
+ {
+  "afterEvent": "A-146",
+  "toggle": [
+   {
+    "label": "OUR K/O",
+    "bg": "rgba(147, 51, 234, 0.12)",
+    "color": "rgb(192, 132, 252)"
+   },
+   {
+    "label": "THEIR K/O",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(110, 118, 129)"
+   }
+  ]
+ }
+]

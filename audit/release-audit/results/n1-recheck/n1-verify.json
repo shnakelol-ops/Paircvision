@@ -1,0 +1,824 @@
+[
+ {
+  "time": "00:51",
+  "half": "1H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/ALL/ALL",
+   "dx": 0,
+   "dy": 6,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "1H",
+    "time": "00:51"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/TURNOVERS",
+   "drawn": 61,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "30:28"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "30:28",
+    "px": 11.1
+   }
+  }
+ },
+ {
+  "time": "01:19",
+  "half": "1H",
+  "kind": "POINT",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/SCORES",
+   "dx": 11,
+   "dy": 5,
+   "onDot": false,
+   "opened": {
+    "type": "POINT",
+    "half": "1H",
+    "time": "01:19"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/OPP/SCORES",
+   "drawn": 10,
+   "opened": {
+    "type": "POINT",
+    "half": "1H",
+    "time": "22:08"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "POINT",
+    "time": "22:08",
+    "px": 6
+   }
+  }
+ },
+ {
+  "time": "01:34",
+  "half": "1H",
+  "kind": "KICKOUT_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/ALL/KICKOUTS",
+   "dx": -13,
+   "dy": 5,
+   "onDot": false,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "1H",
+    "time": "01:34"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/KICKOUTS",
+   "drawn": 30,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "1H",
+    "time": "32:28"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_WON",
+    "time": "32:28",
+    "px": 10.1
+   }
+  }
+ },
+ {
+  "time": "01:38",
+  "half": "1H",
+  "kind": "POINT",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/FOR/SCORES",
+   "dx": -4,
+   "dy": 15,
+   "onDot": false,
+   "opened": {
+    "type": "POINT",
+    "half": "1H",
+    "time": "01:38"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/SCORES",
+   "drawn": 11,
+   "opened": {
+    "type": "POINT",
+    "half": "1H",
+    "time": "16:08"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "POINT",
+    "time": "16:08",
+    "px": 0.6
+   }
+  }
+ },
+ {
+  "time": "03:38",
+  "half": "1H",
+  "kind": "KICKOUT_CONCEDED",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/FOR/KICKOUTS",
+   "dx": -1,
+   "dy": 9,
+   "onDot": false,
+   "opened": {
+    "type": "KICKOUT LOST",
+    "half": "1H",
+    "time": "03:38"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/OPP/KICKOUTS",
+   "drawn": 22,
+   "opened": {
+    "type": "KICKOUT LOST",
+    "half": "1H",
+    "time": "31:12"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_CONCEDED",
+    "time": "20:44",
+    "px": 7.8
+   }
+  }
+ },
+ {
+  "time": "04:31",
+  "half": "1H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/TURNOVERS",
+   "dx": -11,
+   "dy": 1,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "1H",
+    "time": "04:31"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/TURNOVERS",
+   "drawn": 61,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "11:16"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "11:16",
+    "px": 5.2
+   }
+  }
+ },
+ {
+  "time": "05:24",
+  "half": "1H",
+  "kind": "FORTY_FIVE_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/OPP/ALL",
+   "dx": 16.4173,
+   "dy": 0.4173000000000009,
+   "onDot": false,
+   "opened": {
+    "type": "45/65 WON",
+    "half": "1H",
+    "time": "05:24"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "ALL/ALL/ALL",
+   "drawn": 331,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "2H",
+    "time": "34:22"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_WON",
+    "time": "03:53",
+    "px": 4.7
+   }
+  }
+ },
+ {
+  "time": "06:14",
+  "half": "1H",
+  "kind": "KICKOUT_WON",
+  "model": "dot-selectable",
+  "bestTap": {
+   "view": "ALL/ALL/KICKOUTS",
+   "dx": 4,
+   "dy": 2,
+   "onDot": true,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "1H",
+    "time": "06:14"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/KICKOUTS",
+   "drawn": 30,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "1H",
+    "time": "24:29"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_WON",
+    "time": "24:29",
+    "px": 11.6
+   }
+  }
+ },
+ {
+  "time": "10:33",
+  "half": "1H",
+  "kind": "SIDELINE_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/ALL",
+   "dx": -14.582699999999999,
+   "dy": 0.4173000000000009,
+   "onDot": false,
+   "opened": {
+    "type": "SIDELINE WON",
+    "half": "1H",
+    "time": "10:33"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "ALL/ALL/ALL",
+   "drawn": 331,
+   "opened": {
+    "type": "SIDELINE WON",
+    "half": "1H",
+    "time": "22:37"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "SIDELINE_WON",
+    "time": "22:37",
+    "px": 3.2
+   }
+  }
+ },
+ {
+  "time": "11:20",
+  "half": "1H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/ALL/TURNOVERS",
+   "dx": 7,
+   "dy": 0,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "1H",
+    "time": "11:20"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/TURNOVERS",
+   "drawn": 61,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "12:32"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "12:32",
+    "px": 9.2
+   }
+  }
+ },
+ {
+  "time": "11:52",
+  "half": "1H",
+  "kind": "YELLOW_CARD",
+  "model": "never",
+  "centreTapNarrowest": {
+   "view": "ALL/ALL/ALL",
+   "drawn": 331,
+   "opened": {
+    "type": "FREE_WON",
+    "half": "1H",
+    "time": "33:18"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "30:28",
+    "px": 7.2
+   }
+  }
+ },
+ {
+  "time": "14:00",
+  "half": "1H",
+  "kind": "TURNOVER_WON",
+  "model": "never",
+  "centreTapNarrowest": {
+   "view": "H1/FOR/TURNOVERS",
+   "drawn": 61,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "1H",
+    "time": "28:43"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_WON",
+    "time": "28:43",
+    "px": 1.7
+   }
+  }
+ },
+ {
+  "time": "14:05",
+  "half": "1H",
+  "kind": "TURNOVER_LOST",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/OPP/TURNOVERS",
+   "dx": 12,
+   "dy": 7,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "14:05"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/OPP/TURNOVERS",
+   "drawn": 35,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "16:59"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "16:59",
+    "px": 13.3
+   }
+  }
+ },
+ {
+  "time": "14:09",
+  "half": "1H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/ALL/TURNOVERS",
+   "dx": -14,
+   "dy": 0,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "1H",
+    "time": "14:09"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/TURNOVERS",
+   "drawn": 61,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "33:52"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "33:52",
+    "px": 4.1
+   }
+  }
+ },
+ {
+  "time": "14:26",
+  "half": "1H",
+  "kind": "FORTY_FIVE_WON",
+  "model": "dot-selectable",
+  "bestTap": {
+   "view": "H1/ALL/ALL",
+   "dx": -0.5826999999999991,
+   "dy": -2.582699999999999,
+   "onDot": true,
+   "opened": {
+    "type": "45/65 WON",
+    "half": "1H",
+    "time": "14:26"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "ALL/ALL/ALL",
+   "drawn": 331,
+   "opened": {
+    "type": "TWO_POINTER",
+    "half": "2H",
+    "time": "25:57"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TWO_POINTER",
+    "time": "25:57",
+    "px": 7.2
+   }
+  }
+ },
+ {
+  "time": "17:05",
+  "half": "1H",
+  "kind": "SIDELINE_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "H1/ALL/ALL",
+   "dx": -15.582699999999999,
+   "dy": 0.4173000000000009,
+   "onDot": false,
+   "opened": {
+    "type": "SIDELINE WON",
+    "half": "1H",
+    "time": "17:05"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "ALL/ALL/ALL",
+   "drawn": 331,
+   "opened": {
+    "type": "SIDELINE WON",
+    "half": "1H",
+    "time": "22:48"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "SIDELINE_WON",
+    "time": "22:48",
+    "px": 2
+   }
+  }
+ },
+ {
+  "time": "18:37",
+  "half": "1H",
+  "kind": "TURNOVER_WON",
+  "model": "never",
+  "centreTapNarrowest": {
+   "view": "H1/FOR/TURNOVERS",
+   "drawn": 61,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "1H",
+    "time": "28:33"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "28:33",
+    "px": 11.2
+   }
+  }
+ },
+ {
+  "time": "25:34",
+  "half": "1H",
+  "kind": "KICKOUT_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/KICKOUTS",
+   "dx": 2,
+   "dy": 10,
+   "onDot": false,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "1H",
+    "time": "25:34"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H1/FOR/KICKOUTS",
+   "drawn": 30,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "1H",
+    "time": "34:31"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_WON",
+    "time": "34:31",
+    "px": 5.9
+   }
+  }
+ },
+ {
+  "time": "02:00",
+  "half": "2H",
+  "kind": "WIDE",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/WIDES",
+   "dx": 0,
+   "dy": -8,
+   "onDot": false,
+   "opened": {
+    "type": "WIDE",
+    "half": "2H",
+    "time": "02:00"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/OPP/WIDES",
+   "drawn": 6,
+   "opened": {
+    "type": "WIDE",
+    "half": "2H",
+    "time": "03:07"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "WIDE",
+    "time": "03:07",
+    "px": 8.4
+   }
+  }
+ },
+ {
+  "time": "02:29",
+  "half": "2H",
+  "kind": "TURNOVER_WON",
+  "model": "dot-selectable",
+  "bestTap": {
+   "view": "ALL/ALL/TURNOVERS",
+   "dx": 2,
+   "dy": 3,
+   "onDot": true,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "24:31"
+   },
+   "ok": false
+  },
+  "centreTapNarrowest": {
+   "view": "H2/FOR/TURNOVERS",
+   "drawn": 54,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "24:31"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_WON",
+    "time": "24:31",
+    "px": 12.6
+   }
+  }
+ },
+ {
+  "time": "04:07",
+  "half": "2H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/TURNOVERS",
+   "dx": 0,
+   "dy": -7,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "04:07"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/FOR/TURNOVERS",
+   "drawn": 54,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "07:58"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_WON",
+    "time": "07:58",
+    "px": 9.2
+   }
+  }
+ },
+ {
+  "time": "04:23",
+  "half": "2H",
+  "kind": "KICKOUT_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/KICKOUTS",
+   "dx": -1,
+   "dy": -6,
+   "onDot": false,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "2H",
+    "time": "04:23"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/OPP/KICKOUTS",
+   "drawn": 32,
+   "opened": {
+    "type": "KICKOUT LOST",
+    "half": "2H",
+    "time": "34:17"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_CONCEDED",
+    "time": "34:17",
+    "px": 10.1
+   }
+  }
+ },
+ {
+  "time": "07:22",
+  "half": "2H",
+  "kind": "TURNOVER_LOST",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/TURNOVERS",
+   "dx": -10,
+   "dy": 6,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "2H",
+    "time": "07:22"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/OPP/TURNOVERS",
+   "drawn": 24,
+   "opened": {
+    "type": "TURNOVER LOST",
+    "half": "2H",
+    "time": "26:58"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_LOST",
+    "time": "26:58",
+    "px": 4.4
+   }
+  }
+ },
+ {
+  "time": "17:32",
+  "half": "2H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/TURNOVERS",
+   "dx": 1,
+   "dy": 12,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "17:32"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/FOR/TURNOVERS",
+   "drawn": 54,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "31:49"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_WON",
+    "time": "31:49",
+    "px": 4.1
+   }
+  }
+ },
+ {
+  "time": "28:45",
+  "half": "2H",
+  "kind": "TURNOVER_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/ALL",
+   "dx": -8,
+   "dy": -5,
+   "onDot": false,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "28:45"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/FOR/TURNOVERS",
+   "drawn": 54,
+   "opened": {
+    "type": "TURNOVER WON",
+    "half": "2H",
+    "time": "29:58"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "TURNOVER_WON",
+    "time": "29:58",
+    "px": 6.6
+   }
+  }
+ },
+ {
+  "time": "29:51",
+  "half": "2H",
+  "kind": "KICKOUT_WON",
+  "model": "edge-only",
+  "bestTap": {
+   "view": "ALL/ALL/ALL",
+   "dx": -6,
+   "dy": -11,
+   "onDot": false,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "2H",
+    "time": "29:51"
+   },
+   "ok": true
+  },
+  "centreTapNarrowest": {
+   "view": "H2/OPP/KICKOUTS",
+   "drawn": 32,
+   "opened": {
+    "type": "KICKOUT WON",
+    "half": "2H",
+    "time": "31:28"
+   },
+   "ok": false,
+   "predictedCover": {
+    "kind": "KICKOUT_WON",
+    "time": "31:28",
+    "px": 3.6
+   }
+  }
+ }
+]

@@ -1,0 +1,34 @@
+{
+ "s1_twentyFirstMatch": {
+  "savedBefore": 20,
+  "savedAfter": 21,
+  "newMatchSaved": true,
+  "firstMatchKept": true,
+  "evicted": []
+ },
+ "s2_unreadableEventStatsStore": {
+  "pitchFooter": "Save blocked — saved matches storage is corrupted.",
+  "stripWarning": "Save blocked — saved matches storage is corrupted.",
+  "storedValueUnchanged": true,
+  "olderMatchStillPresent": true
+ },
+ "s3_unreadableMatchStatsArchive_SaveMatch": {
+  "feedback": "Match saved. Match Stats copy not updated — its storage is corrupted.",
+  "archiveUnchanged": true,
+  "eventStatsMatchesStored": 1
+ },
+ "s4_malformedRecordSurvives": {
+  "recordsStored": 3,
+  "malformedKept": true,
+  "malformedUnchanged": true,
+  "validOlderKept": true
+ },
+ "s5_storageFull": {
+  "pitchFooter": "Save failed — storage full. Back up and delete old matches.",
+  "stripWarning": "Save failed — storage full. Back up and delete old matches.",
+  "existingMatchUnchangedWhileFull": true,
+  "warningClearedAfterSpaceFreed": true,
+  "eventsStoredAfterRecovery": 3,
+  "eventsInApp": 3
+ }
+}

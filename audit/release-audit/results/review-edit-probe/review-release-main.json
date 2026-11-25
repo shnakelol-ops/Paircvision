@@ -1,0 +1,115 @@
+{
+ "shotToPoint": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "TWO_POINTER",
+   "WIDE",
+   "SHOT"
+  ],
+  "requested": "POINT",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "tags": [],
+   "player": null,
+   "squadId": null
+  }
+ },
+ "turnoverToPoint": {
+  "optionsOffered": [
+   "TURNOVER_WON",
+   "TURNOVER_LOST"
+  ],
+  "requested": "POINT",
+  "selectable": false,
+  "formError": null,
+  "stored": {
+   "kind": "TURNOVER_LOST",
+   "teamSide": "FOR",
+   "tags": [
+    "HP ERROR"
+   ],
+   "player": null,
+   "squadId": null
+  }
+ },
+ "kickoutFlipWithPlayer": {
+  "optionsOffered": [
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED"
+  ],
+  "requested": "KICKOUT_CONCEDED",
+  "selectable": true,
+  "formError": "Clear the player before changing who won the restart — the player tagged was on the winning side.",
+  "stored": {
+   "kind": "KICKOUT_WON",
+   "teamSide": "FOR",
+   "tags": [
+    "CLEAN"
+   ],
+   "player": 2,
+   "squadId": "home"
+  }
+ },
+ "kickoutFlipPlayerCleared": {
+  "optionsOffered": [
+   "KICKOUT_WON",
+   "KICKOUT_CONCEDED"
+  ],
+  "requested": "KICKOUT_CONCEDED",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "KICKOUT_CONCEDED",
+   "teamSide": "FOR",
+   "tags": [
+    "CLEAN"
+   ],
+   "player": null,
+   "squadId": "away"
+  }
+ },
+ "fortyFiveToConceded": {
+  "optionsOffered": [
+   "FORTY_FIVE_WON"
+  ],
+  "requested": "FORTY_FIVE_CONCEDED",
+  "selectable": false,
+  "formError": null,
+  "stored": {
+   "kind": "FORTY_FIVE_WON",
+   "teamSide": "FOR",
+   "tags": [
+    "WON"
+   ],
+   "player": null,
+   "squadId": null
+  }
+ },
+ "editWhileStorageFull": {
+  "optionsOffered": [
+   "GOAL",
+   "POINT",
+   "TWO_POINTER",
+   "WIDE"
+  ],
+  "requested": "WIDE",
+  "selectable": true,
+  "formError": null,
+  "stored": {
+   "kind": "POINT",
+   "teamSide": "FOR",
+   "tags": [],
+   "player": null,
+   "squadId": null
+  },
+  "alerts": [
+   "Change not saved. Save failed — storage full. Back up and delete old matches."
+  ],
+  "storedUnchanged": true,
+  "reviewShowsType": null
+ }
+}

@@ -1,0 +1,117 @@
+{
+ "t1_t2_killAfterEvent": [
+  {
+   "killAfterMs": 0,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 1,
+   "lost": 1
+  },
+  {
+   "killAfterMs": 250,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 1,
+   "lost": 1
+  },
+  {
+   "killAfterMs": 500,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 1,
+   "lost": 1
+  },
+  {
+   "killAfterMs": 750,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 1,
+   "lost": 1
+  },
+  {
+   "killAfterMs": 1000,
+   "confirmationShown": "✓ Event saved",
+   "storedEvents": 1,
+   "lost": 1
+  }
+ ],
+ "t3_fiveRapidEvents": [
+  {
+   "gapBetweenEventsMs": 800,
+   "eventsInApp": 6,
+   "stored": 1,
+   "lost": 5,
+   "duplicateIds": 0
+  },
+  {
+   "gapBetweenEventsMs": 1000,
+   "eventsInApp": 6,
+   "stored": 5,
+   "lost": 1,
+   "duplicateIds": 0
+  }
+ ],
+ "t4_killAfterUndo": {
+  "eventsBeforeUndo": 2,
+  "eventsAfterUndoInApp": 1,
+  "stored": 2
+ },
+ "t5_t6_killAfterHtFt": [
+  {
+   "transition": "HT",
+   "killAfterMs": 0,
+   "clockAtPress": "02:33",
+   "storedState": "FIRST_HALF",
+   "storedClockSeconds": 31,
+   "storedEvents": 1,
+   "reopensAs": "MATCH REOPENED",
+   "reopenPausedAt": "00:31"
+  },
+  {
+   "transition": "FT",
+   "killAfterMs": 0,
+   "clockAtPress": "03:03",
+   "storedState": "SECOND_HALF",
+   "storedClockSeconds": 61,
+   "storedEvents": 2,
+   "reopensAs": "MATCH REOPENED",
+   "reopenPausedAt": "01:01"
+  }
+ ],
+ "t7_backgroundWhileRunning": {
+  "clockWhenBackgrounded": "08:03",
+  "storedEvents": 1,
+  "expectedEvents": 2,
+  "storedClockSeconds": 61,
+  "reopenPausedAt": "01:01"
+ },
+ "t7b_staleClockNoEvents": {
+  "clockWhenBackgrounded": "08:03",
+  "storedClockSeconds": 61,
+  "reopenPausedAt": "01:01"
+ },
+ "t8_backgroundWhilePaused": {
+  "clockAtPause": "01:32",
+  "clockAfterPausedWait": "01:32",
+  "storedClockSeconds": 91,
+  "storedEvents": 1,
+  "reopensAs": "MATCH REOPENED",
+  "reopenPausedAt": "01:31"
+ },
+ "t9_storageFailure": {
+  "pitchFooterOnFailure": "✓ Event saved",
+  "stripWarning": "Save failed — storage unavailable.",
+  "pitchFooterAfterRecovery": "✓ Event saved",
+  "eventsInApp": 3,
+  "storedAfterRecovery": 3
+ },
+ "t10_reloadAndResume": {
+  "clockBeforeReload": "00:53",
+  "reopened": {
+   "text": "MATCH REOPENED",
+   "pausedAt": "00:53"
+  },
+  "storedMatches": 1,
+  "storedEvents": 5,
+  "expectedEvents": 5,
+  "eventCount": 5,
+  "duplicateIds": 0,
+  "score": "Home FC 0-02 (2) v Away FC 0-00 (0)"
+ }
+}

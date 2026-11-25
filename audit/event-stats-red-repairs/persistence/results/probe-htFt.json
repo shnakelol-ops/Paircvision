@@ -1,0 +1,76 @@
+{
+ "htFt": [
+  {
+   "transition": "HT",
+   "killAfterMs": 0,
+   "screenBeforeKill": "Home FC | 0-01 | v | 0-00 | Away FC | HT | 02:33 | ↩ | HALF TIME | Home FC | 0-01 | – | 0-00 | Away FC | START SECOND HALF | Event Map | ⋯ Options",
+   "stored": {
+    "events": 1,
+    "eventCount": 1,
+    "state": "FIRST_HALF",
+    "clock": 31,
+    "score": "Home FC 0-01 (1) v Away FC 0-00 (0)"
+   }
+  },
+  {
+   "transition": "HT",
+   "killAfterMs": 600,
+   "screenBeforeKill": "Home FC | 0-01 | v | 0-00 | Away FC | HT | 02:33 | ↩ | HALF TIME | Home FC | 0-01 | – | 0-00 | Away FC | START SECOND HALF | Event Map | ⋯ Options",
+   "stored": {
+    "events": 1,
+    "eventCount": 1,
+    "state": "FIRST_HALF",
+    "clock": 31,
+    "score": "Home FC 0-01 (1) v Away FC 0-00 (0)"
+   }
+  },
+  {
+   "transition": "HT",
+   "killAfterMs": 1300,
+   "screenBeforeKill": "Home FC | 0-01 | v | 0-00 | Away FC | HT | 02:33 | ↩ | HALF TIME | Home FC | 0-01 | – | 0-00 | Away FC | START SECOND HALF | Event Map | ⋯ Options",
+   "stored": {
+    "events": 1,
+    "eventCount": 1,
+    "state": "HALF_TIME",
+    "clock": 153,
+    "score": "Home FC 0-01 (1) v Away FC 0-00 (0)"
+   }
+  },
+  {
+   "transition": "FT",
+   "killAfterMs": 0,
+   "screenBeforeKill": "Home FC | 0-02 | v | 0-00 | Away FC | FT | 03:02 | ↩ | MATCH COMPLETE | Home FC | 0-02 | – | 0-00 | Away FC | Save & Finish | Event Map | ⋯ Options",
+   "stored": {
+    "events": 2,
+    "eventCount": 2,
+    "state": "SECOND_HALF",
+    "clock": 61,
+    "score": "Home FC 0-02 (2) v Away FC 0-00 (0)"
+   }
+  },
+  {
+   "transition": "FT",
+   "killAfterMs": 600,
+   "screenBeforeKill": "Home FC | 0-02 | v | 0-00 | Away FC | FT | 03:02 | ↩ | MATCH COMPLETE | Home FC | 0-02 | – | 0-00 | Away FC | Save & Finish | Event Map | ⋯ Options",
+   "stored": {
+    "events": 2,
+    "eventCount": 2,
+    "state": "SECOND_HALF",
+    "clock": 61,
+    "score": "Home FC 0-02 (2) v Away FC 0-00 (0)"
+   }
+  },
+  {
+   "transition": "FT",
+   "killAfterMs": 1300,
+   "screenBeforeKill": "Home FC | 0-02 | v | 0-00 | Away FC | FT | 03:02 | ↩ | MATCH COMPLETE | Home FC | 0-02 | – | 0-00 | Away FC | Save & Finish | Event Map | ⋯ Options",
+   "stored": {
+    "events": 2,
+    "eventCount": 2,
+    "state": "FULL_TIME",
+    "clock": 182,
+    "score": "Home FC 0-02 (2) v Away FC 0-00 (0)"
+   }
+  }
+ ]
+}

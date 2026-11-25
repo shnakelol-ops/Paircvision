@@ -1,0 +1,107 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Half-Time Dashboard
+ 1896    38  1 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+  496   118  Kilmallock
+ 1424   118  Ballygunner
+  960   150  v
+  496   190  3-12 (21)
+ 1424   190  0-09 (9)
+  960   244  Kilmallock lead by 12
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Kilmallock
+  540   394  9/14
+  994   394  9/17
+ 1448   402  5
+   86   416  15/20
+  540   446  64%
+  994   446  53%
+   86   452  75%
+ 1448   470  Lost
+  540   490  Lost 5/14
+  994   490  Lost 8/17
+ 1448   514  3
+   86   534  Ballygunner
+   86   576  9/15
+   86   612  60%
+   46   928  Kilmallock placed balls
+  992   928  Ballygunner placed balls
+   46   956  3/3 scored
+  992   956  1/1 scored
+ 1896  1060  83 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+   54   125  15 scores from 20 shots · 75% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+  133   351  ↓
+  135   353  ↓
+   46   972  Kilmallock shots: 15 scored from 20 attempts · …
+  676   972  Kilmallock: 3 placed-ball scores
+ 1306   972  Kilmallock best zone: Attacking Centre (5)
+ 1896  1060  20 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+   54   125  9 scores from 15 shots · 60% efficiency · Most scoring zone: Attacking Left
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+   46   972  Ballygunner shots: 9 scored from 15 attempts · …
+  676   972  Ballygunner: 1 placed-ball score
+ 1306   972  Ballygunner best scoring zone: Attacking Left (4)
+ 1896  1060  15 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Kilmallock Puckouts
+ 1434   118  Ballygunner Puckouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Kilmallock Puckouts
+  992   928  Ballygunner Puckouts
+   46   956  Kilmallock retained 9/14 (64%)
+  992   956  Ballygunner retained 9/17 (53%)
+ 1896  1060  31 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Turnover & Territory
+ 1896    38  5 / 5
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner · Kilmallock attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 5 · Lost 3 (63% won)
+  676   972  Defensive Centre
+ 1306   972  Defensive Centre
+ 1896  1060  8 events

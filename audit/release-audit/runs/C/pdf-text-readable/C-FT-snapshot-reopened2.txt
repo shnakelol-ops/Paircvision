@@ -1,0 +1,280 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Full-Time Dashboard
+ 1896    38  1 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+  496   118  Kilmallock
+ 1424   118  Ballygunner
+  960   150  v
+  496   190  4-24 (36)
+ 1424   190  0-23 (23)
+  960   244  Kilmallock lead by 13
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Kilmallock
+  540   394  19/31
+  994   394  18/31
+ 1448   402  10
+   86   416  28/35
+  540   446  61%
+  994   446  58%
+   86   452  80%
+ 1448   470  Lost
+  540   490  Lost 12/31
+  994   490  Lost 13/31
+ 1448   514  10
+   86   534  Ballygunner
+   86   576  23/36
+   86   612  64%
+   46   928  Kilmallock placed balls
+  992   928  Ballygunner placed balls
+   46   956  8/8 scored
+  992   956  5/5 scored
+ 1896  1060  175 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+   54   125  28 scores from 35 shots · 80% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+  133   351  ↓
+  135   353  ↓
+   46   972  Kilmallock shots: 28 scored from 35 attempts · …
+  676   972  Kilmallock: 8 placed-ball scores
+ 1306   972  Kilmallock best zone: Attacking Centre (9)
+ 1896  1060  35 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+   54   125  23 scores from 36 shots · 64% efficiency · Most scoring zone: Attacking Left
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+   46   972  Ballygunner shots: 23 scored from 36 attempts ·…
+  676   972  Ballygunner: 5 placed-ball scores
+ 1306   972  Ballygunner best scoring zone: Attacking Left (8)
+ 1896  1060  36 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Kilmallock Puckouts
+ 1434   118  Ballygunner Puckouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Kilmallock Puckouts
+  992   928  Ballygunner Puckouts
+   46   956  Kilmallock retained 9/14 (64%)
+  992   956  Ballygunner retained 9/17 (53%)
+ 1896  1060  31 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Restart Battle – Second Half
+ 1896    38  5 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+  486    95  2nd Half
+ 1434    95  2nd Half
+  486   118  Kilmallock Puckouts
+ 1434   118  Ballygunner Puckouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Kilmallock Puckouts
+  992   928  Ballygunner Puckouts
+   46   956  Kilmallock retained 10/17 (59%)
+  992   956  Ballygunner retained 9/14 (64%)
+ 1896  1060  31 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Turnover & Territory – First Half
+ 1896    38  6 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner · Kilmallock attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 5 · Lost 3 (63% won)
+  676   972  Defensive Centre
+ 1306   972  Defensive Centre
+ 1896  1060  8 events
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Turnover & Territory – Second Half
+ 1896    38  7 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner · Kilmallock attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 5 · Lost 7 (42% won)
+  676   972  Middle Centre
+ 1306   972  Attacking Centre
+ 1896  1060  12 events
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  8 / 8
+ 1814    59  STATISTICS
+   24    62  Kilmallock v Ballygunner
+ 1896    62  PáircVision
+   38   104  FOR — KILMALLOCK
+  982   104  OPP — BALLYGUNNER
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  35
+  982   172  Attempts
+ 1884   172  36
+   38   204  Scores
+  940   204  28
+  982   204  Scores
+ 1884   204  23
+   38   236  Conversion
+  940   236  80%
+  982   236  Conversion
+ 1884   236  64%
+   38   268  Wides
+  940   268  4
+  982   268  Wides
+ 1884   268  8
+   38   300  Blocked / Saved
+  940   300  2
+  982   300  Blocked / Saved
+ 1884   300  3
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  24
+  664   400  20
+  780   400  4
+  940   400  83%
+  982   400  Open Play
+ 1488   400  26
+ 1608   400  18
+ 1724   400  8
+ 1884   400  69%
+   38   432  Free
+  544   432  7
+  664   432  7
+  780   432  0
+  940   432  100%
+  982   432  Free
+ 1488   432  4
+ 1608   432  4
+ 1724   432  0
+ 1884   432  100%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  65
+  544   496  —
+  664   496  —
+  780   496  —
+  940   496  —
+  982   496  65
+ 1488   496  1
+ 1608   496  1
+ 1724   496  0
+ 1884   496  100%
+   38   528  Penalty
+  544   528  1
+  664   528  1
+  780   528  0
+  940   528  100%
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  3
+  664   560  —
+  780   560  3
+  940   560  0%
+  982   560  Unclassified
+ 1488   560  5
+ 1608   560  —
+ 1724   560  5
+ 1884   560  0%
+   38   587  3 shots logged without a source
+  982   587  5 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  0
+  982   660  TWO_POINTER Scores
+ 1884   660  0
+   38   692  45+2 Scores
+  940   692  0
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  0
+  982   724  Total 2PT Scores
+ 1884   724  0
+   38   756  Total 2PT Pts Value
+  940   756  0
+  982   756  Total 2PT Pts Value
+ 1884   756  0
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  8
+  982   834  Placed Scored
+ 1884   834  5
+   38   866  Placed Missed
+  940   866  0
+  982   866  Placed Missed
+ 1884   866  0
+   38   898  Placed Conv %
+  940   898  100%
+  982   898  Placed Conv %
+ 1884   898  100%
+ 1896  1060  175 events

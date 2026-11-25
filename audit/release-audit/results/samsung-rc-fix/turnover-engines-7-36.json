@@ -1,0 +1,111 @@
+{
+ "chain": [
+  {
+   "at": "1:28",
+   "kind": "TURNOVER_LOST",
+   "score": false,
+   "shot": false
+  },
+  {
+   "at": "3:08",
+   "kind": "TURNOVER_LOST",
+   "score": false,
+   "shot": false
+  },
+  {
+   "at": "5:50",
+   "kind": "TURNOVER_LOST",
+   "score": false,
+   "shot": false
+  },
+  {
+   "at": "6:02",
+   "kind": "TURNOVER_WON",
+   "score": false,
+   "shot": true
+  },
+  {
+   "at": "7:26",
+   "kind": "TURNOVER_LOST",
+   "score": false,
+   "shot": false
+  },
+  {
+   "at": "7:36",
+   "kind": "TURNOVER_WON",
+   "score": false,
+   "shot": true
+  },
+  {
+   "at": "9:09",
+   "kind": "TURNOVER_LOST",
+   "score": false,
+   "shot": false
+  },
+  {
+   "at": "9:18",
+   "kind": "TURNOVER_WON",
+   "score": true,
+   "shot": true
+  }
+ ],
+ "poss": [
+  {
+   "at": "1:28",
+   "acting": "OPP",
+   "outcome": "RECYCLED",
+   "by": null
+  },
+  {
+   "at": "3:08",
+   "acting": "OPP",
+   "outcome": "RECYCLED",
+   "by": null
+  },
+  {
+   "at": "5:50",
+   "acting": "OPP",
+   "outcome": "TURNOVER",
+   "by": "TURNOVER_WON@6:02"
+  },
+  {
+   "at": "6:02",
+   "acting": "FOR",
+   "outcome": "WIDE",
+   "by": "WIDE@6:41"
+  },
+  {
+   "at": "7:26",
+   "acting": "OPP",
+   "outcome": "TURNOVER",
+   "by": "TURNOVER_WON@7:36"
+  },
+  {
+   "at": "7:36",
+   "acting": "FOR",
+   "outcome": "POINT",
+   "by": "POINT@8:15"
+  },
+  {
+   "at": "9:09",
+   "acting": "OPP",
+   "outcome": "TURNOVER",
+   "by": "TURNOVER_WON@9:18"
+  },
+  {
+   "at": "9:18",
+   "acting": "FOR",
+   "outcome": "POINT",
+   "by": "POINT@9:27"
+  }
+ ],
+ "keys": [
+  "originEvent",
+  "actingSide",
+  "outcome",
+  "outcomingEvent",
+  "secondsToOutcome",
+  "goals",
+  "points"
+ ]
+}

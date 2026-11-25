@@ -1,0 +1,240 @@
+{
+ "Point from 45 (Point → 45)": {
+  "stored": {
+   "kind": "POINT",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#4ade80×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#4ade80×1",
+   "1H Pitch Overview": "DRAWN dot:#4ade80×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "45 two-pointer (2PT → 45)": {
+  "stored": {
+   "kind": "FORTY_FIVE_TWO_POINT",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#fbbf24×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#fbbf24×1",
+   "1H Pitch Overview": "DRAWN dot:#fbbf24×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "Goal from 45 (Goal → 45)": {
+  "stored": {
+   "kind": "GOAL",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#16a34a×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#16a34a×1",
+   "1H Pitch Overview": "DRAWN dot:#16a34a×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "Wide from 45 (Wide → 45)": {
+  "stored": {
+   "kind": "WIDE",
+   "tags": [
+    "45"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN line:#000000×2,line:#ef4444×2"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#ef4444×1",
+   "1H Pitch Overview": "DRAWN dot:#ef4444×2",
+   "Free Kick Analysis": "DRAWN dot:#ef444499×1,dot:#94a3b899×1"
+  }
+ },
+ "45 award (45 → Won)": {
+  "stored": {
+   "kind": "FORTY_FIVE_WON",
+   "tags": [
+    "WON"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "not drawn"
+  },
+  "review": {
+   "Shot Pitch Maps": "not drawn",
+   "1H Pitch Overview": "DRAWN dot:#22d3ee×1",
+   "Free Kick Analysis": "not drawn"
+  }
+ },
+ "Point from free": {
+  "stored": {
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#4ade80×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#4ade80×1",
+   "1H Pitch Overview": "DRAWN dot:#4ade80×3",
+   "Free Kick Analysis": "DRAWN dot:#4ade80×1,dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "2PT from free": {
+  "stored": {
+   "kind": "TWO_POINTER",
+   "tags": [
+    "FREE"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#fbbf24×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#fbbf24×1",
+   "1H Pitch Overview": "DRAWN dot:#fbbf24×3",
+   "Free Kick Analysis": "DRAWN dot:#fbbf24×1,dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "Wide from free": {
+  "stored": {
+   "kind": "WIDE",
+   "tags": [
+    "FREE"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN line:#000000×2,line:#ef4444×2"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#ef4444×1",
+   "1H Pitch Overview": "DRAWN dot:#ef4444×2",
+   "Free Kick Analysis": "DRAWN dot:#ef4444×1,dot:#ef444499×1,dot:#94a3b899×1"
+  }
+ },
+ "Point from mark": {
+  "stored": {
+   "kind": "POINT",
+   "tags": [
+    "MARK"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#4ade80×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#4ade80×1",
+   "1H Pitch Overview": "DRAWN dot:#4ade80×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "Goal from penalty": {
+  "stored": {
+   "kind": "GOAL",
+   "tags": [
+    "PENALTY"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#16a34a×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#16a34a×1",
+   "1H Pitch Overview": "DRAWN dot:#16a34a×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "Hurling point from 65": {
+  "stored": {
+   "kind": "POINT",
+   "tags": [
+    "65"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#4ade80×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#4ade80×1",
+   "1H Pitch Overview": "DRAWN dot:#4ade80×3",
+   "Free Kick Analysis": "DRAWN dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ },
+ "Hurling wide from 65": {
+  "stored": {
+   "kind": "WIDE",
+   "tags": [
+    "65"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN line:#000000×2,line:#ef4444×2"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#ef4444×1",
+   "1H Pitch Overview": "DRAWN dot:#ef4444×2",
+   "Free Kick Analysis": "DRAWN dot:#ef444499×1,dot:#94a3b899×1"
+  }
+ },
+ "Hurling 65 award": {
+  "stored": {
+   "kind": "FORTY_FIVE_WON",
+   "tags": [
+    "WON"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "not drawn"
+  },
+  "review": {
+   "Shot Pitch Maps": "not drawn",
+   "1H Pitch Overview": "DRAWN dot:#22d3ee×1",
+   "Free Kick Analysis": "not drawn"
+  }
+ },
+ "Hurling point from free": {
+  "stored": {
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "teamSide": "FOR"
+  },
+  "snapshot": {
+   "Our Shot Profile": "DRAWN dot:#4ade80×1"
+  },
+  "review": {
+   "Shot Pitch Maps": "DRAWN dot:#4ade80×1",
+   "1H Pitch Overview": "DRAWN dot:#4ade80×3",
+   "Free Kick Analysis": "DRAWN dot:#4ade80×1,dot:#818cf899×1,dot:#7dd3fc99×1,dot:#4ade8099×1"
+  }
+ }
+}

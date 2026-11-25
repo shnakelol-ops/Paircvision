@@ -1,0 +1,9325 @@
+{
+ "matchId": "B",
+ "title": "Match B — Football: Extreme Stress Test",
+ "sport": "football",
+ "homeTeam": "Kilmacud Crokes",
+ "awayTeam": "St Brigid's",
+ "generatedBy": "audit/event-stats-ultra-test/scripts/reference.mjs (no src/ imports)",
+ "eventCounts": {
+  "total": 308,
+  "h1": 154,
+  "h2": 154
+ },
+ "FULL": {
+  "eventCount": 308,
+  "FOR": {
+   "score": {
+    "goals": 2,
+    "points": 22,
+    "total": 28,
+    "text": "2-22",
+    "scores": 21
+   },
+   "scoresCount": 21,
+   "goals": 2,
+   "pointScores": 16,
+   "twoPointScores": 3,
+   "attempts": 43,
+   "wides": 16,
+   "shotsNotScoredNotWide": 6,
+   "shotShort": 2,
+   "shotBlockSave": 3,
+   "shotPost": 1,
+   "conversion": {
+    "num": 21,
+    "den": 43,
+    "pct": 49,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 39,
+    "retained": 22,
+    "lost": 17,
+    "retention": {
+     "num": 22,
+     "den": 39,
+     "pct": 56,
+     "definition": "FOR own kickouts/puckouts retained ÷ FOR own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 37,
+    "won": 19,
+    "lost": 18,
+    "winRate": {
+     "num": 19,
+     "den": 37,
+     "pct": 51,
+     "definition": "opposition kickouts/puckouts won by FOR ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 41,
+    "den": 76,
+    "pct": 54,
+    "definition": "all restarts won by FOR ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 41,
+   "restartsLost": 35,
+   "ownRestartMethods": {
+    "retainedClean": 16,
+    "retainedBreak": 5,
+    "retainedFoul": 1,
+    "lostClean": 8,
+    "lostBreak": 7,
+    "lostFoul": 2
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 14,
+     "goals": 2,
+     "value": 19,
+     "text": "2-13 (19 pts)"
+    },
+    "placed": {
+     "scores": 7,
+     "goals": 0,
+     "value": 9,
+     "text": "0-09 (9 pts)",
+     "attempts": 10
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 2,
+     "scores": 1,
+     "misses": 1
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 27,
+     "scores": 14,
+     "misses": 13
+    },
+    "Free": {
+     "attempts": 8,
+     "scores": 6,
+     "misses": 2
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 6,
+     "scores": 0,
+     "misses": 6
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 2,
+    "from45": 1
+   },
+   "restartMethods": {
+    "wonClean": 22,
+    "wonBreak": 16,
+    "wonFoul": 3,
+    "lostClean": 15,
+    "lostBreak": 17,
+    "lostFoul": 3
+   },
+   "turnoversWon": 48,
+   "turnoversLost": 45,
+   "turnoverShare": {
+    "num": 48,
+    "den": 93,
+    "pct": 52,
+    "definition": "turnovers won by FOR ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 18,
+    "Interception": 8,
+    "HP Error": 12,
+    "KP Error": 6,
+    "Overcarried": 4
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 12,
+    "Interception": 6,
+    "HP Error": 11,
+    "KP Error": 9,
+    "Overcarried": 7
+   },
+   "freesWon": 16,
+   "freesConceded": 21,
+   "placed": {
+    "attempts": 10,
+    "scores": 7,
+    "pointsValue": 9,
+    "misses": 3,
+    "conversion": {
+     "num": 7,
+     "den": 10,
+     "pct": 70,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 2,
+   "sidelinesWon": 1,
+   "cards": {
+    "yellow": 1,
+    "sinBin": 1,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 22,
+   "turnoversWonOppHalf": 26,
+   "turnoversLostOwnHalf": 23,
+   "turnoversLostOppHalf": 22
+  },
+  "OPP": {
+   "score": {
+    "goals": 2,
+    "points": 34,
+    "total": 40,
+    "text": "2-34",
+    "scores": 31
+   },
+   "scoresCount": 31,
+   "goals": 2,
+   "pointScores": 24,
+   "twoPointScores": 5,
+   "attempts": 42,
+   "wides": 8,
+   "shotsNotScoredNotWide": 3,
+   "shotShort": 1,
+   "shotBlockSave": 1,
+   "shotPost": 1,
+   "conversion": {
+    "num": 31,
+    "den": 42,
+    "pct": 74,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 37,
+    "retained": 18,
+    "lost": 19,
+    "retention": {
+     "num": 18,
+     "den": 37,
+     "pct": 49,
+     "definition": "OPP own kickouts/puckouts retained ÷ OPP own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 39,
+    "won": 17,
+    "lost": 22,
+    "winRate": {
+     "num": 17,
+     "den": 39,
+     "pct": 44,
+     "definition": "opposition kickouts/puckouts won by OPP ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 35,
+    "den": 76,
+    "pct": 46,
+    "definition": "all restarts won by OPP ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 35,
+   "restartsLost": 41,
+   "ownRestartMethods": {
+    "retainedClean": 7,
+    "retainedBreak": 10,
+    "retainedFoul": 1,
+    "lostClean": 6,
+    "lostBreak": 11,
+    "lostFoul": 2
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 23,
+     "goals": 2,
+     "value": 29,
+     "text": "2-23 (29 pts)"
+    },
+    "placed": {
+     "scores": 8,
+     "goals": 0,
+     "value": 11,
+     "text": "0-11 (11 pts)",
+     "attempts": 11
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 1,
+     "scores": 0,
+     "misses": 1
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 28,
+     "scores": 23,
+     "misses": 5
+    },
+    "Free": {
+     "attempts": 10,
+     "scores": 8,
+     "misses": 2
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 3,
+     "scores": 0,
+     "misses": 3
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 5,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 15,
+    "wonBreak": 17,
+    "wonFoul": 3,
+    "lostClean": 22,
+    "lostBreak": 16,
+    "lostFoul": 3
+   },
+   "turnoversWon": 45,
+   "turnoversLost": 48,
+   "turnoverShare": {
+    "num": 45,
+    "den": 93,
+    "pct": 48,
+    "definition": "turnovers won by OPP ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 12,
+    "Interception": 6,
+    "HP Error": 11,
+    "KP Error": 9,
+    "Overcarried": 7
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 18,
+    "Interception": 8,
+    "HP Error": 12,
+    "KP Error": 6,
+    "Overcarried": 4
+   },
+   "freesWon": 21,
+   "freesConceded": 16,
+   "placed": {
+    "attempts": 11,
+    "scores": 8,
+    "pointsValue": 11,
+    "misses": 3,
+    "conversion": {
+     "num": 8,
+     "den": 11,
+     "pct": 73,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 1,
+   "sidelinesWon": 9,
+   "cards": {
+    "yellow": 1,
+    "sinBin": 0,
+    "red": 1
+   },
+   "turnoversWonOwnHalf": 22,
+   "turnoversWonOppHalf": 23,
+   "turnoversLostOwnHalf": 26,
+   "turnoversLostOppHalf": 22
+  },
+  "margin": -12,
+  "longestRun": {
+   "FOR": 3,
+   "OPP": 4
+  },
+  "scoringRuns": [
+   {
+    "team": "OPP",
+    "scores": 4,
+    "value": 4,
+    "startHalf": 1,
+    "startMin": 1,
+    "endHalf": 1,
+    "endMin": 6
+   },
+   {
+    "team": "OPP",
+    "scores": 2,
+    "value": 2,
+    "startHalf": 1,
+    "startMin": 12,
+    "endHalf": 1,
+    "endMin": 12
+   },
+   {
+    "team": "FOR",
+    "scores": 2,
+    "value": 4,
+    "startHalf": 1,
+    "startMin": 16,
+    "endHalf": 1,
+    "endMin": 18
+   },
+   {
+    "team": "OPP",
+    "scores": 2,
+    "value": 2,
+    "startHalf": 1,
+    "startMin": 24,
+    "endHalf": 1,
+    "endMin": 26
+   },
+   {
+    "team": "OPP",
+    "scores": 4,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 3,
+    "endHalf": 2,
+    "endMin": 6
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 8,
+    "endHalf": 2,
+    "endMin": 10
+   },
+   {
+    "team": "FOR",
+    "scores": 2,
+    "value": 2,
+    "startHalf": 2,
+    "startMin": 11,
+    "endHalf": 2,
+    "endMin": 12
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 5,
+    "startHalf": 2,
+    "startMin": 13,
+    "endHalf": 2,
+    "endMin": 15
+   },
+   {
+    "team": "FOR",
+    "scores": 2,
+    "value": 3,
+    "startHalf": 2,
+    "startMin": 15,
+    "endHalf": 2,
+    "endMin": 16
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 3,
+    "startHalf": 2,
+    "startMin": 17,
+    "endHalf": 2,
+    "endMin": 18
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 22,
+    "endHalf": 2,
+    "endMin": 24
+   },
+   {
+    "team": "FOR",
+    "scores": 3,
+    "value": 5,
+    "startHalf": 2,
+    "startMin": 25,
+    "endHalf": 2,
+    "endMin": 27
+   },
+   {
+    "team": "FOR",
+    "scores": 3,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 29,
+    "endHalf": 2,
+    "endMin": 32
+   }
+  ],
+  "chains": {
+   "FOR": {
+    "restartWonToScore": {
+     "num": 11,
+     "den": 41,
+     "pct": 27,
+     "definition": "FOR restarts won followed by a FOR score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 25,
+     "den": 41,
+     "pct": 61,
+     "definition": "FOR restarts won followed by a FOR attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 16,
+    "restartWonScoreBreakdown": {
+     "goals": 2,
+     "points": 9,
+     "twoPointers": 0,
+     "value": 15,
+     "count": 11
+    },
+    "restartLostToScoreAgainst": {
+     "num": 18,
+     "den": 35,
+     "pct": 51,
+     "definition": "restarts lost by FOR followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 2,
+     "points": 13,
+     "twoPointers": 3,
+     "value": 25,
+     "count": 18
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 5,
+     "twoPointers": 3,
+     "value": 11,
+     "count": 8
+    },
+    "avgSecsToScoreWon": 23,
+    "turnoverWonToScore": {
+     "num": 11,
+     "den": 48,
+     "pct": 23,
+     "definition": "FOR turnovers won whose next decisive FOR action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 23,
+     "den": 48,
+     "pct": 48,
+     "definition": "FOR turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 12,
+     "den": 48,
+     "pct": 25,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 9,
+     "twoPointers": 2,
+     "value": 13,
+     "count": 11
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 18,
+     "den": 45,
+     "pct": 40,
+     "definition": "turnovers lost by FOR followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 24,
+     "den": 45,
+     "pct": 53,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 2,
+     "points": 15,
+     "twoPointers": 1,
+     "value": 23,
+     "count": 18
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 2,
+      "points": 7,
+      "twoPointers": 0,
+      "value": 13,
+      "count": 9
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 9,
+      "twoPointers": 2,
+      "value": 13,
+      "count": 11
+     }
+    }
+   },
+   "OPP": {
+    "restartWonToScore": {
+     "num": 18,
+     "den": 35,
+     "pct": 51,
+     "definition": "OPP restarts won followed by a OPP score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 22,
+     "den": 35,
+     "pct": 63,
+     "definition": "OPP restarts won followed by a OPP attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 13,
+    "restartWonScoreBreakdown": {
+     "goals": 2,
+     "points": 13,
+     "twoPointers": 3,
+     "value": 25,
+     "count": 18
+    },
+    "restartLostToScoreAgainst": {
+     "num": 11,
+     "den": 41,
+     "pct": 27,
+     "definition": "restarts lost by OPP followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 2,
+     "points": 9,
+     "twoPointers": 0,
+     "value": 15,
+     "count": 11
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 6,
+     "twoPointers": 0,
+     "value": 9,
+     "count": 7
+    },
+    "avgSecsToScoreWon": 34,
+    "turnoverWonToScore": {
+     "num": 18,
+     "den": 45,
+     "pct": 40,
+     "definition": "OPP turnovers won whose next decisive OPP action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 24,
+     "den": 45,
+     "pct": 53,
+     "definition": "OPP turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 6,
+     "den": 45,
+     "pct": 13,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 2,
+     "points": 15,
+     "twoPointers": 1,
+     "value": 23,
+     "count": 18
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 11,
+     "den": 48,
+     "pct": 23,
+     "definition": "turnovers lost by OPP followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 23,
+     "den": 48,
+     "pct": 48,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 9,
+     "twoPointers": 2,
+     "value": 13,
+     "count": 11
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 6,
+      "twoPointers": 3,
+      "value": 12,
+      "count": 9
+     },
+     "turnoverOrigin": {
+      "goals": 2,
+      "points": 15,
+      "twoPointers": 1,
+      "value": 23,
+      "count": 18
+     }
+    }
+   },
+   "turnoverDetail": [
+    {
+     "id": "B-002",
+     "winner": "OPP",
+     "next": "B-003",
+     "score": false
+    },
+    {
+     "id": "B-004",
+     "winner": "OPP",
+     "next": "B-006",
+     "score": false
+    },
+    {
+     "id": "B-006",
+     "winner": "FOR",
+     "next": "B-007",
+     "score": false
+    },
+    {
+     "id": "B-007",
+     "winner": "OPP",
+     "next": "B-008",
+     "score": true
+    },
+    {
+     "id": "B-012",
+     "winner": "OPP",
+     "next": "B-013",
+     "score": false
+    },
+    {
+     "id": "B-013",
+     "winner": "FOR",
+     "next": "B-014",
+     "score": false
+    },
+    {
+     "id": "B-014",
+     "winner": "OPP",
+     "next": "B-015",
+     "score": false
+    },
+    {
+     "id": "B-015",
+     "winner": "FOR",
+     "next": "B-016",
+     "score": false
+    },
+    {
+     "id": "B-020",
+     "winner": "FOR",
+     "next": "B-021",
+     "score": false
+    },
+    {
+     "id": "B-021",
+     "winner": "OPP",
+     "next": "B-023",
+     "score": true
+    },
+    {
+     "id": "B-025",
+     "winner": "OPP",
+     "next": "B-026",
+     "score": true
+    },
+    {
+     "id": "B-028",
+     "winner": "OPP",
+     "next": "B-029",
+     "score": false
+    },
+    {
+     "id": "B-029",
+     "winner": "FOR",
+     "next": "B-030",
+     "score": false
+    },
+    {
+     "id": "B-030",
+     "winner": "OPP",
+     "next": "B-031",
+     "score": true
+    },
+    {
+     "id": "B-035",
+     "winner": "OPP",
+     "next": "B-036",
+     "score": false
+    },
+    {
+     "id": "B-042",
+     "winner": "FOR",
+     "next": "B-043",
+     "score": false
+    },
+    {
+     "id": "B-043",
+     "winner": "OPP",
+     "next": "B-044",
+     "score": true
+    },
+    {
+     "id": "B-049",
+     "winner": "FOR",
+     "next": "B-050",
+     "score": false
+    },
+    {
+     "id": "B-050",
+     "winner": "OPP",
+     "next": "B-051",
+     "score": false
+    },
+    {
+     "id": "B-051",
+     "winner": "FOR",
+     "next": "B-052",
+     "score": false
+    },
+    {
+     "id": "B-052",
+     "winner": "OPP",
+     "next": "B-054",
+     "score": true
+    },
+    {
+     "id": "B-056",
+     "winner": "OPP",
+     "next": "B-057",
+     "score": true
+    },
+    {
+     "id": "B-059",
+     "winner": "OPP",
+     "next": "B-062",
+     "score": false
+    },
+    {
+     "id": "B-064",
+     "winner": "OPP",
+     "next": "B-066",
+     "score": false
+    },
+    {
+     "id": "B-066",
+     "winner": "FOR",
+     "next": "B-067",
+     "score": false
+    },
+    {
+     "id": "B-069",
+     "winner": "OPP",
+     "next": "B-070",
+     "score": false
+    },
+    {
+     "id": "B-070",
+     "winner": "FOR",
+     "next": "B-071",
+     "score": false
+    },
+    {
+     "id": "B-072",
+     "winner": "FOR",
+     "next": "B-073",
+     "score": true
+    },
+    {
+     "id": "B-075",
+     "winner": "FOR",
+     "next": "B-076",
+     "score": false
+    },
+    {
+     "id": "B-082",
+     "winner": "FOR",
+     "next": "B-083",
+     "score": false
+    },
+    {
+     "id": "B-083",
+     "winner": "OPP",
+     "next": "B-084",
+     "score": true
+    },
+    {
+     "id": "B-086",
+     "winner": "OPP",
+     "next": "B-087",
+     "score": false
+    },
+    {
+     "id": "B-087",
+     "winner": "FOR",
+     "next": "B-088",
+     "score": false
+    },
+    {
+     "id": "B-088",
+     "winner": "OPP",
+     "next": "B-090",
+     "score": false
+    },
+    {
+     "id": "B-090",
+     "winner": "FOR",
+     "next": "B-091",
+     "score": false
+    },
+    {
+     "id": "B-091",
+     "winner": "OPP",
+     "next": "B-092",
+     "score": false
+    },
+    {
+     "id": "B-092",
+     "winner": "FOR",
+     "next": "B-094",
+     "score": false
+    },
+    {
+     "id": "B-096",
+     "winner": "FOR",
+     "next": "B-099",
+     "score": false
+    },
+    {
+     "id": "B-099",
+     "winner": "FOR",
+     "next": "B-100",
+     "score": true
+    },
+    {
+     "id": "B-102",
+     "winner": "FOR",
+     "next": "B-103",
+     "score": false
+    },
+    {
+     "id": "B-105",
+     "winner": "OPP",
+     "next": "B-106",
+     "score": false
+    },
+    {
+     "id": "B-106",
+     "winner": "FOR",
+     "next": "B-107",
+     "score": false
+    },
+    {
+     "id": "B-109",
+     "winner": "FOR",
+     "next": "B-110",
+     "score": false
+    },
+    {
+     "id": "B-110",
+     "winner": "OPP",
+     "next": "B-111",
+     "score": false
+    },
+    {
+     "id": "B-111",
+     "winner": "FOR",
+     "next": "B-112",
+     "score": false
+    },
+    {
+     "id": "B-112",
+     "winner": "OPP",
+     "next": "B-114",
+     "score": true
+    },
+    {
+     "id": "B-116",
+     "winner": "OPP",
+     "next": "B-117",
+     "score": false
+    },
+    {
+     "id": "B-117",
+     "winner": "FOR",
+     "next": "B-118",
+     "score": false
+    },
+    {
+     "id": "B-118",
+     "winner": "OPP",
+     "next": "B-119",
+     "score": false
+    },
+    {
+     "id": "B-119",
+     "winner": "FOR",
+     "next": "B-120",
+     "score": false
+    },
+    {
+     "id": "B-123",
+     "winner": "FOR",
+     "next": "B-124",
+     "score": false
+    },
+    {
+     "id": "B-124",
+     "winner": "OPP",
+     "next": "B-125",
+     "score": true
+    },
+    {
+     "id": "B-127",
+     "winner": "FOR",
+     "next": "B-128",
+     "score": true
+    },
+    {
+     "id": "B-130",
+     "winner": "OPP",
+     "next": "B-131",
+     "score": false
+    },
+    {
+     "id": "B-131",
+     "winner": "FOR",
+     "next": "B-132",
+     "score": false
+    },
+    {
+     "id": "B-132",
+     "winner": "OPP",
+     "next": "B-133",
+     "score": false
+    },
+    {
+     "id": "B-135",
+     "winner": "FOR",
+     "next": "B-139",
+     "score": false
+    },
+    {
+     "id": "B-139",
+     "winner": "OPP",
+     "next": "B-141",
+     "score": false
+    },
+    {
+     "id": "B-143",
+     "winner": "FOR",
+     "next": "B-145",
+     "score": false
+    },
+    {
+     "id": "B-150",
+     "winner": "OPP",
+     "next": "B-151",
+     "score": false
+    },
+    {
+     "id": "B-155",
+     "winner": "OPP",
+     "next": "B-156",
+     "score": false
+    },
+    {
+     "id": "B-156",
+     "winner": "FOR",
+     "next": "B-157",
+     "score": false
+    },
+    {
+     "id": "B-161",
+     "winner": "FOR",
+     "next": "B-163",
+     "score": true
+    },
+    {
+     "id": "B-167",
+     "winner": "FOR",
+     "next": "B-168",
+     "score": false
+    },
+    {
+     "id": "B-168",
+     "winner": "OPP",
+     "next": "B-173",
+     "score": true
+    },
+    {
+     "id": "B-177",
+     "winner": "OPP",
+     "next": "B-178",
+     "score": true
+    },
+    {
+     "id": "B-180",
+     "winner": "FOR",
+     "next": "B-181",
+     "score": false
+    },
+    {
+     "id": "B-181",
+     "winner": "OPP",
+     "next": "B-183",
+     "score": true
+    },
+    {
+     "id": "B-185",
+     "winner": "FOR",
+     "next": "B-186",
+     "score": true
+    },
+    {
+     "id": "B-197",
+     "winner": "FOR",
+     "next": "B-198",
+     "score": false
+    },
+    {
+     "id": "B-198",
+     "winner": "OPP",
+     "next": "B-200",
+     "score": true
+    },
+    {
+     "id": "B-204",
+     "winner": "FOR",
+     "next": "B-205",
+     "score": true
+    },
+    {
+     "id": "B-211",
+     "winner": "OPP",
+     "next": "B-212",
+     "score": true
+    },
+    {
+     "id": "B-214",
+     "winner": "FOR",
+     "next": "B-215",
+     "score": false
+    },
+    {
+     "id": "B-215",
+     "winner": "OPP",
+     "next": "B-217",
+     "score": true
+    },
+    {
+     "id": "B-224",
+     "winner": "FOR",
+     "next": "B-226",
+     "score": true
+    },
+    {
+     "id": "B-230",
+     "winner": "OPP",
+     "next": "B-231",
+     "score": false
+    },
+    {
+     "id": "B-231",
+     "winner": "FOR",
+     "next": null,
+     "score": false
+    },
+    {
+     "id": "B-239",
+     "winner": "FOR",
+     "next": "B-240",
+     "score": true
+    },
+    {
+     "id": "B-246",
+     "winner": "FOR",
+     "next": "B-247",
+     "score": false
+    },
+    {
+     "id": "B-247",
+     "winner": "OPP",
+     "next": "B-248",
+     "score": true
+    },
+    {
+     "id": "B-250",
+     "winner": "FOR",
+     "next": "B-251",
+     "score": false
+    },
+    {
+     "id": "B-251",
+     "winner": "OPP",
+     "next": "B-252",
+     "score": false
+    },
+    {
+     "id": "B-252",
+     "winner": "FOR",
+     "next": "B-253",
+     "score": true
+    },
+    {
+     "id": "B-261",
+     "winner": "OPP",
+     "next": "B-264",
+     "score": true
+    },
+    {
+     "id": "B-268",
+     "winner": "OPP",
+     "next": "B-269",
+     "score": false
+    },
+    {
+     "id": "B-269",
+     "winner": "FOR",
+     "next": "B-270",
+     "score": false
+    },
+    {
+     "id": "B-274",
+     "winner": "OPP",
+     "next": "B-275",
+     "score": false
+    },
+    {
+     "id": "B-275",
+     "winner": "FOR",
+     "next": "B-276",
+     "score": true
+    },
+    {
+     "id": "B-286",
+     "winner": "FOR",
+     "next": "B-288",
+     "score": true
+    },
+    {
+     "id": "B-296",
+     "winner": "FOR",
+     "next": "B-297",
+     "score": false
+    },
+    {
+     "id": "B-297",
+     "winner": "OPP",
+     "next": "B-298",
+     "score": false
+    },
+    {
+     "id": "B-298",
+     "winner": "FOR",
+     "next": "B-300",
+     "score": false
+    }
+   ]
+  },
+  "origins": {
+   "rows": {
+    "FROM_PLAY": {
+     "FOR": 0,
+     "OPP": 2,
+     "FORn": 0,
+     "OPPn": 2
+    },
+    "PLACED": {
+     "FOR": 9,
+     "OPP": 11,
+     "FORn": 7,
+     "OPPn": 8
+    },
+    "RESTART": {
+     "FOR": 10,
+     "OPP": 7,
+     "FORn": 6,
+     "OPPn": 6
+    },
+    "TURNOVER": {
+     "FOR": 9,
+     "OPP": 20,
+     "FORn": 8,
+     "OPPn": 15
+    },
+    "UNATTRIBUTED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    }
+   },
+   "perScore": [
+    {
+     "id": "B-008",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-023",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-026",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-031",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-040",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-044",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-047",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-054",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-057",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-073",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-080",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-084",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-100",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-114",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-125",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-128",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-137",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-147",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-159",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-163",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-173",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-175",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-178",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-183",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-186",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-190",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-200",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-202",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-205",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-209",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-212",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-217",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-220",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-222",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-226",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-228",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-233",
+     "team": "OPP",
+     "row": "FROM_PLAY"
+    },
+    {
+     "id": "B-237",
+     "team": "OPP",
+     "row": "FROM_PLAY"
+    },
+    {
+     "id": "B-240",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-248",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-253",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-255",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-259",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-264",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-272",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-276",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-280",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-284",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-288",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-291",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-302",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-305",
+     "team": "OPP",
+     "row": "PLACED"
+    }
+   ]
+  },
+  "possession": {
+   "restartWon": {
+    "count": 41,
+    "goals": 2,
+    "points": 3,
+    "wides": 6,
+    "shots": 11,
+    "scores": 5
+   },
+   "restartLost": {
+    "count": 35,
+    "goals": 0,
+    "points": 5,
+    "wides": 4,
+    "shots": 9,
+    "scores": 5
+   },
+   "turnoverWon": {
+    "count": 48,
+    "goals": 0,
+    "points": 9,
+    "wides": 9,
+    "shots": 18,
+    "scores": 9
+   },
+   "turnoverLost": {
+    "count": 45,
+    "goals": 2,
+    "points": 8,
+    "wides": 4,
+    "shots": 14,
+    "scores": 10
+   },
+   "freeWon": {
+    "count": 16,
+    "goals": 0,
+    "points": 9,
+    "wides": 2,
+    "shots": 11,
+    "scores": 9
+   },
+   "freeConceded": {
+    "count": 21,
+    "goals": 0,
+    "points": 13,
+    "wides": 2,
+    "shots": 15,
+    "scores": 13
+   }
+  }
+ },
+ "H1": {
+  "eventCount": 154,
+  "FOR": {
+   "score": {
+    "goals": 1,
+    "points": 6,
+    "total": 9,
+    "text": "1-06",
+    "scores": 7
+   },
+   "scoresCount": 7,
+   "goals": 1,
+   "pointScores": 6,
+   "twoPointScores": 0,
+   "attempts": 18,
+   "wides": 9,
+   "shotsNotScoredNotWide": 2,
+   "shotShort": 0,
+   "shotBlockSave": 1,
+   "shotPost": 1,
+   "conversion": {
+    "num": 7,
+    "den": 18,
+    "pct": 39,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 18,
+    "retained": 14,
+    "lost": 4,
+    "retention": {
+     "num": 14,
+     "den": 18,
+     "pct": 78,
+     "definition": "FOR own kickouts/puckouts retained ÷ FOR own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 16,
+    "won": 6,
+    "lost": 10,
+    "winRate": {
+     "num": 6,
+     "den": 16,
+     "pct": 38,
+     "definition": "opposition kickouts/puckouts won by FOR ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 20,
+    "den": 34,
+    "pct": 59,
+    "definition": "all restarts won by FOR ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 20,
+   "restartsLost": 14,
+   "ownRestartMethods": {
+    "retainedClean": 10,
+    "retainedBreak": 3,
+    "retainedFoul": 1,
+    "lostClean": 3,
+    "lostBreak": 1,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 5,
+     "goals": 1,
+     "value": 7,
+     "text": "1-04 (7 pts)"
+    },
+    "placed": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2,
+     "text": "0-02 (2 pts)",
+     "attempts": 3
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 13,
+     "scores": 5,
+     "misses": 8
+    },
+    "Free": {
+     "attempts": 3,
+     "scores": 2,
+     "misses": 1
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 2,
+     "scores": 0,
+     "misses": 2
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 12,
+    "wonBreak": 7,
+    "wonFoul": 1,
+    "lostClean": 5,
+    "lostBreak": 9,
+    "lostFoul": 0
+   },
+   "turnoversWon": 29,
+   "turnoversLost": 31,
+   "turnoverShare": {
+    "num": 29,
+    "den": 60,
+    "pct": 48,
+    "definition": "turnovers won by FOR ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 11,
+    "Interception": 6,
+    "HP Error": 7,
+    "KP Error": 3,
+    "Overcarried": 2
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 9,
+    "Interception": 5,
+    "HP Error": 7,
+    "KP Error": 5,
+    "Overcarried": 5
+   },
+   "freesWon": 6,
+   "freesConceded": 9,
+   "placed": {
+    "attempts": 3,
+    "scores": 2,
+    "pointsValue": 2,
+    "misses": 1,
+    "conversion": {
+     "num": 2,
+     "den": 3,
+     "pct": 67,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 0,
+   "sidelinesWon": 1,
+   "cards": {
+    "yellow": 1,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 11,
+   "turnoversWonOppHalf": 18,
+   "turnoversLostOwnHalf": 14,
+   "turnoversLostOppHalf": 17
+  },
+  "OPP": {
+   "score": {
+    "goals": 1,
+    "points": 10,
+    "total": 13,
+    "text": "1-10",
+    "scores": 11
+   },
+   "scoresCount": 11,
+   "goals": 1,
+   "pointScores": 10,
+   "twoPointScores": 0,
+   "attempts": 21,
+   "wides": 7,
+   "shotsNotScoredNotWide": 3,
+   "shotShort": 1,
+   "shotBlockSave": 1,
+   "shotPost": 1,
+   "conversion": {
+    "num": 11,
+    "den": 21,
+    "pct": 52,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 16,
+    "retained": 10,
+    "lost": 6,
+    "retention": {
+     "num": 10,
+     "den": 16,
+     "pct": 63,
+     "definition": "OPP own kickouts/puckouts retained ÷ OPP own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 18,
+    "won": 4,
+    "lost": 14,
+    "winRate": {
+     "num": 4,
+     "den": 18,
+     "pct": 22,
+     "definition": "opposition kickouts/puckouts won by OPP ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 14,
+    "den": 34,
+    "pct": 41,
+    "definition": "all restarts won by OPP ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 14,
+   "restartsLost": 20,
+   "ownRestartMethods": {
+    "retainedClean": 2,
+    "retainedBreak": 8,
+    "retainedFoul": 0,
+    "lostClean": 2,
+    "lostBreak": 4,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 9,
+     "goals": 1,
+     "value": 11,
+     "text": "1-08 (11 pts)"
+    },
+    "placed": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2,
+     "text": "0-02 (2 pts)",
+     "attempts": 5
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 1,
+     "scores": 0,
+     "misses": 1
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 13,
+     "scores": 9,
+     "misses": 4
+    },
+    "Free": {
+     "attempts": 4,
+     "scores": 2,
+     "misses": 2
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 3,
+     "scores": 0,
+     "misses": 3
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 5,
+    "wonBreak": 9,
+    "wonFoul": 0,
+    "lostClean": 12,
+    "lostBreak": 7,
+    "lostFoul": 1
+   },
+   "turnoversWon": 31,
+   "turnoversLost": 29,
+   "turnoverShare": {
+    "num": 31,
+    "den": 60,
+    "pct": 52,
+    "definition": "turnovers won by OPP ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 9,
+    "Interception": 5,
+    "HP Error": 7,
+    "KP Error": 5,
+    "Overcarried": 5
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 11,
+    "Interception": 6,
+    "HP Error": 7,
+    "KP Error": 3,
+    "Overcarried": 2
+   },
+   "freesWon": 9,
+   "freesConceded": 6,
+   "placed": {
+    "attempts": 5,
+    "scores": 2,
+    "pointsValue": 2,
+    "misses": 3,
+    "conversion": {
+     "num": 2,
+     "den": 5,
+     "pct": 40,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 1,
+   "sidelinesWon": 2,
+   "cards": {
+    "yellow": 1,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 17,
+   "turnoversWonOppHalf": 14,
+   "turnoversLostOwnHalf": 18,
+   "turnoversLostOppHalf": 11
+  },
+  "margin": -4,
+  "longestRun": {
+   "FOR": 2,
+   "OPP": 4
+  },
+  "scoringRuns": [
+   {
+    "team": "OPP",
+    "scores": 4,
+    "value": 4,
+    "startHalf": 1,
+    "startMin": 1,
+    "endHalf": 1,
+    "endMin": 6
+   },
+   {
+    "team": "OPP",
+    "scores": 2,
+    "value": 2,
+    "startHalf": 1,
+    "startMin": 12,
+    "endHalf": 1,
+    "endMin": 12
+   },
+   {
+    "team": "FOR",
+    "scores": 2,
+    "value": 4,
+    "startHalf": 1,
+    "startMin": 16,
+    "endHalf": 1,
+    "endMin": 18
+   },
+   {
+    "team": "OPP",
+    "scores": 2,
+    "value": 2,
+    "startHalf": 1,
+    "startMin": 24,
+    "endHalf": 1,
+    "endMin": 26
+   }
+  ],
+  "chains": {
+   "FOR": {
+    "restartWonToScore": {
+     "num": 5,
+     "den": 20,
+     "pct": 25,
+     "definition": "FOR restarts won followed by a FOR score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 11,
+     "den": 20,
+     "pct": 55,
+     "definition": "FOR restarts won followed by a FOR attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 9,
+    "restartWonScoreBreakdown": {
+     "goals": 1,
+     "points": 4,
+     "twoPointers": 0,
+     "value": 7,
+     "count": 5
+    },
+    "restartLostToScoreAgainst": {
+     "num": 6,
+     "den": 14,
+     "pct": 43,
+     "definition": "restarts lost by FOR followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 5,
+     "twoPointers": 0,
+     "value": 8,
+     "count": 6
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 1,
+     "count": 1
+    },
+    "avgSecsToScoreWon": 29,
+    "turnoverWonToScore": {
+     "num": 3,
+     "den": 29,
+     "pct": 10,
+     "definition": "FOR turnovers won whose next decisive FOR action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 12,
+     "den": 29,
+     "pct": 41,
+     "definition": "FOR turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 9,
+     "den": 29,
+     "pct": 31,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 3,
+     "twoPointers": 0,
+     "value": 3,
+     "count": 3
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 10,
+     "den": 31,
+     "pct": 32,
+     "definition": "turnovers lost by FOR followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 16,
+     "den": 31,
+     "pct": 52,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 1,
+     "points": 9,
+     "twoPointers": 0,
+     "value": 12,
+     "count": 10
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 1,
+      "points": 3,
+      "twoPointers": 0,
+      "value": 6,
+      "count": 4
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 3,
+      "twoPointers": 0,
+      "value": 3,
+      "count": 3
+     }
+    }
+   },
+   "OPP": {
+    "restartWonToScore": {
+     "num": 6,
+     "den": 14,
+     "pct": 43,
+     "definition": "OPP restarts won followed by a OPP score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 9,
+     "den": 14,
+     "pct": 64,
+     "definition": "OPP restarts won followed by a OPP attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 5,
+    "restartWonScoreBreakdown": {
+     "goals": 1,
+     "points": 5,
+     "twoPointers": 0,
+     "value": 8,
+     "count": 6
+    },
+    "restartLostToScoreAgainst": {
+     "num": 5,
+     "den": 20,
+     "pct": 25,
+     "definition": "restarts lost by OPP followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 4,
+     "twoPointers": 0,
+     "value": 7,
+     "count": 5
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 2,
+     "twoPointers": 0,
+     "value": 2,
+     "count": 2
+    },
+    "avgSecsToScoreWon": 43,
+    "turnoverWonToScore": {
+     "num": 10,
+     "den": 31,
+     "pct": 32,
+     "definition": "OPP turnovers won whose next decisive OPP action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 16,
+     "den": 31,
+     "pct": 52,
+     "definition": "OPP turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 6,
+     "den": 31,
+     "pct": 19,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 1,
+     "points": 9,
+     "twoPointers": 0,
+     "value": 12,
+     "count": 10
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 3,
+     "den": 29,
+     "pct": 10,
+     "definition": "turnovers lost by OPP followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 12,
+     "den": 29,
+     "pct": 41,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 3,
+     "twoPointers": 0,
+     "value": 3,
+     "count": 3
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 1,
+      "twoPointers": 0,
+      "value": 1,
+      "count": 1
+     },
+     "turnoverOrigin": {
+      "goals": 1,
+      "points": 9,
+      "twoPointers": 0,
+      "value": 12,
+      "count": 10
+     }
+    }
+   },
+   "turnoverDetail": [
+    {
+     "id": "B-002",
+     "winner": "OPP",
+     "next": "B-003",
+     "score": false
+    },
+    {
+     "id": "B-004",
+     "winner": "OPP",
+     "next": "B-006",
+     "score": false
+    },
+    {
+     "id": "B-006",
+     "winner": "FOR",
+     "next": "B-007",
+     "score": false
+    },
+    {
+     "id": "B-007",
+     "winner": "OPP",
+     "next": "B-008",
+     "score": true
+    },
+    {
+     "id": "B-012",
+     "winner": "OPP",
+     "next": "B-013",
+     "score": false
+    },
+    {
+     "id": "B-013",
+     "winner": "FOR",
+     "next": "B-014",
+     "score": false
+    },
+    {
+     "id": "B-014",
+     "winner": "OPP",
+     "next": "B-015",
+     "score": false
+    },
+    {
+     "id": "B-015",
+     "winner": "FOR",
+     "next": "B-016",
+     "score": false
+    },
+    {
+     "id": "B-020",
+     "winner": "FOR",
+     "next": "B-021",
+     "score": false
+    },
+    {
+     "id": "B-021",
+     "winner": "OPP",
+     "next": "B-023",
+     "score": true
+    },
+    {
+     "id": "B-025",
+     "winner": "OPP",
+     "next": "B-026",
+     "score": true
+    },
+    {
+     "id": "B-028",
+     "winner": "OPP",
+     "next": "B-029",
+     "score": false
+    },
+    {
+     "id": "B-029",
+     "winner": "FOR",
+     "next": "B-030",
+     "score": false
+    },
+    {
+     "id": "B-030",
+     "winner": "OPP",
+     "next": "B-031",
+     "score": true
+    },
+    {
+     "id": "B-035",
+     "winner": "OPP",
+     "next": "B-036",
+     "score": false
+    },
+    {
+     "id": "B-042",
+     "winner": "FOR",
+     "next": "B-043",
+     "score": false
+    },
+    {
+     "id": "B-043",
+     "winner": "OPP",
+     "next": "B-044",
+     "score": true
+    },
+    {
+     "id": "B-049",
+     "winner": "FOR",
+     "next": "B-050",
+     "score": false
+    },
+    {
+     "id": "B-050",
+     "winner": "OPP",
+     "next": "B-051",
+     "score": false
+    },
+    {
+     "id": "B-051",
+     "winner": "FOR",
+     "next": "B-052",
+     "score": false
+    },
+    {
+     "id": "B-052",
+     "winner": "OPP",
+     "next": "B-054",
+     "score": true
+    },
+    {
+     "id": "B-056",
+     "winner": "OPP",
+     "next": "B-057",
+     "score": true
+    },
+    {
+     "id": "B-059",
+     "winner": "OPP",
+     "next": "B-062",
+     "score": false
+    },
+    {
+     "id": "B-064",
+     "winner": "OPP",
+     "next": "B-066",
+     "score": false
+    },
+    {
+     "id": "B-066",
+     "winner": "FOR",
+     "next": "B-067",
+     "score": false
+    },
+    {
+     "id": "B-069",
+     "winner": "OPP",
+     "next": "B-070",
+     "score": false
+    },
+    {
+     "id": "B-070",
+     "winner": "FOR",
+     "next": "B-071",
+     "score": false
+    },
+    {
+     "id": "B-072",
+     "winner": "FOR",
+     "next": "B-073",
+     "score": true
+    },
+    {
+     "id": "B-075",
+     "winner": "FOR",
+     "next": "B-076",
+     "score": false
+    },
+    {
+     "id": "B-082",
+     "winner": "FOR",
+     "next": "B-083",
+     "score": false
+    },
+    {
+     "id": "B-083",
+     "winner": "OPP",
+     "next": "B-084",
+     "score": true
+    },
+    {
+     "id": "B-086",
+     "winner": "OPP",
+     "next": "B-087",
+     "score": false
+    },
+    {
+     "id": "B-087",
+     "winner": "FOR",
+     "next": "B-088",
+     "score": false
+    },
+    {
+     "id": "B-088",
+     "winner": "OPP",
+     "next": "B-090",
+     "score": false
+    },
+    {
+     "id": "B-090",
+     "winner": "FOR",
+     "next": "B-091",
+     "score": false
+    },
+    {
+     "id": "B-091",
+     "winner": "OPP",
+     "next": "B-092",
+     "score": false
+    },
+    {
+     "id": "B-092",
+     "winner": "FOR",
+     "next": "B-094",
+     "score": false
+    },
+    {
+     "id": "B-096",
+     "winner": "FOR",
+     "next": "B-099",
+     "score": false
+    },
+    {
+     "id": "B-099",
+     "winner": "FOR",
+     "next": "B-100",
+     "score": true
+    },
+    {
+     "id": "B-102",
+     "winner": "FOR",
+     "next": "B-103",
+     "score": false
+    },
+    {
+     "id": "B-105",
+     "winner": "OPP",
+     "next": "B-106",
+     "score": false
+    },
+    {
+     "id": "B-106",
+     "winner": "FOR",
+     "next": "B-107",
+     "score": false
+    },
+    {
+     "id": "B-109",
+     "winner": "FOR",
+     "next": "B-110",
+     "score": false
+    },
+    {
+     "id": "B-110",
+     "winner": "OPP",
+     "next": "B-111",
+     "score": false
+    },
+    {
+     "id": "B-111",
+     "winner": "FOR",
+     "next": "B-112",
+     "score": false
+    },
+    {
+     "id": "B-112",
+     "winner": "OPP",
+     "next": "B-114",
+     "score": true
+    },
+    {
+     "id": "B-116",
+     "winner": "OPP",
+     "next": "B-117",
+     "score": false
+    },
+    {
+     "id": "B-117",
+     "winner": "FOR",
+     "next": "B-118",
+     "score": false
+    },
+    {
+     "id": "B-118",
+     "winner": "OPP",
+     "next": "B-119",
+     "score": false
+    },
+    {
+     "id": "B-119",
+     "winner": "FOR",
+     "next": "B-120",
+     "score": false
+    },
+    {
+     "id": "B-123",
+     "winner": "FOR",
+     "next": "B-124",
+     "score": false
+    },
+    {
+     "id": "B-124",
+     "winner": "OPP",
+     "next": "B-125",
+     "score": true
+    },
+    {
+     "id": "B-127",
+     "winner": "FOR",
+     "next": "B-128",
+     "score": true
+    },
+    {
+     "id": "B-130",
+     "winner": "OPP",
+     "next": "B-131",
+     "score": false
+    },
+    {
+     "id": "B-131",
+     "winner": "FOR",
+     "next": "B-132",
+     "score": false
+    },
+    {
+     "id": "B-132",
+     "winner": "OPP",
+     "next": "B-133",
+     "score": false
+    },
+    {
+     "id": "B-135",
+     "winner": "FOR",
+     "next": "B-139",
+     "score": false
+    },
+    {
+     "id": "B-139",
+     "winner": "OPP",
+     "next": "B-141",
+     "score": false
+    },
+    {
+     "id": "B-143",
+     "winner": "FOR",
+     "next": "B-145",
+     "score": false
+    },
+    {
+     "id": "B-150",
+     "winner": "OPP",
+     "next": "B-151",
+     "score": false
+    }
+   ]
+  },
+  "origins": {
+   "rows": {
+    "FROM_PLAY": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    },
+    "PLACED": {
+     "FOR": 2,
+     "OPP": 2,
+     "FORn": 2,
+     "OPPn": 2
+    },
+    "RESTART": {
+     "FOR": 4,
+     "OPP": 1,
+     "FORn": 2,
+     "OPPn": 1
+    },
+    "TURNOVER": {
+     "FOR": 3,
+     "OPP": 10,
+     "FORn": 3,
+     "OPPn": 8
+    },
+    "UNATTRIBUTED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    }
+   },
+   "perScore": [
+    {
+     "id": "B-008",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-023",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-026",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-031",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-040",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-044",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-047",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-054",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-057",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-073",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-080",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-084",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-100",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-114",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-125",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-128",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-137",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-147",
+     "team": "FOR",
+     "row": "RESTART"
+    }
+   ]
+  },
+  "possession": {
+   "restartWon": {
+    "count": 20,
+    "goals": 1,
+    "points": 1,
+    "wides": 1,
+    "shots": 3,
+    "scores": 2
+   },
+   "restartLost": {
+    "count": 14,
+    "goals": 0,
+    "points": 0,
+    "wides": 3,
+    "shots": 3,
+    "scores": 0
+   },
+   "turnoverWon": {
+    "count": 29,
+    "goals": 0,
+    "points": 4,
+    "wides": 7,
+    "shots": 11,
+    "scores": 4
+   },
+   "turnoverLost": {
+    "count": 31,
+    "goals": 1,
+    "points": 6,
+    "wides": 4,
+    "shots": 11,
+    "scores": 7
+   },
+   "freeWon": {
+    "count": 6,
+    "goals": 0,
+    "points": 3,
+    "wides": 1,
+    "shots": 4,
+    "scores": 3
+   },
+   "freeConceded": {
+    "count": 9,
+    "goals": 0,
+    "points": 3,
+    "wides": 2,
+    "shots": 5,
+    "scores": 3
+   }
+  }
+ },
+ "H2": {
+  "eventCount": 154,
+  "FOR": {
+   "score": {
+    "goals": 1,
+    "points": 16,
+    "total": 19,
+    "text": "1-16",
+    "scores": 14
+   },
+   "scoresCount": 14,
+   "goals": 1,
+   "pointScores": 10,
+   "twoPointScores": 3,
+   "attempts": 25,
+   "wides": 7,
+   "shotsNotScoredNotWide": 4,
+   "shotShort": 2,
+   "shotBlockSave": 2,
+   "shotPost": 0,
+   "conversion": {
+    "num": 14,
+    "den": 25,
+    "pct": 56,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 21,
+    "retained": 8,
+    "lost": 13,
+    "retention": {
+     "num": 8,
+     "den": 21,
+     "pct": 38,
+     "definition": "FOR own kickouts/puckouts retained ÷ FOR own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 21,
+    "won": 13,
+    "lost": 8,
+    "winRate": {
+     "num": 13,
+     "den": 21,
+     "pct": 62,
+     "definition": "opposition kickouts/puckouts won by FOR ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 21,
+    "den": 42,
+    "pct": 50,
+    "definition": "all restarts won by FOR ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 21,
+   "restartsLost": 21,
+   "ownRestartMethods": {
+    "retainedClean": 6,
+    "retainedBreak": 2,
+    "retainedFoul": 0,
+    "lostClean": 5,
+    "lostBreak": 6,
+    "lostFoul": 2
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 9,
+     "goals": 1,
+     "value": 12,
+     "text": "1-09 (12 pts)"
+    },
+    "placed": {
+     "scores": 5,
+     "goals": 0,
+     "value": 7,
+     "text": "0-07 (7 pts)",
+     "attempts": 7
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 2,
+     "scores": 1,
+     "misses": 1
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 14,
+     "scores": 9,
+     "misses": 5
+    },
+    "Free": {
+     "attempts": 5,
+     "scores": 4,
+     "misses": 1
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 4,
+     "scores": 0,
+     "misses": 4
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 2,
+    "from45": 1
+   },
+   "restartMethods": {
+    "wonClean": 10,
+    "wonBreak": 9,
+    "wonFoul": 2,
+    "lostClean": 10,
+    "lostBreak": 8,
+    "lostFoul": 3
+   },
+   "turnoversWon": 19,
+   "turnoversLost": 14,
+   "turnoverShare": {
+    "num": 19,
+    "den": 33,
+    "pct": 58,
+    "definition": "turnovers won by FOR ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 7,
+    "Interception": 2,
+    "HP Error": 5,
+    "KP Error": 3,
+    "Overcarried": 2
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 3,
+    "Interception": 1,
+    "HP Error": 4,
+    "KP Error": 4,
+    "Overcarried": 2
+   },
+   "freesWon": 10,
+   "freesConceded": 12,
+   "placed": {
+    "attempts": 7,
+    "scores": 5,
+    "pointsValue": 7,
+    "misses": 2,
+    "conversion": {
+     "num": 5,
+     "den": 7,
+     "pct": 71,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 2,
+   "sidelinesWon": 0,
+   "cards": {
+    "yellow": 0,
+    "sinBin": 1,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 11,
+   "turnoversWonOppHalf": 8,
+   "turnoversLostOwnHalf": 9,
+   "turnoversLostOppHalf": 5
+  },
+  "OPP": {
+   "score": {
+    "goals": 1,
+    "points": 24,
+    "total": 27,
+    "text": "1-24",
+    "scores": 20
+   },
+   "scoresCount": 20,
+   "goals": 1,
+   "pointScores": 14,
+   "twoPointScores": 5,
+   "attempts": 21,
+   "wides": 1,
+   "shotsNotScoredNotWide": 0,
+   "shotShort": 0,
+   "shotBlockSave": 0,
+   "shotPost": 0,
+   "conversion": {
+    "num": 20,
+    "den": 21,
+    "pct": 95,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 21,
+    "retained": 8,
+    "lost": 13,
+    "retention": {
+     "num": 8,
+     "den": 21,
+     "pct": 38,
+     "definition": "OPP own kickouts/puckouts retained ÷ OPP own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 21,
+    "won": 13,
+    "lost": 8,
+    "winRate": {
+     "num": 13,
+     "den": 21,
+     "pct": 62,
+     "definition": "opposition kickouts/puckouts won by OPP ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 21,
+    "den": 42,
+    "pct": 50,
+    "definition": "all restarts won by OPP ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 21,
+   "restartsLost": 21,
+   "ownRestartMethods": {
+    "retainedClean": 5,
+    "retainedBreak": 2,
+    "retainedFoul": 1,
+    "lostClean": 4,
+    "lostBreak": 7,
+    "lostFoul": 2
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 14,
+     "goals": 1,
+     "value": 18,
+     "text": "1-15 (18 pts)"
+    },
+    "placed": {
+     "scores": 6,
+     "goals": 0,
+     "value": 9,
+     "text": "0-09 (9 pts)",
+     "attempts": 6
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 15,
+     "scores": 14,
+     "misses": 1
+    },
+    "Free": {
+     "attempts": 6,
+     "scores": 6,
+     "misses": 0
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 5,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 10,
+    "wonBreak": 8,
+    "wonFoul": 3,
+    "lostClean": 10,
+    "lostBreak": 9,
+    "lostFoul": 2
+   },
+   "turnoversWon": 14,
+   "turnoversLost": 19,
+   "turnoverShare": {
+    "num": 14,
+    "den": 33,
+    "pct": 42,
+    "definition": "turnovers won by OPP ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 3,
+    "Interception": 1,
+    "HP Error": 4,
+    "KP Error": 4,
+    "Overcarried": 2
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 7,
+    "Interception": 2,
+    "HP Error": 5,
+    "KP Error": 3,
+    "Overcarried": 2
+   },
+   "freesWon": 12,
+   "freesConceded": 10,
+   "placed": {
+    "attempts": 6,
+    "scores": 6,
+    "pointsValue": 9,
+    "misses": 0,
+    "conversion": {
+     "num": 6,
+     "den": 6,
+     "pct": 100,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 0,
+   "sidelinesWon": 7,
+   "cards": {
+    "yellow": 0,
+    "sinBin": 0,
+    "red": 1
+   },
+   "turnoversWonOwnHalf": 5,
+   "turnoversWonOppHalf": 9,
+   "turnoversLostOwnHalf": 8,
+   "turnoversLostOppHalf": 11
+  },
+  "margin": -8,
+  "longestRun": {
+   "FOR": 3,
+   "OPP": 4
+  },
+  "scoringRuns": [
+   {
+    "team": "OPP",
+    "scores": 4,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 3,
+    "endHalf": 2,
+    "endMin": 6
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 8,
+    "endHalf": 2,
+    "endMin": 10
+   },
+   {
+    "team": "FOR",
+    "scores": 2,
+    "value": 2,
+    "startHalf": 2,
+    "startMin": 11,
+    "endHalf": 2,
+    "endMin": 12
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 5,
+    "startHalf": 2,
+    "startMin": 13,
+    "endHalf": 2,
+    "endMin": 15
+   },
+   {
+    "team": "FOR",
+    "scores": 2,
+    "value": 3,
+    "startHalf": 2,
+    "startMin": 15,
+    "endHalf": 2,
+    "endMin": 16
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 3,
+    "startHalf": 2,
+    "startMin": 17,
+    "endHalf": 2,
+    "endMin": 18
+   },
+   {
+    "team": "OPP",
+    "scores": 3,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 22,
+    "endHalf": 2,
+    "endMin": 24
+   },
+   {
+    "team": "FOR",
+    "scores": 3,
+    "value": 5,
+    "startHalf": 2,
+    "startMin": 25,
+    "endHalf": 2,
+    "endMin": 27
+   },
+   {
+    "team": "FOR",
+    "scores": 3,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 29,
+    "endHalf": 2,
+    "endMin": 32
+   }
+  ],
+  "chains": {
+   "FOR": {
+    "restartWonToScore": {
+     "num": 6,
+     "den": 21,
+     "pct": 29,
+     "definition": "FOR restarts won followed by a FOR score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 14,
+     "den": 21,
+     "pct": 67,
+     "definition": "FOR restarts won followed by a FOR attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 7,
+    "restartWonScoreBreakdown": {
+     "goals": 1,
+     "points": 5,
+     "twoPointers": 0,
+     "value": 8,
+     "count": 6
+    },
+    "restartLostToScoreAgainst": {
+     "num": 12,
+     "den": 21,
+     "pct": 57,
+     "definition": "restarts lost by FOR followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 8,
+     "twoPointers": 3,
+     "value": 17,
+     "count": 12
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 4,
+     "twoPointers": 3,
+     "value": 10,
+     "count": 7
+    },
+    "avgSecsToScoreWon": 18,
+    "turnoverWonToScore": {
+     "num": 8,
+     "den": 19,
+     "pct": 42,
+     "definition": "FOR turnovers won whose next decisive FOR action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 11,
+     "den": 19,
+     "pct": 58,
+     "definition": "FOR turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 3,
+     "den": 19,
+     "pct": 16,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 6,
+     "twoPointers": 2,
+     "value": 10,
+     "count": 8
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 8,
+     "den": 14,
+     "pct": 57,
+     "definition": "turnovers lost by FOR followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 8,
+     "den": 14,
+     "pct": 57,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 1,
+     "points": 6,
+     "twoPointers": 1,
+     "value": 11,
+     "count": 8
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 1,
+      "points": 4,
+      "twoPointers": 0,
+      "value": 7,
+      "count": 5
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 6,
+      "twoPointers": 2,
+      "value": 10,
+      "count": 8
+     }
+    }
+   },
+   "OPP": {
+    "restartWonToScore": {
+     "num": 12,
+     "den": 21,
+     "pct": 57,
+     "definition": "OPP restarts won followed by a OPP score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 13,
+     "den": 21,
+     "pct": 62,
+     "definition": "OPP restarts won followed by a OPP attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 8,
+    "restartWonScoreBreakdown": {
+     "goals": 1,
+     "points": 8,
+     "twoPointers": 3,
+     "value": 17,
+     "count": 12
+    },
+    "restartLostToScoreAgainst": {
+     "num": 6,
+     "den": 21,
+     "pct": 29,
+     "definition": "restarts lost by OPP followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 5,
+     "twoPointers": 0,
+     "value": 8,
+     "count": 6
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 4,
+     "twoPointers": 0,
+     "value": 7,
+     "count": 5
+    },
+    "avgSecsToScoreWon": 30,
+    "turnoverWonToScore": {
+     "num": 8,
+     "den": 14,
+     "pct": 57,
+     "definition": "OPP turnovers won whose next decisive OPP action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 8,
+     "den": 14,
+     "pct": 57,
+     "definition": "OPP turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 0,
+     "den": 14,
+     "pct": 0,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 1,
+     "points": 6,
+     "twoPointers": 1,
+     "value": 11,
+     "count": 8
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 8,
+     "den": 19,
+     "pct": 42,
+     "definition": "turnovers lost by OPP followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 11,
+     "den": 19,
+     "pct": 58,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 6,
+     "twoPointers": 2,
+     "value": 10,
+     "count": 8
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 5,
+      "twoPointers": 3,
+      "value": 11,
+      "count": 8
+     },
+     "turnoverOrigin": {
+      "goals": 1,
+      "points": 6,
+      "twoPointers": 1,
+      "value": 11,
+      "count": 8
+     }
+    }
+   },
+   "turnoverDetail": [
+    {
+     "id": "B-155",
+     "winner": "OPP",
+     "next": "B-156",
+     "score": false
+    },
+    {
+     "id": "B-156",
+     "winner": "FOR",
+     "next": "B-157",
+     "score": false
+    },
+    {
+     "id": "B-161",
+     "winner": "FOR",
+     "next": "B-163",
+     "score": true
+    },
+    {
+     "id": "B-167",
+     "winner": "FOR",
+     "next": "B-168",
+     "score": false
+    },
+    {
+     "id": "B-168",
+     "winner": "OPP",
+     "next": "B-173",
+     "score": true
+    },
+    {
+     "id": "B-177",
+     "winner": "OPP",
+     "next": "B-178",
+     "score": true
+    },
+    {
+     "id": "B-180",
+     "winner": "FOR",
+     "next": "B-181",
+     "score": false
+    },
+    {
+     "id": "B-181",
+     "winner": "OPP",
+     "next": "B-183",
+     "score": true
+    },
+    {
+     "id": "B-185",
+     "winner": "FOR",
+     "next": "B-186",
+     "score": true
+    },
+    {
+     "id": "B-197",
+     "winner": "FOR",
+     "next": "B-198",
+     "score": false
+    },
+    {
+     "id": "B-198",
+     "winner": "OPP",
+     "next": "B-200",
+     "score": true
+    },
+    {
+     "id": "B-204",
+     "winner": "FOR",
+     "next": "B-205",
+     "score": true
+    },
+    {
+     "id": "B-211",
+     "winner": "OPP",
+     "next": "B-212",
+     "score": true
+    },
+    {
+     "id": "B-214",
+     "winner": "FOR",
+     "next": "B-215",
+     "score": false
+    },
+    {
+     "id": "B-215",
+     "winner": "OPP",
+     "next": "B-217",
+     "score": true
+    },
+    {
+     "id": "B-224",
+     "winner": "FOR",
+     "next": "B-226",
+     "score": true
+    },
+    {
+     "id": "B-230",
+     "winner": "OPP",
+     "next": "B-231",
+     "score": false
+    },
+    {
+     "id": "B-231",
+     "winner": "FOR",
+     "next": null,
+     "score": false
+    },
+    {
+     "id": "B-239",
+     "winner": "FOR",
+     "next": "B-240",
+     "score": true
+    },
+    {
+     "id": "B-246",
+     "winner": "FOR",
+     "next": "B-247",
+     "score": false
+    },
+    {
+     "id": "B-247",
+     "winner": "OPP",
+     "next": "B-248",
+     "score": true
+    },
+    {
+     "id": "B-250",
+     "winner": "FOR",
+     "next": "B-251",
+     "score": false
+    },
+    {
+     "id": "B-251",
+     "winner": "OPP",
+     "next": "B-252",
+     "score": false
+    },
+    {
+     "id": "B-252",
+     "winner": "FOR",
+     "next": "B-253",
+     "score": true
+    },
+    {
+     "id": "B-261",
+     "winner": "OPP",
+     "next": "B-264",
+     "score": true
+    },
+    {
+     "id": "B-268",
+     "winner": "OPP",
+     "next": "B-269",
+     "score": false
+    },
+    {
+     "id": "B-269",
+     "winner": "FOR",
+     "next": "B-270",
+     "score": false
+    },
+    {
+     "id": "B-274",
+     "winner": "OPP",
+     "next": "B-275",
+     "score": false
+    },
+    {
+     "id": "B-275",
+     "winner": "FOR",
+     "next": "B-276",
+     "score": true
+    },
+    {
+     "id": "B-286",
+     "winner": "FOR",
+     "next": "B-288",
+     "score": true
+    },
+    {
+     "id": "B-296",
+     "winner": "FOR",
+     "next": "B-297",
+     "score": false
+    },
+    {
+     "id": "B-297",
+     "winner": "OPP",
+     "next": "B-298",
+     "score": false
+    },
+    {
+     "id": "B-298",
+     "winner": "FOR",
+     "next": "B-300",
+     "score": false
+    }
+   ]
+  },
+  "origins": {
+   "rows": {
+    "FROM_PLAY": {
+     "FOR": 0,
+     "OPP": 2,
+     "FORn": 0,
+     "OPPn": 2
+    },
+    "PLACED": {
+     "FOR": 7,
+     "OPP": 9,
+     "FORn": 5,
+     "OPPn": 6
+    },
+    "RESTART": {
+     "FOR": 6,
+     "OPP": 6,
+     "FORn": 4,
+     "OPPn": 5
+    },
+    "TURNOVER": {
+     "FOR": 6,
+     "OPP": 10,
+     "FORn": 5,
+     "OPPn": 7
+    },
+    "UNATTRIBUTED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    }
+   },
+   "perScore": [
+    {
+     "id": "B-159",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-163",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-173",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-175",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-178",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-183",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-186",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-190",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-200",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-202",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-205",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-209",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-212",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-217",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-220",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-222",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-226",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-228",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-233",
+     "team": "OPP",
+     "row": "FROM_PLAY"
+    },
+    {
+     "id": "B-237",
+     "team": "OPP",
+     "row": "FROM_PLAY"
+    },
+    {
+     "id": "B-240",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-248",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-253",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-255",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-259",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-264",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-272",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-276",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "B-280",
+     "team": "FOR",
+     "row": "RESTART"
+    },
+    {
+     "id": "B-284",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-288",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-291",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-302",
+     "team": "FOR",
+     "row": "PLACED"
+    },
+    {
+     "id": "B-305",
+     "team": "OPP",
+     "row": "PLACED"
+    }
+   ]
+  },
+  "possession": {
+   "restartWon": {
+    "count": 21,
+    "goals": 1,
+    "points": 2,
+    "wides": 5,
+    "shots": 8,
+    "scores": 3
+   },
+   "restartLost": {
+    "count": 21,
+    "goals": 0,
+    "points": 5,
+    "wides": 1,
+    "shots": 6,
+    "scores": 5
+   },
+   "turnoverWon": {
+    "count": 19,
+    "goals": 0,
+    "points": 5,
+    "wides": 2,
+    "shots": 7,
+    "scores": 5
+   },
+   "turnoverLost": {
+    "count": 14,
+    "goals": 1,
+    "points": 2,
+    "wides": 0,
+    "shots": 3,
+    "scores": 3
+   },
+   "freeWon": {
+    "count": 10,
+    "goals": 0,
+    "points": 6,
+    "wides": 1,
+    "shots": 7,
+    "scores": 6
+   },
+   "freeConceded": {
+    "count": 12,
+    "goals": 0,
+    "points": 10,
+    "wides": 0,
+    "shots": 10,
+    "scores": 10
+   }
+  }
+ },
+ "segments": {
+  "1": {
+   "FOR": {
+    "score": "0-01",
+    "total": 1,
+    "attempts": 4,
+    "wides": 2,
+    "turnoversWon": 6,
+    "turnoversLost": 11,
+    "turnoversWonOwnHalf": 2,
+    "turnoversWonOppHalf": 4,
+    "turnoversLostOwnHalf": 6,
+    "turnoversLostOppHalf": 5,
+    "ownRestarts": "5/6"
+   },
+   "OPP": {
+    "score": "1-04",
+    "total": 7,
+    "attempts": 8,
+    "wides": 2,
+    "turnoversWon": 11,
+    "turnoversLost": 6,
+    "turnoversWonOwnHalf": 5,
+    "turnoversWonOppHalf": 6,
+    "turnoversLostOwnHalf": 4,
+    "turnoversLostOppHalf": 2,
+    "ownRestarts": "1/3"
+   }
+  },
+  "2": {
+   "FOR": {
+    "score": "1-02",
+    "total": 5,
+    "attempts": 6,
+    "wides": 2,
+    "turnoversWon": 9,
+    "turnoversLost": 9,
+    "turnoversWonOwnHalf": 3,
+    "turnoversWonOppHalf": 6,
+    "turnoversLostOwnHalf": 5,
+    "turnoversLostOppHalf": 4,
+    "ownRestarts": "6/6"
+   },
+   "OPP": {
+    "score": "0-03",
+    "total": 3,
+    "attempts": 5,
+    "wides": 2,
+    "turnoversWon": 9,
+    "turnoversLost": 9,
+    "turnoversWonOwnHalf": 4,
+    "turnoversWonOppHalf": 5,
+    "turnoversLostOwnHalf": 6,
+    "turnoversLostOppHalf": 3,
+    "ownRestarts": "4/5"
+   }
+  },
+  "3": {
+   "FOR": {
+    "score": "0-03",
+    "total": 3,
+    "attempts": 8,
+    "wides": 5,
+    "turnoversWon": 14,
+    "turnoversLost": 11,
+    "turnoversWonOwnHalf": 6,
+    "turnoversWonOppHalf": 8,
+    "turnoversLostOwnHalf": 3,
+    "turnoversLostOppHalf": 8,
+    "ownRestarts": "3/6"
+   },
+   "OPP": {
+    "score": "0-03",
+    "total": 3,
+    "attempts": 8,
+    "wides": 3,
+    "turnoversWon": 11,
+    "turnoversLost": 14,
+    "turnoversWonOwnHalf": 8,
+    "turnoversWonOppHalf": 3,
+    "turnoversLostOwnHalf": 8,
+    "turnoversLostOppHalf": 6,
+    "ownRestarts": "5/8"
+   }
+  },
+  "4": {
+   "FOR": {
+    "score": "0-02",
+    "total": 2,
+    "attempts": 4,
+    "wides": 1,
+    "turnoversWon": 6,
+    "turnoversLost": 4,
+    "turnoversWonOwnHalf": 3,
+    "turnoversWonOppHalf": 3,
+    "turnoversLostOwnHalf": 3,
+    "turnoversLostOppHalf": 1,
+    "ownRestarts": "2/7"
+   },
+   "OPP": {
+    "score": "0-07",
+    "total": 7,
+    "attempts": 7,
+    "wides": 1,
+    "turnoversWon": 4,
+    "turnoversLost": 6,
+    "turnoversWonOwnHalf": 1,
+    "turnoversWonOppHalf": 3,
+    "turnoversLostOwnHalf": 3,
+    "turnoversLostOppHalf": 3,
+    "ownRestarts": "2/3"
+   }
+  },
+  "5": {
+   "FOR": {
+    "score": "0-07",
+    "total": 7,
+    "attempts": 6,
+    "wides": 0,
+    "turnoversWon": 5,
+    "turnoversLost": 4,
+    "turnoversWonOwnHalf": 3,
+    "turnoversWonOppHalf": 2,
+    "turnoversLostOwnHalf": 1,
+    "turnoversLostOppHalf": 3,
+    "ownRestarts": "3/8"
+   },
+   "OPP": {
+    "score": "0-11",
+    "total": 11,
+    "attempts": 8,
+    "wides": 0,
+    "turnoversWon": 4,
+    "turnoversLost": 5,
+    "turnoversWonOwnHalf": 3,
+    "turnoversWonOppHalf": 1,
+    "turnoversLostOwnHalf": 2,
+    "turnoversLostOppHalf": 3,
+    "ownRestarts": "2/5"
+   }
+  },
+  "6": {
+   "FOR": {
+    "score": "1-07",
+    "total": 10,
+    "attempts": 15,
+    "wides": 6,
+    "turnoversWon": 8,
+    "turnoversLost": 6,
+    "turnoversWonOwnHalf": 5,
+    "turnoversWonOppHalf": 3,
+    "turnoversLostOwnHalf": 5,
+    "turnoversLostOppHalf": 1,
+    "ownRestarts": "3/6"
+   },
+   "OPP": {
+    "score": "1-06",
+    "total": 9,
+    "attempts": 6,
+    "wides": 0,
+    "turnoversWon": 6,
+    "turnoversLost": 8,
+    "turnoversWonOwnHalf": 1,
+    "turnoversWonOppHalf": 5,
+    "turnoversLostOwnHalf": 3,
+    "turnoversLostOppHalf": 5,
+    "ownRestarts": "4/13"
+   }
+  }
+ },
+ "players": [
+  {
+   "team": "FOR",
+   "number": 2,
+   "actions": 8,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 5,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 3,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 3,
+   "actions": 11,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 7,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 4,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 4,
+   "actions": 7,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 4,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 3,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 5,
+   "actions": 11,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 8,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 2,
+   "yellow": 0,
+   "sinBin": 1,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 6,
+   "actions": 8,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 5,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 3,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 7,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 1,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 1,
+   "yellow": 1,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 8,
+   "actions": 17,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 1,
+   "wides": 0,
+   "toWon": 2,
+   "toLost": 4,
+   "koWon": 9,
+   "koLost": 0,
+   "freesWon": 1,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 9,
+   "actions": 12,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 1,
+   "wides": 1,
+   "toWon": 3,
+   "toLost": 3,
+   "koWon": 4,
+   "koLost": 0,
+   "freesWon": 1,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 10,
+   "actions": 13,
+   "goals": 0,
+   "pointsValue": 2,
+   "totalValue": 2,
+   "attempts": 3,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 3,
+   "koWon": 5,
+   "koLost": 0,
+   "freesWon": 2,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 11,
+   "actions": 13,
+   "goals": 1,
+   "pointsValue": 2,
+   "totalValue": 5,
+   "attempts": 5,
+   "wides": 2,
+   "toWon": 0,
+   "toLost": 5,
+   "koWon": 3,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 12,
+   "actions": 22,
+   "goals": 0,
+   "pointsValue": 11,
+   "totalValue": 11,
+   "attempts": 12,
+   "wides": 3,
+   "toWon": 0,
+   "toLost": 8,
+   "koWon": 1,
+   "koLost": 0,
+   "freesWon": 1,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 13,
+   "actions": 11,
+   "goals": 0,
+   "pointsValue": 4,
+   "totalValue": 4,
+   "attempts": 4,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 4,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 2,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 1,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 14,
+   "actions": 11,
+   "goals": 1,
+   "pointsValue": 1,
+   "totalValue": 4,
+   "attempts": 5,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 4,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 2,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 15,
+   "actions": 7,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 2,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 2,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 3,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 4,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 1,
+   "sinBin": 0,
+   "red": 1,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 1
+  },
+  {
+   "team": "OPP",
+   "number": 6,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 1
+  },
+  {
+   "team": "OPP",
+   "number": 8,
+   "actions": 15,
+   "goals": 0,
+   "pointsValue": 2,
+   "totalValue": 2,
+   "attempts": 2,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 11,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 2
+  },
+  {
+   "team": "OPP",
+   "number": 9,
+   "actions": 12,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 2,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 10,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 10,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 2,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 11,
+   "actions": 23,
+   "goals": 1,
+   "pointsValue": 17,
+   "totalValue": 20,
+   "attempts": 18,
+   "wides": 3,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 3,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 2
+  },
+  {
+   "team": "OPP",
+   "number": 12,
+   "actions": 4,
+   "goals": 0,
+   "pointsValue": 2,
+   "totalValue": 2,
+   "attempts": 3,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 1,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 13,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 1,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 14,
+   "actions": 4,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 3,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 1,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 15,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 3,
+   "totalValue": 3,
+   "attempts": 3,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  }
+ ],
+ "truthOrigins": {
+  "B-003": "TURNOVER",
+  "B-008": "TURNOVER",
+  "B-010": "RESTART",
+  "B-016": "TURNOVER",
+  "B-019": "FREE",
+  "B-023": "PLACED",
+  "B-026": "TURNOVER",
+  "B-031": "TURNOVER",
+  "B-033": "RESTART",
+  "B-036": "TURNOVER",
+  "B-040": "PLACED",
+  "B-044": "TURNOVER",
+  "B-047": "PLACED",
+  "B-054": "PLACED",
+  "B-057": "TURNOVER",
+  "B-062": "PLACED",
+  "B-067": "TURNOVER",
+  "B-071": "TURNOVER",
+  "B-073": "TURNOVER",
+  "B-076": "TURNOVER",
+  "B-078": "RESTART",
+  "B-080": "RESTART",
+  "B-084": "TURNOVER",
+  "B-094": "SIDELINE",
+  "B-100": "TURNOVER",
+  "B-103": "TURNOVER",
+  "B-107": "TURNOVER",
+  "B-114": "FREE",
+  "B-120": "TURNOVER",
+  "B-125": "TURNOVER",
+  "B-128": "TURNOVER",
+  "B-133": "TURNOVER",
+  "B-137": "SIDELINE",
+  "B-141": "PLACED",
+  "B-145": "PLACED",
+  "B-147": "RESTART",
+  "B-149": "RESTART",
+  "B-151": "TURNOVER",
+  "B-153": "PLACED",
+  "B-157": "TURNOVER",
+  "B-159": "PLACED",
+  "B-163": "PLACED",
+  "B-173": "SIDELINE",
+  "B-175": "RESTART",
+  "B-178": "TURNOVER",
+  "B-183": "PLACED",
+  "B-186": "TURNOVER",
+  "B-188": "RESTART",
+  "B-190": "RESTART",
+  "B-195": "PLACED",
+  "B-200": "FREE",
+  "B-202": "RESTART",
+  "B-205": "TURNOVER",
+  "B-209": "FREE",
+  "B-212": "TURNOVER",
+  "B-217": "FREE",
+  "B-220": "PLACED",
+  "B-222": "RESTART",
+  "B-226": "PLACED",
+  "B-228": "RESTART",
+  "B-233": "SIDELINE",
+  "B-237": "SIDELINE",
+  "B-240": "TURNOVER",
+  "B-242": "RESTART",
+  "B-244": "PLACED",
+  "B-248": "TURNOVER",
+  "B-253": "TURNOVER",
+  "B-255": "RESTART",
+  "B-259": "PLACED",
+  "B-264": "SIDELINE",
+  "B-266": "RESTART",
+  "B-270": "TURNOVER",
+  "B-272": "RESTART",
+  "B-276": "TURNOVER",
+  "B-278": "RESTART",
+  "B-280": "RESTART",
+  "B-284": "PLACED",
+  "B-288": "PLACED",
+  "B-291": "PLACED",
+  "B-293": "RESTART",
+  "B-295": "RESTART",
+  "B-300": "FREE",
+  "B-302": "PLACED",
+  "B-305": "PLACED",
+  "B-307": "RESTART"
+ },
+ "facts": [
+  {
+   "id": "B-001",
+   "half": 1,
+   "clock": 38,
+   "nx": 0.408,
+   "ny": 0.365,
+   "player": null,
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 0
+  },
+  {
+   "id": "B-002",
+   "half": 1,
+   "clock": 46,
+   "nx": 0.582,
+   "ny": 0.777,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 1
+  },
+  {
+   "id": "B-003",
+   "half": 1,
+   "clock": 54,
+   "nx": 0.9,
+   "ny": 0.325,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "shot",
+   "team": "OPP",
+   "outcome": "Short",
+   "source": null,
+   "placed": false,
+   "_seq": 2
+  },
+  {
+   "id": "B-004",
+   "half": 1,
+   "clock": 60,
+   "nx": 0.27,
+   "ny": 0.473,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 3
+  },
+  {
+   "id": "B-005",
+   "half": 1,
+   "clock": 69,
+   "nx": 0.668,
+   "ny": 0.29,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 4
+  },
+  {
+   "id": "B-006",
+   "half": 1,
+   "clock": 83,
+   "nx": 0.766,
+   "ny": 0.233,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 5
+  },
+  {
+   "id": "B-007",
+   "half": 1,
+   "clock": 98,
+   "nx": 0.48,
+   "ny": 0.621,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 6
+  },
+  {
+   "id": "B-008",
+   "half": 1,
+   "clock": 109,
+   "nx": 0.744,
+   "ny": 0.425,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 7
+  },
+  {
+   "id": "B-009",
+   "half": 1,
+   "clock": 131,
+   "nx": 0.601,
+   "ny": 0.669,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Foul",
+   "_seq": 8
+  },
+  {
+   "id": "B-010",
+   "half": 1,
+   "clock": 145,
+   "nx": 0.106,
+   "ny": 0.456,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 9
+  },
+  {
+   "id": "B-011",
+   "half": 1,
+   "clock": 169,
+   "nx": 0.432,
+   "ny": 0.644,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 10
+  },
+  {
+   "id": "B-012",
+   "half": 1,
+   "clock": 180,
+   "nx": 0.374,
+   "ny": 0.6,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 11
+  },
+  {
+   "id": "B-013",
+   "half": 1,
+   "clock": 193,
+   "nx": 0.245,
+   "ny": 0.61,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 12
+  },
+  {
+   "id": "B-014",
+   "half": 1,
+   "clock": 203,
+   "nx": 0.537,
+   "ny": 0.717,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 13
+  },
+  {
+   "id": "B-015",
+   "half": 1,
+   "clock": 214,
+   "nx": 0.127,
+   "ny": 0.614,
+   "player": {
+    "team": "FOR",
+    "number": 7
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 14
+  },
+  {
+   "id": "B-016",
+   "half": 1,
+   "clock": 228,
+   "nx": 0.207,
+   "ny": 0.699,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 15
+  },
+  {
+   "id": "B-017",
+   "half": 1,
+   "clock": 246,
+   "nx": 0.458,
+   "ny": 0.237,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 16
+  },
+  {
+   "id": "B-018",
+   "half": 1,
+   "clock": 255,
+   "nx": 0.495,
+   "ny": 0.412,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 17
+  },
+  {
+   "id": "B-019",
+   "half": 1,
+   "clock": 261,
+   "nx": 0.074,
+   "ny": 0.505,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Post",
+   "source": null,
+   "placed": false,
+   "_seq": 18
+  },
+  {
+   "id": "B-020",
+   "half": 1,
+   "clock": 266,
+   "nx": 0.272,
+   "ny": 0.251,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 19
+  },
+  {
+   "id": "B-021",
+   "half": 1,
+   "clock": 276,
+   "nx": 0.807,
+   "ny": 0.424,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 20
+  },
+  {
+   "id": "B-022",
+   "half": 1,
+   "clock": 281,
+   "nx": 0.775,
+   "ny": 0.333,
+   "player": null,
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 21
+  },
+  {
+   "id": "B-023",
+   "half": 1,
+   "clock": 307,
+   "nx": 0.775,
+   "ny": 0.339,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 22
+  },
+  {
+   "id": "B-024",
+   "half": 1,
+   "clock": 320,
+   "nx": 0.666,
+   "ny": 0.601,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 23
+  },
+  {
+   "id": "B-025",
+   "half": 1,
+   "clock": 328,
+   "nx": 0.533,
+   "ny": 0.249,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 24
+  },
+  {
+   "id": "B-026",
+   "half": 1,
+   "clock": 343,
+   "nx": 0.787,
+   "ny": 0.599,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 25
+  },
+  {
+   "id": "B-027",
+   "half": 1,
+   "clock": 358,
+   "nx": 0.767,
+   "ny": 0.226,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 26
+  },
+  {
+   "id": "B-028",
+   "half": 1,
+   "clock": 370,
+   "nx": 0.727,
+   "ny": 0.278,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 27
+  },
+  {
+   "id": "B-029",
+   "half": 1,
+   "clock": 384,
+   "nx": 0.842,
+   "ny": 0.431,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 28
+  },
+  {
+   "id": "B-030",
+   "half": 1,
+   "clock": 393,
+   "nx": 0.637,
+   "ny": 0.759,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 29
+  },
+  {
+   "id": "B-031",
+   "half": 1,
+   "clock": 403,
+   "nx": 0.81,
+   "ny": 0.249,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 30
+  },
+  {
+   "id": "B-032",
+   "half": 1,
+   "clock": 425,
+   "nx": 0.746,
+   "ny": 0.528,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 31
+  },
+  {
+   "id": "B-033",
+   "half": 1,
+   "clock": 438,
+   "nx": 0.726,
+   "ny": 0.661,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 32
+  },
+  {
+   "id": "B-034",
+   "half": 1,
+   "clock": 459,
+   "nx": 0.635,
+   "ny": 0.257,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 33
+  },
+  {
+   "id": "B-035",
+   "half": 1,
+   "clock": 466,
+   "nx": 0.31,
+   "ny": 0.47,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 34
+  },
+  {
+   "id": "B-036",
+   "half": 1,
+   "clock": 477,
+   "nx": 0.807,
+   "ny": 0.655,
+   "player": null,
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 35
+  },
+  {
+   "id": "B-037",
+   "half": 1,
+   "clock": 495,
+   "nx": 0.61,
+   "ny": 0.408,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 36
+  },
+  {
+   "id": "B-038",
+   "half": 1,
+   "clock": 503,
+   "nx": 0.25,
+   "ny": 0.503,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 37
+  },
+  {
+   "id": "B-039",
+   "half": 1,
+   "clock": 506,
+   "nx": 0.25,
+   "ny": 0.503,
+   "player": {
+    "team": "OPP",
+    "number": 4
+   },
+   "type": "card",
+   "team": "OPP",
+   "card": "Yellow",
+   "_seq": 38
+  },
+  {
+   "id": "B-040",
+   "half": 1,
+   "clock": 529,
+   "nx": 0.25,
+   "ny": 0.508,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 39
+  },
+  {
+   "id": "B-041",
+   "half": 1,
+   "clock": 552,
+   "nx": 0.457,
+   "ny": 0.775,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 40
+  },
+  {
+   "id": "B-042",
+   "half": 1,
+   "clock": 566,
+   "nx": 0.453,
+   "ny": 0.43,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 41
+  },
+  {
+   "id": "B-043",
+   "half": 1,
+   "clock": 576,
+   "nx": 0.239,
+   "ny": 0.508,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 42
+  },
+  {
+   "id": "B-044",
+   "half": 1,
+   "clock": 588,
+   "nx": 0.943,
+   "ny": 0.53,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 3,
+   "goal": true,
+   "source": "Play",
+   "placed": false,
+   "_seq": 43
+  },
+  {
+   "id": "B-045",
+   "half": 1,
+   "clock": 605,
+   "nx": 0.616,
+   "ny": 0.577,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 44
+  },
+  {
+   "id": "B-046",
+   "half": 1,
+   "clock": 612,
+   "nx": 0.223,
+   "ny": 0.316,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 45
+  },
+  {
+   "id": "B-047",
+   "half": 1,
+   "clock": 645,
+   "nx": 0.223,
+   "ny": 0.391,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 46
+  },
+  {
+   "id": "B-048",
+   "half": 1,
+   "clock": 664,
+   "nx": 0.261,
+   "ny": 0.226,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 47
+  },
+  {
+   "id": "B-049",
+   "half": 1,
+   "clock": 673,
+   "nx": 0.421,
+   "ny": 0.311,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 48
+  },
+  {
+   "id": "B-050",
+   "half": 1,
+   "clock": 679,
+   "nx": 0.553,
+   "ny": 0.708,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 49
+  },
+  {
+   "id": "B-051",
+   "half": 1,
+   "clock": 685,
+   "nx": 0.572,
+   "ny": 0.438,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 50
+  },
+  {
+   "id": "B-052",
+   "half": 1,
+   "clock": 689,
+   "nx": 0.556,
+   "ny": 0.563,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 51
+  },
+  {
+   "id": "B-053",
+   "half": 1,
+   "clock": 694,
+   "nx": 0.878,
+   "ny": 0.487,
+   "player": {
+    "team": "FOR",
+    "number": 7
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 52
+  },
+  {
+   "id": "B-054",
+   "half": 1,
+   "clock": 727,
+   "nx": 0.878,
+   "ny": 0.367,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 53
+  },
+  {
+   "id": "B-055",
+   "half": 1,
+   "clock": 751,
+   "nx": 0.549,
+   "ny": 0.536,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 54
+  },
+  {
+   "id": "B-056",
+   "half": 1,
+   "clock": 761,
+   "nx": 0.826,
+   "ny": 0.303,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 55
+  },
+  {
+   "id": "B-057",
+   "half": 1,
+   "clock": 765,
+   "nx": 0.783,
+   "ny": 0.342,
+   "player": {
+    "team": "OPP",
+    "number": 10
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 56
+  },
+  {
+   "id": "B-058",
+   "half": 1,
+   "clock": 790,
+   "nx": 0.726,
+   "ny": 0.578,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 57
+  },
+  {
+   "id": "B-059",
+   "half": 1,
+   "clock": 805,
+   "nx": 0.391,
+   "ny": 0.513,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 58
+  },
+  {
+   "id": "B-060",
+   "half": 1,
+   "clock": 817,
+   "nx": 0.76,
+   "ny": 0.52,
+   "player": null,
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 59
+  },
+  {
+   "id": "B-061",
+   "half": 1,
+   "clock": 820,
+   "nx": 0.76,
+   "ny": 0.52,
+   "player": {
+    "team": "FOR",
+    "number": 7
+   },
+   "type": "card",
+   "team": "FOR",
+   "card": "Yellow",
+   "_seq": 60
+  },
+  {
+   "id": "B-062",
+   "half": 1,
+   "clock": 850,
+   "nx": 0.76,
+   "ny": 0.709,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Free",
+   "placed": true,
+   "_seq": 61
+  },
+  {
+   "id": "B-063",
+   "half": 1,
+   "clock": 872,
+   "nx": 0.639,
+   "ny": 0.361,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 62
+  },
+  {
+   "id": "B-064",
+   "half": 1,
+   "clock": 884,
+   "nx": 0.699,
+   "ny": 0.668,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 63
+  },
+  {
+   "id": "B-065",
+   "half": 1,
+   "clock": 896,
+   "nx": 0.456,
+   "ny": 0.282,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 64
+  },
+  {
+   "id": "B-066",
+   "half": 1,
+   "clock": 908,
+   "nx": 0.364,
+   "ny": 0.601,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Overcarried",
+   "_seq": 65
+  },
+  {
+   "id": "B-067",
+   "half": 1,
+   "clock": 921,
+   "nx": 0.29,
+   "ny": 0.312,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 66
+  },
+  {
+   "id": "B-068",
+   "half": 1,
+   "clock": 938,
+   "nx": 0.255,
+   "ny": 0.67,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 67
+  },
+  {
+   "id": "B-069",
+   "half": 1,
+   "clock": 942,
+   "nx": 0.475,
+   "ny": 0.665,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 68
+  },
+  {
+   "id": "B-070",
+   "half": 1,
+   "clock": 957,
+   "nx": 0.213,
+   "ny": 0.688,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Overcarried",
+   "_seq": 69
+  },
+  {
+   "id": "B-071",
+   "half": 1,
+   "clock": 967,
+   "nx": 0.2,
+   "ny": 0.394,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Block/Save",
+   "source": null,
+   "placed": false,
+   "_seq": 70
+  },
+  {
+   "id": "B-072",
+   "half": 1,
+   "clock": 981,
+   "nx": 0.15,
+   "ny": 0.663,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 71
+  },
+  {
+   "id": "B-073",
+   "half": 1,
+   "clock": 995,
+   "nx": 0.147,
+   "ny": 0.326,
+   "player": null,
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 72
+  },
+  {
+   "id": "B-074",
+   "half": 1,
+   "clock": 1008,
+   "nx": 0.457,
+   "ny": 0.705,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 73
+  },
+  {
+   "id": "B-075",
+   "half": 1,
+   "clock": 1016,
+   "nx": 0.144,
+   "ny": 0.422,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 74
+  },
+  {
+   "id": "B-076",
+   "half": 1,
+   "clock": 1028,
+   "nx": 0.23,
+   "ny": 0.356,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 75
+  },
+  {
+   "id": "B-077",
+   "half": 1,
+   "clock": 1050,
+   "nx": 0.218,
+   "ny": 0.409,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 76
+  },
+  {
+   "id": "B-078",
+   "half": 1,
+   "clock": 1054,
+   "nx": 0.846,
+   "ny": 0.391,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 77
+  },
+  {
+   "id": "B-079",
+   "half": 1,
+   "clock": 1079,
+   "nx": 0.543,
+   "ny": 0.748,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 78
+  },
+  {
+   "id": "B-080",
+   "half": 1,
+   "clock": 1087,
+   "nx": 0.079,
+   "ny": 0.535,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 3,
+   "goal": true,
+   "source": "Play",
+   "placed": false,
+   "_seq": 79
+  },
+  {
+   "id": "B-081",
+   "half": 1,
+   "clock": 1102,
+   "nx": 0.283,
+   "ny": 0.351,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 80
+  },
+  {
+   "id": "B-082",
+   "half": 1,
+   "clock": 1110,
+   "nx": 0.501,
+   "ny": 0.597,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 81
+  },
+  {
+   "id": "B-083",
+   "half": 1,
+   "clock": 1114,
+   "nx": 0.489,
+   "ny": 0.766,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 82
+  },
+  {
+   "id": "B-084",
+   "half": 1,
+   "clock": 1119,
+   "nx": 0.863,
+   "ny": 0.665,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 83
+  },
+  {
+   "id": "B-085",
+   "half": 1,
+   "clock": 1143,
+   "nx": 0.77,
+   "ny": 0.377,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 84
+  },
+  {
+   "id": "B-086",
+   "half": 1,
+   "clock": 1150,
+   "nx": 0.214,
+   "ny": 0.775,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 85
+  },
+  {
+   "id": "B-087",
+   "half": 1,
+   "clock": 1161,
+   "nx": 0.603,
+   "ny": 0.561,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 86
+  },
+  {
+   "id": "B-088",
+   "half": 1,
+   "clock": 1172,
+   "nx": 0.802,
+   "ny": 0.403,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 87
+  },
+  {
+   "id": "B-089",
+   "half": 1,
+   "clock": 1181,
+   "nx": 0.487,
+   "ny": 0.682,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 88
+  },
+  {
+   "id": "B-090",
+   "half": 1,
+   "clock": 1195,
+   "nx": 0.478,
+   "ny": 0.338,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 89
+  },
+  {
+   "id": "B-091",
+   "half": 1,
+   "clock": 1200,
+   "nx": 0.388,
+   "ny": 0.568,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 90
+  },
+  {
+   "id": "B-092",
+   "half": 1,
+   "clock": 1215,
+   "nx": 0.748,
+   "ny": 0.494,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "KP Error",
+   "_seq": 91
+  },
+  {
+   "id": "B-093",
+   "half": 1,
+   "clock": 1229,
+   "nx": 0.702,
+   "ny": 0.98,
+   "player": null,
+   "type": "sideline",
+   "winner": "FOR",
+   "_seq": 92
+  },
+  {
+   "id": "B-094",
+   "half": 1,
+   "clock": 1237,
+   "nx": 0.148,
+   "ny": 0.495,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 93
+  },
+  {
+   "id": "B-095",
+   "half": 1,
+   "clock": 1258,
+   "nx": 0.331,
+   "ny": 0.618,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 94
+  },
+  {
+   "id": "B-096",
+   "half": 1,
+   "clock": 1271,
+   "nx": 0.296,
+   "ny": 0.777,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 95
+  },
+  {
+   "id": "B-097",
+   "half": 1,
+   "clock": 1286,
+   "nx": 0.485,
+   "ny": 0.357,
+   "player": null,
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 96
+  },
+  {
+   "id": "B-098",
+   "half": 1,
+   "clock": 1299,
+   "nx": 0.302,
+   "ny": 0.98,
+   "player": {
+    "team": "OPP",
+    "number": 4
+   },
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 97
+  },
+  {
+   "id": "B-099",
+   "half": 1,
+   "clock": 1313,
+   "nx": 0.599,
+   "ny": 0.233,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 98
+  },
+  {
+   "id": "B-100",
+   "half": 1,
+   "clock": 1323,
+   "nx": 0.192,
+   "ny": 0.706,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 99
+  },
+  {
+   "id": "B-101",
+   "half": 1,
+   "clock": 1339,
+   "nx": 0.304,
+   "ny": 0.451,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 100
+  },
+  {
+   "id": "B-102",
+   "half": 1,
+   "clock": 1351,
+   "nx": 0.275,
+   "ny": 0.532,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "KP Error",
+   "_seq": 101
+  },
+  {
+   "id": "B-103",
+   "half": 1,
+   "clock": 1358,
+   "nx": 0.163,
+   "ny": 0.71,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 102
+  },
+  {
+   "id": "B-104",
+   "half": 1,
+   "clock": 1375,
+   "nx": 0.486,
+   "ny": 0.712,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 103
+  },
+  {
+   "id": "B-105",
+   "half": 1,
+   "clock": 1382,
+   "nx": 0.253,
+   "ny": 0.266,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 104
+  },
+  {
+   "id": "B-106",
+   "half": 1,
+   "clock": 1397,
+   "nx": 0.298,
+   "ny": 0.532,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 105
+  },
+  {
+   "id": "B-107",
+   "half": 1,
+   "clock": 1405,
+   "nx": 0.199,
+   "ny": 0.29,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 106
+  },
+  {
+   "id": "B-108",
+   "half": 1,
+   "clock": 1420,
+   "nx": 0.48,
+   "ny": 0.482,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 107
+  },
+  {
+   "id": "B-109",
+   "half": 1,
+   "clock": 1430,
+   "nx": 0.588,
+   "ny": 0.725,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 108
+  },
+  {
+   "id": "B-110",
+   "half": 1,
+   "clock": 1443,
+   "nx": 0.484,
+   "ny": 0.63,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 109
+  },
+  {
+   "id": "B-111",
+   "half": 1,
+   "clock": 1451,
+   "nx": 0.742,
+   "ny": 0.614,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 110
+  },
+  {
+   "id": "B-112",
+   "half": 1,
+   "clock": 1456,
+   "nx": 0.294,
+   "ny": 0.384,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 111
+  },
+  {
+   "id": "B-113",
+   "half": 1,
+   "clock": 1470,
+   "nx": 0.61,
+   "ny": 0.772,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 112
+  },
+  {
+   "id": "B-114",
+   "half": 1,
+   "clock": 1474,
+   "nx": 0.775,
+   "ny": 0.657,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 113
+  },
+  {
+   "id": "B-115",
+   "half": 1,
+   "clock": 1486,
+   "nx": 0.685,
+   "ny": 0.541,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 114
+  },
+  {
+   "id": "B-116",
+   "half": 1,
+   "clock": 1498,
+   "nx": 0.337,
+   "ny": 0.258,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 115
+  },
+  {
+   "id": "B-117",
+   "half": 1,
+   "clock": 1510,
+   "nx": 0.783,
+   "ny": 0.764,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 116
+  },
+  {
+   "id": "B-118",
+   "half": 1,
+   "clock": 1520,
+   "nx": 0.324,
+   "ny": 0.73,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 117
+  },
+  {
+   "id": "B-119",
+   "half": 1,
+   "clock": 1527,
+   "nx": 0.393,
+   "ny": 0.684,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 118
+  },
+  {
+   "id": "B-120",
+   "half": 1,
+   "clock": 1541,
+   "nx": 0.193,
+   "ny": 0.583,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 119
+  },
+  {
+   "id": "B-121",
+   "half": 1,
+   "clock": 1558,
+   "nx": 0.489,
+   "ny": 0.686,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 120
+  },
+  {
+   "id": "B-122",
+   "half": 1,
+   "clock": 1572,
+   "nx": 0.533,
+   "ny": 0.36,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 121
+  },
+  {
+   "id": "B-123",
+   "half": 1,
+   "clock": 1583,
+   "nx": 0.496,
+   "ny": 0.262,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 122
+  },
+  {
+   "id": "B-124",
+   "half": 1,
+   "clock": 1597,
+   "nx": 0.609,
+   "ny": 0.576,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 123
+  },
+  {
+   "id": "B-125",
+   "half": 1,
+   "clock": 1609,
+   "nx": 0.848,
+   "ny": 0.329,
+   "player": {
+    "team": "OPP",
+    "number": 15
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 124
+  },
+  {
+   "id": "B-126",
+   "half": 1,
+   "clock": 1623,
+   "nx": 0.553,
+   "ny": 0.539,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 125
+  },
+  {
+   "id": "B-127",
+   "half": 1,
+   "clock": 1637,
+   "nx": 0.523,
+   "ny": 0.766,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "KP Error",
+   "_seq": 126
+  },
+  {
+   "id": "B-128",
+   "half": 1,
+   "clock": 1648,
+   "nx": 0.266,
+   "ny": 0.775,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 127
+  },
+  {
+   "id": "B-129",
+   "half": 1,
+   "clock": 1660,
+   "nx": 0.243,
+   "ny": 0.539,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 128
+  },
+  {
+   "id": "B-130",
+   "half": 1,
+   "clock": 1673,
+   "nx": 0.14,
+   "ny": 0.323,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 129
+  },
+  {
+   "id": "B-131",
+   "half": 1,
+   "clock": 1683,
+   "nx": 0.176,
+   "ny": 0.31,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 130
+  },
+  {
+   "id": "B-132",
+   "half": 1,
+   "clock": 1698,
+   "nx": 0.297,
+   "ny": 0.476,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 131
+  },
+  {
+   "id": "B-133",
+   "half": 1,
+   "clock": 1712,
+   "nx": 0.69,
+   "ny": 0.514,
+   "player": {
+    "team": "OPP",
+    "number": 13
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 132
+  },
+  {
+   "id": "B-134",
+   "half": 1,
+   "clock": 1730,
+   "nx": 0.66,
+   "ny": 0.757,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 133
+  },
+  {
+   "id": "B-135",
+   "half": 1,
+   "clock": 1741,
+   "nx": 0.327,
+   "ny": 0.529,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 134
+  },
+  {
+   "id": "B-136",
+   "half": 1,
+   "clock": 1754,
+   "nx": 0.328,
+   "ny": 0.02,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 135
+  },
+  {
+   "id": "B-137",
+   "half": 1,
+   "clock": 1768,
+   "nx": 0.895,
+   "ny": 0.426,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 136
+  },
+  {
+   "id": "B-138",
+   "half": 1,
+   "clock": 1790,
+   "nx": 0.801,
+   "ny": 0.534,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 137
+  },
+  {
+   "id": "B-139",
+   "half": 1,
+   "clock": 1800,
+   "nx": 0.755,
+   "ny": 0.754,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 138
+  },
+  {
+   "id": "B-140",
+   "half": 1,
+   "clock": 1808,
+   "nx": 0.719,
+   "ny": 0.588,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 139
+  },
+  {
+   "id": "B-141",
+   "half": 1,
+   "clock": 1842,
+   "nx": 0.719,
+   "ny": 0.646,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Free",
+   "placed": true,
+   "_seq": 140
+  },
+  {
+   "id": "B-142",
+   "half": 1,
+   "clock": 1861,
+   "nx": 0.759,
+   "ny": 0.493,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 141
+  },
+  {
+   "id": "B-143",
+   "half": 1,
+   "clock": 1875,
+   "nx": 0.35,
+   "ny": 0.408,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 142
+  },
+  {
+   "id": "B-144",
+   "half": 1,
+   "clock": 1886,
+   "nx": 0.192,
+   "ny": 0.675,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 143
+  },
+  {
+   "id": "B-145",
+   "half": 1,
+   "clock": 1918,
+   "nx": 0.192,
+   "ny": 0.504,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Free",
+   "placed": true,
+   "_seq": 144
+  },
+  {
+   "id": "B-146",
+   "half": 1,
+   "clock": 1938,
+   "nx": 0.337,
+   "ny": 0.72,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 145
+  },
+  {
+   "id": "B-147",
+   "half": 1,
+   "clock": 1944,
+   "nx": 0.247,
+   "ny": 0.372,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 146
+  },
+  {
+   "id": "B-148",
+   "half": 1,
+   "clock": 1969,
+   "nx": 0.34,
+   "ny": 0.493,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 147
+  },
+  {
+   "id": "B-149",
+   "half": 1,
+   "clock": 1983,
+   "nx": 0.872,
+   "ny": 0.266,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "shot",
+   "team": "OPP",
+   "outcome": "Post",
+   "source": null,
+   "placed": false,
+   "_seq": 148
+  },
+  {
+   "id": "B-150",
+   "half": 1,
+   "clock": 1995,
+   "nx": 0.539,
+   "ny": 0.515,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 149
+  },
+  {
+   "id": "B-151",
+   "half": 1,
+   "clock": 2009,
+   "nx": 0.801,
+   "ny": 0.548,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "shot",
+   "team": "OPP",
+   "outcome": "Block/Save",
+   "source": null,
+   "placed": false,
+   "_seq": 150
+  },
+  {
+   "id": "B-152",
+   "half": 1,
+   "clock": 2018,
+   "nx": 0.69,
+   "ny": 0.5,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "fortyFive",
+   "winner": "OPP",
+   "_seq": 151
+  },
+  {
+   "id": "B-153",
+   "half": 1,
+   "clock": 2042,
+   "nx": 0.69,
+   "ny": 0.322,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "45",
+   "placed": true,
+   "_seq": 152
+  },
+  {
+   "id": "B-154",
+   "half": 1,
+   "clock": 2064,
+   "nx": 0.515,
+   "ny": 0.249,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 153
+  },
+  {
+   "id": "B-155",
+   "half": 2,
+   "clock": 42,
+   "nx": 0.832,
+   "ny": 0.496,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 154
+  },
+  {
+   "id": "B-156",
+   "half": 2,
+   "clock": 47,
+   "nx": 0.298,
+   "ny": 0.604,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 155
+  },
+  {
+   "id": "B-157",
+   "half": 2,
+   "clock": 56,
+   "nx": 0.841,
+   "ny": 0.645,
+   "player": null,
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Short",
+   "source": null,
+   "placed": false,
+   "_seq": 156
+  },
+  {
+   "id": "B-158",
+   "half": 2,
+   "clock": 65,
+   "nx": 0.29,
+   "ny": 0.429,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 157
+  },
+  {
+   "id": "B-159",
+   "half": 2,
+   "clock": 87,
+   "nx": 0.29,
+   "ny": 0.616,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 2,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 158
+  },
+  {
+   "id": "B-160",
+   "half": 2,
+   "clock": 103,
+   "nx": 0.337,
+   "ny": 0.445,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 159
+  },
+  {
+   "id": "B-161",
+   "half": 2,
+   "clock": 111,
+   "nx": 0.868,
+   "ny": 0.577,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 160
+  },
+  {
+   "id": "B-162",
+   "half": 2,
+   "clock": 115,
+   "nx": 0.784,
+   "ny": 0.575,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 161
+  },
+  {
+   "id": "B-163",
+   "half": 2,
+   "clock": 138,
+   "nx": 0.784,
+   "ny": 0.697,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 162
+  },
+  {
+   "id": "B-164",
+   "half": 2,
+   "clock": 152,
+   "nx": 0.585,
+   "ny": 0.349,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 163
+  },
+  {
+   "id": "B-165",
+   "half": 2,
+   "clock": 163,
+   "nx": 0.483,
+   "ny": 0.02,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 164
+  },
+  {
+   "id": "B-166",
+   "half": 2,
+   "clock": 167,
+   "nx": 0.458,
+   "ny": 0.392,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 165
+  },
+  {
+   "id": "B-167",
+   "half": 2,
+   "clock": 180,
+   "nx": 0.77,
+   "ny": 0.536,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 166
+  },
+  {
+   "id": "B-168",
+   "half": 2,
+   "clock": 189,
+   "nx": 0.252,
+   "ny": 0.361,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 167
+  },
+  {
+   "id": "B-169",
+   "half": 2,
+   "clock": 198,
+   "nx": 0.531,
+   "ny": 0.408,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 168
+  },
+  {
+   "id": "B-170",
+   "half": 2,
+   "clock": 210,
+   "nx": 0.581,
+   "ny": 0.98,
+   "player": {
+    "team": "OPP",
+    "number": 6
+   },
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 169
+  },
+  {
+   "id": "B-171",
+   "half": 2,
+   "clock": 215,
+   "nx": 0.503,
+   "ny": 0.513,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 170
+  },
+  {
+   "id": "B-172",
+   "half": 2,
+   "clock": 222,
+   "nx": 0.425,
+   "ny": 0.02,
+   "player": null,
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 171
+  },
+  {
+   "id": "B-173",
+   "half": 2,
+   "clock": 236,
+   "nx": 0.21,
+   "ny": 0.424,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 172
+  },
+  {
+   "id": "B-174",
+   "half": 2,
+   "clock": 248,
+   "nx": 0.496,
+   "ny": 0.738,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 173
+  },
+  {
+   "id": "B-175",
+   "half": 2,
+   "clock": 252,
+   "nx": 0.26,
+   "ny": 0.68,
+   "player": {
+    "team": "OPP",
+    "number": 15
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 174
+  },
+  {
+   "id": "B-176",
+   "half": 2,
+   "clock": 274,
+   "nx": 0.398,
+   "ny": 0.457,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 175
+  },
+  {
+   "id": "B-177",
+   "half": 2,
+   "clock": 289,
+   "nx": 0.493,
+   "ny": 0.266,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 176
+  },
+  {
+   "id": "B-178",
+   "half": 2,
+   "clock": 298,
+   "nx": 0.09,
+   "ny": 0.765,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 177
+  },
+  {
+   "id": "B-179",
+   "half": 2,
+   "clock": 314,
+   "nx": 0.399,
+   "ny": 0.278,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Foul",
+   "_seq": 178
+  },
+  {
+   "id": "B-180",
+   "half": 2,
+   "clock": 326,
+   "nx": 0.169,
+   "ny": 0.307,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "KP Error",
+   "_seq": 179
+  },
+  {
+   "id": "B-181",
+   "half": 2,
+   "clock": 341,
+   "nx": 0.321,
+   "ny": 0.243,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 180
+  },
+  {
+   "id": "B-182",
+   "half": 2,
+   "clock": 351,
+   "nx": 0.263,
+   "ny": 0.525,
+   "player": null,
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 181
+  },
+  {
+   "id": "B-183",
+   "half": 2,
+   "clock": 383,
+   "nx": 0.263,
+   "ny": 0.518,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 182
+  },
+  {
+   "id": "B-184",
+   "half": 2,
+   "clock": 406,
+   "nx": 0.291,
+   "ny": 0.767,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 183
+  },
+  {
+   "id": "B-185",
+   "half": 2,
+   "clock": 416,
+   "nx": 0.686,
+   "ny": 0.498,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 184
+  },
+  {
+   "id": "B-186",
+   "half": 2,
+   "clock": 428,
+   "nx": 0.917,
+   "ny": 0.496,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 185
+  },
+  {
+   "id": "B-187",
+   "half": 2,
+   "clock": 452,
+   "nx": 0.636,
+   "ny": 0.661,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 186
+  },
+  {
+   "id": "B-188",
+   "half": 2,
+   "clock": 457,
+   "nx": 0.267,
+   "ny": 0.267,
+   "player": {
+    "team": "OPP",
+    "number": 10
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 187
+  },
+  {
+   "id": "B-189",
+   "half": 2,
+   "clock": 480,
+   "nx": 0.203,
+   "ny": 0.64,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 188
+  },
+  {
+   "id": "B-190",
+   "half": 2,
+   "clock": 491,
+   "nx": 0.226,
+   "ny": 0.452,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 189
+  },
+  {
+   "id": "B-191",
+   "half": 2,
+   "clock": 509,
+   "nx": 0.295,
+   "ny": 0.29,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 190
+  },
+  {
+   "id": "B-192",
+   "half": 2,
+   "clock": 517,
+   "nx": 0.495,
+   "ny": 0.439,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 191
+  },
+  {
+   "id": "B-193",
+   "half": 2,
+   "clock": 523,
+   "nx": 0.576,
+   "ny": 0.424,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 192
+  },
+  {
+   "id": "B-194",
+   "half": 2,
+   "clock": 529,
+   "nx": 0.802,
+   "ny": 0.533,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 193
+  },
+  {
+   "id": "B-195",
+   "half": 2,
+   "clock": 558,
+   "nx": 0.802,
+   "ny": 0.578,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Free",
+   "placed": true,
+   "_seq": 194
+  },
+  {
+   "id": "B-196",
+   "half": 2,
+   "clock": 578,
+   "nx": 0.703,
+   "ny": 0.35,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 195
+  },
+  {
+   "id": "B-197",
+   "half": 2,
+   "clock": 590,
+   "nx": 0.248,
+   "ny": 0.641,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 196
+  },
+  {
+   "id": "B-198",
+   "half": 2,
+   "clock": 605,
+   "nx": 0.838,
+   "ny": 0.597,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 197
+  },
+  {
+   "id": "B-199",
+   "half": 2,
+   "clock": 618,
+   "nx": 0.337,
+   "ny": 0.559,
+   "player": null,
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 198
+  },
+  {
+   "id": "B-200",
+   "half": 2,
+   "clock": 633,
+   "nx": 0.204,
+   "ny": 0.69,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 199
+  },
+  {
+   "id": "B-201",
+   "half": 2,
+   "clock": 647,
+   "nx": 0.262,
+   "ny": 0.637,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 200
+  },
+  {
+   "id": "B-202",
+   "half": 2,
+   "clock": 659,
+   "nx": 0.294,
+   "ny": 0.708,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 2,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 201
+  },
+  {
+   "id": "B-203",
+   "half": 2,
+   "clock": 679,
+   "nx": 0.304,
+   "ny": 0.286,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 202
+  },
+  {
+   "id": "B-204",
+   "half": 2,
+   "clock": 686,
+   "nx": 0.602,
+   "ny": 0.568,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 203
+  },
+  {
+   "id": "B-205",
+   "half": 2,
+   "clock": 701,
+   "nx": 0.85,
+   "ny": 0.294,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 204
+  },
+  {
+   "id": "B-206",
+   "half": 2,
+   "clock": 724,
+   "nx": 0.561,
+   "ny": 0.321,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 205
+  },
+  {
+   "id": "B-207",
+   "half": 2,
+   "clock": 728,
+   "nx": 0.626,
+   "ny": 0.651,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 206
+  },
+  {
+   "id": "B-208",
+   "half": 2,
+   "clock": 731,
+   "nx": 0.626,
+   "ny": 0.651,
+   "player": {
+    "team": "OPP",
+    "number": 4
+   },
+   "type": "card",
+   "team": "OPP",
+   "card": "Red",
+   "_seq": 207
+  },
+  {
+   "id": "B-209",
+   "half": 2,
+   "clock": 738,
+   "nx": 0.845,
+   "ny": 0.355,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 208
+  },
+  {
+   "id": "B-210",
+   "half": 2,
+   "clock": 760,
+   "nx": 0.648,
+   "ny": 0.418,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 209
+  },
+  {
+   "id": "B-211",
+   "half": 2,
+   "clock": 767,
+   "nx": 0.802,
+   "ny": 0.731,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 210
+  },
+  {
+   "id": "B-212",
+   "half": 2,
+   "clock": 782,
+   "nx": 0.292,
+   "ny": 0.462,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 2,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 211
+  },
+  {
+   "id": "B-213",
+   "half": 2,
+   "clock": 798,
+   "nx": 0.33,
+   "ny": 0.306,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 212
+  },
+  {
+   "id": "B-214",
+   "half": 2,
+   "clock": 805,
+   "nx": 0.257,
+   "ny": 0.458,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Overcarried",
+   "_seq": 213
+  },
+  {
+   "id": "B-215",
+   "half": 2,
+   "clock": 819,
+   "nx": 0.39,
+   "ny": 0.627,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 214
+  },
+  {
+   "id": "B-216",
+   "half": 2,
+   "clock": 825,
+   "nx": 0.541,
+   "ny": 0.223,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 215
+  },
+  {
+   "id": "B-217",
+   "half": 2,
+   "clock": 839,
+   "nx": 0.165,
+   "ny": 0.285,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 216
+  },
+  {
+   "id": "B-218",
+   "half": 2,
+   "clock": 856,
+   "nx": 0.45,
+   "ny": 0.578,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 217
+  },
+  {
+   "id": "B-219",
+   "half": 2,
+   "clock": 871,
+   "nx": 0.325,
+   "ny": 0.386,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 218
+  },
+  {
+   "id": "B-220",
+   "half": 2,
+   "clock": 902,
+   "nx": 0.325,
+   "ny": 0.498,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 2,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 219
+  },
+  {
+   "id": "B-221",
+   "half": 2,
+   "clock": 922,
+   "nx": 0.407,
+   "ny": 0.684,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 220
+  },
+  {
+   "id": "B-222",
+   "half": 2,
+   "clock": 932,
+   "nx": 0.899,
+   "ny": 0.409,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 221
+  },
+  {
+   "id": "B-223",
+   "half": 2,
+   "clock": 944,
+   "nx": 0.696,
+   "ny": 0.609,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Foul",
+   "_seq": 222
+  },
+  {
+   "id": "B-224",
+   "half": 2,
+   "clock": 950,
+   "nx": 0.464,
+   "ny": 0.61,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 223
+  },
+  {
+   "id": "B-225",
+   "half": 2,
+   "clock": 965,
+   "nx": 0.683,
+   "ny": 0.493,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 224
+  },
+  {
+   "id": "B-226",
+   "half": 2,
+   "clock": 1000,
+   "nx": 0.683,
+   "ny": 0.436,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 2,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 225
+  },
+  {
+   "id": "B-227",
+   "half": 2,
+   "clock": 1018,
+   "nx": 0.77,
+   "ny": 0.674,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 226
+  },
+  {
+   "id": "B-228",
+   "half": 2,
+   "clock": 1025,
+   "nx": 0.167,
+   "ny": 0.542,
+   "player": {
+    "team": "OPP",
+    "number": 15
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 227
+  },
+  {
+   "id": "B-229",
+   "half": 2,
+   "clock": 1045,
+   "nx": 0.47,
+   "ny": 0.254,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 228
+  },
+  {
+   "id": "B-230",
+   "half": 2,
+   "clock": 1058,
+   "nx": 0.511,
+   "ny": 0.576,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 229
+  },
+  {
+   "id": "B-231",
+   "half": 2,
+   "clock": 1067,
+   "nx": 0.59,
+   "ny": 0.658,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 230
+  },
+  {
+   "id": "B-232",
+   "half": 2,
+   "clock": 1074,
+   "nx": 0.767,
+   "ny": 0.02,
+   "player": null,
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 231
+  },
+  {
+   "id": "B-233",
+   "half": 2,
+   "clock": 1086,
+   "nx": 0.247,
+   "ny": 0.311,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 232
+  },
+  {
+   "id": "B-234",
+   "half": 2,
+   "clock": 1100,
+   "nx": 0.36,
+   "ny": 0.773,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 233
+  },
+  {
+   "id": "B-235",
+   "half": 2,
+   "clock": 1106,
+   "nx": 0.66,
+   "ny": 0.462,
+   "player": null,
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 234
+  },
+  {
+   "id": "B-236",
+   "half": 2,
+   "clock": 1111,
+   "nx": 0.661,
+   "ny": 0.98,
+   "player": null,
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 235
+  },
+  {
+   "id": "B-237",
+   "half": 2,
+   "clock": 1123,
+   "nx": 0.108,
+   "ny": 0.686,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 236
+  },
+  {
+   "id": "B-238",
+   "half": 2,
+   "clock": 1146,
+   "nx": 0.308,
+   "ny": 0.276,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Foul",
+   "_seq": 237
+  },
+  {
+   "id": "B-239",
+   "half": 2,
+   "clock": 1150,
+   "nx": 0.459,
+   "ny": 0.634,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 238
+  },
+  {
+   "id": "B-240",
+   "half": 2,
+   "clock": 1159,
+   "nx": 0.69,
+   "ny": 0.357,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 2,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 239
+  },
+  {
+   "id": "B-241",
+   "half": 2,
+   "clock": 1174,
+   "nx": 0.543,
+   "ny": 0.418,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 240
+  },
+  {
+   "id": "B-242",
+   "half": 2,
+   "clock": 1186,
+   "nx": 0.751,
+   "ny": 0.384,
+   "player": {
+    "team": "FOR",
+    "number": 15
+   },
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Block/Save",
+   "source": null,
+   "placed": false,
+   "_seq": 241
+  },
+  {
+   "id": "B-243",
+   "half": 2,
+   "clock": 1192,
+   "nx": 0.69,
+   "ny": 0.5,
+   "player": null,
+   "type": "fortyFive",
+   "winner": "FOR",
+   "_seq": 242
+  },
+  {
+   "id": "B-244",
+   "half": 2,
+   "clock": 1223,
+   "nx": 0.69,
+   "ny": 0.594,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "45",
+   "placed": true,
+   "_seq": 243
+  },
+  {
+   "id": "B-245",
+   "half": 2,
+   "clock": 1241,
+   "nx": 0.739,
+   "ny": 0.509,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 244
+  },
+  {
+   "id": "B-246",
+   "half": 2,
+   "clock": 1251,
+   "nx": 0.445,
+   "ny": 0.234,
+   "player": null,
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 245
+  },
+  {
+   "id": "B-247",
+   "half": 2,
+   "clock": 1257,
+   "nx": 0.127,
+   "ny": 0.52,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 246
+  },
+  {
+   "id": "B-248",
+   "half": 2,
+   "clock": 1271,
+   "nx": 0.061,
+   "ny": 0.499,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 3,
+   "goal": true,
+   "source": "Play",
+   "placed": false,
+   "_seq": 247
+  },
+  {
+   "id": "B-249",
+   "half": 2,
+   "clock": 1283,
+   "nx": 0.41,
+   "ny": 0.626,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 248
+  },
+  {
+   "id": "B-250",
+   "half": 2,
+   "clock": 1290,
+   "nx": 0.437,
+   "ny": 0.534,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 249
+  },
+  {
+   "id": "B-251",
+   "half": 2,
+   "clock": 1296,
+   "nx": 0.167,
+   "ny": 0.502,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 250
+  },
+  {
+   "id": "B-252",
+   "half": 2,
+   "clock": 1302,
+   "nx": 0.774,
+   "ny": 0.398,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "KP Error",
+   "_seq": 251
+  },
+  {
+   "id": "B-253",
+   "half": 2,
+   "clock": 1314,
+   "nx": 0.853,
+   "ny": 0.305,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 252
+  },
+  {
+   "id": "B-254",
+   "half": 2,
+   "clock": 1334,
+   "nx": 0.771,
+   "ny": 0.697,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 253
+  },
+  {
+   "id": "B-255",
+   "half": 2,
+   "clock": 1341,
+   "nx": 0.118,
+   "ny": 0.254,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 254
+  },
+  {
+   "id": "B-256",
+   "half": 2,
+   "clock": 1354,
+   "nx": 0.182,
+   "ny": 0.66,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 255
+  },
+  {
+   "id": "B-257",
+   "half": 2,
+   "clock": 1365,
+   "nx": 0.29,
+   "ny": 0.57,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 256
+  },
+  {
+   "id": "B-258",
+   "half": 2,
+   "clock": 1368,
+   "nx": 0.29,
+   "ny": 0.57,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "card",
+   "team": "FOR",
+   "card": "Sin Bin",
+   "_seq": 257
+  },
+  {
+   "id": "B-259",
+   "half": 2,
+   "clock": 1399,
+   "nx": 0.29,
+   "ny": 0.25,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 2,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 258
+  },
+  {
+   "id": "B-260",
+   "half": 2,
+   "clock": 1418,
+   "nx": 0.41,
+   "ny": 0.705,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 259
+  },
+  {
+   "id": "B-261",
+   "half": 2,
+   "clock": 1431,
+   "nx": 0.464,
+   "ny": 0.396,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 260
+  },
+  {
+   "id": "B-262",
+   "half": 2,
+   "clock": 1439,
+   "nx": 0.334,
+   "ny": 0.535,
+   "player": null,
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 261
+  },
+  {
+   "id": "B-263",
+   "half": 2,
+   "clock": 1450,
+   "nx": 0.765,
+   "ny": 0.98,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 262
+  },
+  {
+   "id": "B-264",
+   "half": 2,
+   "clock": 1454,
+   "nx": 0.106,
+   "ny": 0.776,
+   "player": null,
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 263
+  },
+  {
+   "id": "B-265",
+   "half": 2,
+   "clock": 1469,
+   "nx": 0.218,
+   "ny": 0.356,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 264
+  },
+  {
+   "id": "B-266",
+   "half": 2,
+   "clock": 1484,
+   "nx": 0.832,
+   "ny": 0.657,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 265
+  },
+  {
+   "id": "B-267",
+   "half": 2,
+   "clock": 1497,
+   "nx": 0.758,
+   "ny": 0.24,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 266
+  },
+  {
+   "id": "B-268",
+   "half": 2,
+   "clock": 1507,
+   "nx": 0.438,
+   "ny": 0.279,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 267
+  },
+  {
+   "id": "B-269",
+   "half": 2,
+   "clock": 1511,
+   "nx": 0.864,
+   "ny": 0.426,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Overcarried",
+   "_seq": 268
+  },
+  {
+   "id": "B-270",
+   "half": 2,
+   "clock": 1518,
+   "nx": 0.847,
+   "ny": 0.314,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 269
+  },
+  {
+   "id": "B-271",
+   "half": 2,
+   "clock": 1543,
+   "nx": 0.759,
+   "ny": 0.552,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Foul",
+   "_seq": 270
+  },
+  {
+   "id": "B-272",
+   "half": 2,
+   "clock": 1557,
+   "nx": 0.976,
+   "ny": 0.567,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 3,
+   "goal": true,
+   "source": "Play",
+   "placed": false,
+   "_seq": 271
+  },
+  {
+   "id": "B-273",
+   "half": 2,
+   "clock": 1571,
+   "nx": 0.558,
+   "ny": 0.581,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 272
+  },
+  {
+   "id": "B-274",
+   "half": 2,
+   "clock": 1575,
+   "nx": 0.804,
+   "ny": 0.358,
+   "player": null,
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "HP Error",
+   "_seq": 273
+  },
+  {
+   "id": "B-275",
+   "half": 2,
+   "clock": 1583,
+   "nx": 0.211,
+   "ny": 0.727,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 274
+  },
+  {
+   "id": "B-276",
+   "half": 2,
+   "clock": 1591,
+   "nx": 0.904,
+   "ny": 0.274,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 275
+  },
+  {
+   "id": "B-277",
+   "half": 2,
+   "clock": 1604,
+   "nx": 0.7,
+   "ny": 0.532,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 276
+  },
+  {
+   "id": "B-278",
+   "half": 2,
+   "clock": 1611,
+   "nx": 0.751,
+   "ny": 0.665,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 277
+  },
+  {
+   "id": "B-279",
+   "half": 2,
+   "clock": 1626,
+   "nx": 0.544,
+   "ny": 0.664,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 278
+  },
+  {
+   "id": "B-280",
+   "half": 2,
+   "clock": 1631,
+   "nx": 0.808,
+   "ny": 0.359,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 279
+  },
+  {
+   "id": "B-281",
+   "half": 2,
+   "clock": 1646,
+   "nx": 0.707,
+   "ny": 0.662,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 280
+  },
+  {
+   "id": "B-282",
+   "half": 2,
+   "clock": 1661,
+   "nx": 0.582,
+   "ny": 0.98,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 281
+  },
+  {
+   "id": "B-283",
+   "half": 2,
+   "clock": 1673,
+   "nx": 0.274,
+   "ny": 0.478,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 282
+  },
+  {
+   "id": "B-284",
+   "half": 2,
+   "clock": 1699,
+   "nx": 0.274,
+   "ny": 0.724,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 283
+  },
+  {
+   "id": "B-285",
+   "half": 2,
+   "clock": 1715,
+   "nx": 0.221,
+   "ny": 0.602,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 284
+  },
+  {
+   "id": "B-286",
+   "half": 2,
+   "clock": 1728,
+   "nx": 0.371,
+   "ny": 0.249,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 285
+  },
+  {
+   "id": "B-287",
+   "half": 2,
+   "clock": 1738,
+   "nx": 0.727,
+   "ny": 0.526,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 286
+  },
+  {
+   "id": "B-288",
+   "half": 2,
+   "clock": 1760,
+   "nx": 0.727,
+   "ny": 0.705,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 287
+  },
+  {
+   "id": "B-289",
+   "half": 2,
+   "clock": 1784,
+   "nx": 0.683,
+   "ny": 0.586,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 288
+  },
+  {
+   "id": "B-290",
+   "half": 2,
+   "clock": 1799,
+   "nx": 0.741,
+   "ny": 0.368,
+   "player": null,
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 289
+  },
+  {
+   "id": "B-291",
+   "half": 2,
+   "clock": 1827,
+   "nx": 0.741,
+   "ny": 0.423,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 290
+  },
+  {
+   "id": "B-292",
+   "half": 2,
+   "clock": 1845,
+   "nx": 0.745,
+   "ny": 0.687,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Foul",
+   "_seq": 291
+  },
+  {
+   "id": "B-293",
+   "half": 2,
+   "clock": 1856,
+   "nx": 0.833,
+   "ny": 0.555,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 292
+  },
+  {
+   "id": "B-294",
+   "half": 2,
+   "clock": 1878,
+   "nx": 0.557,
+   "ny": 0.629,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 293
+  },
+  {
+   "id": "B-295",
+   "half": 2,
+   "clock": 1888,
+   "nx": 0.862,
+   "ny": 0.742,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Short",
+   "source": null,
+   "placed": false,
+   "_seq": 294
+  },
+  {
+   "id": "B-296",
+   "half": 2,
+   "clock": 1899,
+   "nx": 0.744,
+   "ny": 0.508,
+   "player": {
+    "team": "FOR",
+    "number": 2
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "KP Error",
+   "_seq": 295
+  },
+  {
+   "id": "B-297",
+   "half": 2,
+   "clock": 1911,
+   "nx": 0.437,
+   "ny": 0.523,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "KP Error",
+   "_seq": 296
+  },
+  {
+   "id": "B-298",
+   "half": 2,
+   "clock": 1916,
+   "nx": 0.406,
+   "ny": 0.599,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 297
+  },
+  {
+   "id": "B-299",
+   "half": 2,
+   "clock": 1927,
+   "nx": 0.506,
+   "ny": 0.297,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 298
+  },
+  {
+   "id": "B-300",
+   "half": 2,
+   "clock": 1942,
+   "nx": 0.787,
+   "ny": 0.426,
+   "player": null,
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Block/Save",
+   "source": null,
+   "placed": false,
+   "_seq": 299
+  },
+  {
+   "id": "B-301",
+   "half": 2,
+   "clock": 1952,
+   "nx": 0.69,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "fortyFive",
+   "winner": "FOR",
+   "_seq": 300
+  },
+  {
+   "id": "B-302",
+   "half": 2,
+   "clock": 1972,
+   "nx": 0.69,
+   "ny": 0.267,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 2,
+   "goal": false,
+   "source": "45",
+   "placed": true,
+   "_seq": 301
+  },
+  {
+   "id": "B-303",
+   "half": 2,
+   "clock": 1989,
+   "nx": 0.764,
+   "ny": 0.23,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 302
+  },
+  {
+   "id": "B-304",
+   "half": 2,
+   "clock": 1994,
+   "nx": 0.239,
+   "ny": 0.627,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 303
+  },
+  {
+   "id": "B-305",
+   "half": 2,
+   "clock": 2021,
+   "nx": 0.239,
+   "ny": 0.398,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 304
+  },
+  {
+   "id": "B-306",
+   "half": 2,
+   "clock": 2038,
+   "nx": 0.308,
+   "ny": 0.421,
+   "player": null,
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 305
+  },
+  {
+   "id": "B-307",
+   "half": 2,
+   "clock": 2042,
+   "nx": 0.706,
+   "ny": 0.577,
+   "player": null,
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 306
+  },
+  {
+   "id": "B-308",
+   "half": 2,
+   "clock": 2064,
+   "nx": 0.612,
+   "ny": 0.241,
+   "player": null,
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 307
+  }
+ ]
+}

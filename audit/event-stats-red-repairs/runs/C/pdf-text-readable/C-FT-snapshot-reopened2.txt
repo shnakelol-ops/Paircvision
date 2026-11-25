@@ -1,0 +1,282 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Full-Time Dashboard
+ 1896    38  1 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  496   118  Ballyhale Shamrocks
+ 1424   118  Na Piarsaigh
+  960   150  v
+  496   190  1-19 (22)
+ 1424   190  2-21 (27)
+  960   244  Na Piarsaigh lead by 5
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Ballyhale…
+  540   394  12/28
+  994   394  14/26
+ 1448   402  14
+   86   416  20/30
+  540   446  43%
+  994   446  54%
+   86   452  67%
+ 1448   470  Lost
+  540   490  Lost 16/28
+  994   490  Lost 12/26
+ 1448   514  15
+   86   534  Na Piarsaigh
+   86   576  23/36
+   86   612  64%
+   46   928  Ballyhale… placed balls
+  992   928  Na Piarsaigh placed balls
+   46   956  4/5 scored
+  992   956  9/9 scored
+ 1896  1060  176 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   54   125  20 scores from 30 shots · 67% efficiency · Best zone: Attacking Right
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+   46   972  Ballyhale… shots: 20 scored from 30 attempts · …
+  676   972  Ballyhale…: 4 placed-ball scores · 1 placed-ball …
+ 1306   972  Ballyhale… best zone: Attacking Right (7)
+ 1896  1060  30 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   54   125  23 scores from 36 shots · 64% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+ 1316   467  ↓
+ 1317   469  ↓
+ 1287   488  ↓
+ 1289   489  ↓
+   46   972  Na Piarsaigh shots: 23 scored from 36 attempts …
+  676   972  Na Piarsaigh: 9 placed-ball scores
+ 1306   972  Na Piarsaigh best scoring zone: Attacking Centr…
+ 1896  1060  36 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Ballyhale Shamrocks Puckouts
+ 1434   118  Na Piarsaigh Puckouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Ballyhale… Puckouts
+  992   928  Na Piarsaigh Puckouts
+   46   956  Ballyhale… retained 7/14 (50%)
+  992   956  Na Piarsaigh retained 9/13 (69%)
+ 1896  1060  27 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Restart Battle – Second Half
+ 1896    38  5 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  486    95  2nd Half
+ 1434    95  2nd Half
+  486   118  Ballyhale Shamrocks Puckouts
+ 1434   118  Na Piarsaigh Puckouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Ballyhale… Puckouts
+  992   928  Na Piarsaigh Puckouts
+   46   956  Ballyhale… retained 5/14 (36%)
+  992   956  Na Piarsaigh retained 5/13 (38%)
+ 1896  1060  27 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Turnover & Territory – First Half
+ 1896    38  6 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh · Ballyhale… attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 4 · Lost 7 (36% won)
+  676   972  Middle Centre
+ 1306   972  Middle Right
+ 1896  1060  11 events
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Turnover & Territory – Second Half
+ 1896    38  7 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh · Ballyhale… attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 10 · Lost 8 (56% won)
+  676   972  Middle Centre
+ 1306   972  Middle Left
+ 1896  1060  18 events
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  8 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   38   104  FOR — BALLYHALE SHAMROCKS
+  982   104  OPP — NA PIARSAIGH
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  30
+  982   172  Attempts
+ 1884   172  36
+   38   204  Scores
+  940   204  20
+  982   204  Scores
+ 1884   204  23
+   38   236  Conversion
+  940   236  67%
+  982   236  Conversion
+ 1884   236  64%
+   38   268  Wides
+  940   268  7
+  982   268  Wides
+ 1884   268  5
+   38   300  Blocked / Saved
+  940   300  2
+  982   300  Blocked / Saved
+ 1884   300  3
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  22
+  664   400  16
+  780   400  6
+  940   400  73%
+  982   400  Open Play
+ 1488   400  19
+ 1608   400  14
+ 1724   400  5
+ 1884   400  74%
+   38   432  Free
+  544   432  3
+  664   432  2
+  780   432  1
+  940   432  67%
+  982   432  Free
+ 1488   432  6
+ 1608   432  6
+ 1724   432  0
+ 1884   432  100%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  1
+  664   496  1
+  780   496  0
+  940   496  100%
+  982   496  45
+ 1488   496  3
+ 1608   496  3
+ 1724   496  0
+ 1884   496  100%
+   38   528  Penalty
+  544   528  1
+  664   528  1
+  780   528  0
+  940   528  100%
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  3
+  664   560  —
+  780   560  3
+  940   560  0%
+  982   560  Unclassified
+ 1488   560  8
+ 1608   560  —
+ 1724   560  8
+ 1884   560  0%
+   38   587  3 shots logged without a source
+  982   587  8 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  0
+  982   660  TWO_POINTER Scores
+ 1884   660  0
+   38   692  45+2 Scores
+  940   692  0
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  0
+  982   724  Total 2PT Scores
+ 1884   724  0
+   38   756  Total 2PT Pts Value
+  940   756  0
+  982   756  Total 2PT Pts Value
+ 1884   756  0
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  4
+  982   834  Placed Scored
+ 1884   834  9
+   38   866  Placed Missed
+  940   866  1
+  982   866  Placed Missed
+ 1884   866  0
+   38   898  Placed Conv %
+  940   898  80%
+  982   898  Placed Conv %
+ 1884   898  100%
+ 1896  1060  176 events

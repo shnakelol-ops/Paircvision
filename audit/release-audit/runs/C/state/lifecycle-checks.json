@@ -1,0 +1,74 @@
+[
+ {
+  "op": "sub",
+  "team": "OPP",
+  "out": 6,
+  "in": 18,
+  "half": 1,
+  "clock": 1800,
+  "preview": "#6 off → #18 on (Ballygunner)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 6
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 11,
+  "in": 16,
+  "half": 2,
+  "clock": 400,
+  "preview": "#11 off → #16 on (Kilmallock)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 11
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "OPP",
+  "out": 14,
+  "in": 19,
+  "half": 2,
+  "clock": 1000,
+  "preview": "#14 off → #19 on (Ballygunner)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 14
+  },
+  "pass": true
+ },
+ {
+  "op": "sub",
+  "team": "FOR",
+  "out": 13,
+  "in": 17,
+  "half": 2,
+  "clock": 1200,
+  "preview": "#13 off → #17 on (Kilmallock)",
+  "storedOut": {
+   "isActive": false,
+   "slot": null
+  },
+  "storedIn": {
+   "isActive": true,
+   "slot": 13
+  },
+  "pass": true
+ }
+]
