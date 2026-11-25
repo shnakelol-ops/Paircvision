@@ -127,12 +127,20 @@ describe("the real Ballylanders crest", () => {
   it("the circular crest is untouched: every pixel inside the disc, and every gold and green pixel, is fully opaque and unchanged", () => {
     const a = alpha!;
     let inside = 0, gold = 0, green = 0;
+    // Same pixels and the same rule as before (each must be fully opaque), but collected and
+    // compared once: ~500,000 separate expect() calls made this test slow enough to time out on CI.
+    const notOpaque: [kind: string, p: number][] = [];
     for (let p = 0; p < a.length; p++) {
       const c = rgb(img, p);
-      if (dist(p) <= r - 3) { inside++; expect(a[p]).toBe(255); }
-      if (dist(p) <= r - 1 && isGold(c)) { gold++; expect(a[p]).toBe(255); }
-      if (isGreen(c)) { green++; expect(a[p]).toBe(255); }
+      if (dist(p) <= r - 3) { inside++; if (a[p] !== 255) notOpaque.push(["inside", p]); }
+      if (dist(p) <= r - 1 && isGold(c)) { gold++; if (a[p] !== 255) notOpaque.push(["gold", p]); }
+      if (isGreen(c)) { green++; if (a[p] !== 255) notOpaque.push(["green", p]); }
     }
+    const firstFew = notOpaque
+      .slice(0, 20)
+      .map(([kind, p]) => `${kind} pixel ${p % img.width},${Math.floor(p / img.width)} has alpha ${a[p]}`)
+      .join("\n");
+    expect(notOpaque.length, `pixels not fully opaque (first 20 of ${notOpaque.length}):\n${firstFew}`).toBe(0);
     expect(inside).toBeGreaterThan(180_000);
     expect(gold).toBeGreaterThan(20_000); // gold border, C.L.C.G, Báile an Londraigh, shamrocks
     expect(green).toBeGreaterThan(100_000);

@@ -112,12 +112,17 @@ describe("KitUploadSheet", () => {
     const { codec } = renderSheet(img);
     await screen.findByText(/Check white parts of the jersey that touch its outline/);
     const paint = codec.paint as ReturnType<typeof vi.fn>;
-    const lastPreviewAlpha = () => paint.mock.calls.filter((c) => c.length === 3 || c[3] === undefined).at(-1)![2] as Uint8ClampedArray;
-    expect(lastPreviewAlpha().some((a) => a === 0)).toBe(true);
+    // Preview paints are the 3-argument calls (the tile paint passes a size). Undefined until the
+    // first preview paint has happened.
+    const lastPreviewAlpha = () =>
+      paint.mock.calls.filter((c) => c.length === 3 || c[3] === undefined).at(-1)?.[2] as Uint8ClampedArray | undefined;
+    // The warning text is committed before React runs the effect that paints the preview (the photo
+    // loads outside act()), so wait for the preview paint itself rather than for the text.
+    await waitFor(() => expect(lastPreviewAlpha()?.some((a) => a === 0)).toBe(true));
     fireEvent.click(within(dialog()).getByRole("button", { name: "Show original" }));
-    expect(lastPreviewAlpha().every((a) => a === 255)).toBe(true);
+    expect(lastPreviewAlpha()?.every((a) => a === 255)).toBe(true);
     fireEvent.click(within(dialog()).getByRole("button", { name: "Showing original photo" }));
-    expect(lastPreviewAlpha().some((a) => a === 0)).toBe(true);
+    expect(lastPreviewAlpha()?.some((a) => a === 0)).toBe(true);
   });
 
   it("does not show the white-parts warning on a dark backdrop", async () => {
