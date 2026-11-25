@@ -134,6 +134,7 @@ const INTERNAL_TOOLS: readonly InternalTool[] = [
   { name: "Team Sheet", sub: "Ballylanders starting XV — real jerseys", path: "/internal/team-sheet" },
   { name: "Matchday Cover", sub: "Matchday poster — two clubs, real jerseys", path: "/internal/matchday-pack" },
   { name: "Match Clipper", sub: "Cut clips from a full match video — stays on this phone", path: "/internal/match-clipper" },
+  { name: "Montage Lab", sub: "Stage 0 test — can this phone build a long montage?", path: "/internal/montage-lab" },
   { name: "Rugby Slate", sub: "Tactical Slate — Rugby Union pitch (V0)", path: "/internal/slate/rugby" },
 ];
 
