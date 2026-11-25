@@ -1,0 +1,109 @@
+# PáircVision Guardian V1 — CI baseline (engineering infrastructure only).
+#
+# Runs the existing test suite, the production build (same command as
+# vercel.json) and a TypeScript report on every pull request to main and on
+# every push to main. It changes nothing: read-only token, no secrets, no
+# deployments, no merges.
+#
+# TypeScript: `tsc -b` currently reports 53 known errors on main (85c10d0).
+# All 12 in application code are `if (!result.ok)` narrowing errors caused by
+# `strict` being off; the other 41 are in test files. They are not fixed here.
+# The "TypeScript (no new errors)" check therefore does NOT claim the code
+# type-checks: it fails only if the error count rises above the known
+# baseline, and prints the real count on every run.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # npm ci deletes the tracked (Windows) node_modules before installing.
+      - run: npm ci --no-audit --no-fund
+      - run: npx vitest run
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Same command as vercel.json "buildCommand".
+      - run: node node_modules/vite/bin/vite.js build
+
+  typecheck:
+    name: TypeScript (no new errors)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TS_KNOWN_ERRORS: "53"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Count TypeScript errors (tsc -b)
+        run: |
+          set +e
+          npx tsc -b > tsc.log 2>&1
+          set -e
+          count=$(grep -c "error TS" tsc.log || true)
+          {
+            echo "## TypeScript report"
+            echo ""
+            echo "- Errors now: **${count}**"
+            echo "- Known errors on main: **${TS_KNOWN_ERRORS}**"
+            echo ""
+            echo "This check fails only if errors rise above the known count."
+            echo "It does not mean the code type-checks cleanly."
+            echo ""
+            echo '```'
+            grep "error TS" tsc.log | head -100
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "TypeScript errors: ${count} (known: ${TS_KNOWN_ERRORS})"
+          if [ "${count}" -gt "${TS_KNOWN_ERRORS}" ]; then
+            echo "::error::TypeScript errors rose from ${TS_KNOWN_ERRORS} to ${count}."
+            grep "error TS" tsc.log
+            exit 1
+          fi
+          if [ "${count}" -lt "${TS_KNOWN_ERRORS}" ]; then
+            echo "::notice::TypeScript errors fell to ${count}. Lower TS_KNOWN_ERRORS in ci.yml."
+          fi
