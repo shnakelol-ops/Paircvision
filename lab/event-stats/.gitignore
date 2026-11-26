@@ -1,0 +1,4 @@
+# Generated lab output (reports, browser run captures, probe results) — never committed.
+out/
+runs/
+persistence/results/

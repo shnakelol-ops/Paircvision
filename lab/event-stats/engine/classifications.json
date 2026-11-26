@@ -1,0 +1,4 @@
+{
+ "_about": "Classification of engine-path mismatches. Keys: <ledger>|<scope>|<team>|<statistic>. Categories: confirmed-application-defect, reference-or-fixture-defect, approved-definition-change, harness-drift, unresolved. An entry never changes an expected value; it records why a mismatch exists, with evidence. Entries require human review.",
+ "checks": {}
+}
