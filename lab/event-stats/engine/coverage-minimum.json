@@ -1,0 +1,10 @@
+{
+ "_about": "Minimum engine-path coverage that every laboratory run must reach (CI fails below it). New checks are welcome; lowering these numbers or removing a ledger is a reviewed change to a protected file.",
+ "minimumChecks": 2688,
+ "requiredLedgers": ["ledger-A", "ledger-B-live", "ledger-B", "ledger-C"],
+ "requiredMatches": ["A", "B", "C"],
+ "requiredLabTests": [
+  "Event Stats laboratory — engine path vs independent ledgers writes a deterministic report",
+  "Event Stats laboratory — engine path vs independent ledgers has no failed check that is unclassified or a confirmed application defect"
+ ]
+}

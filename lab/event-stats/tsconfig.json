@@ -1,0 +1,13 @@
+{
+  // Type-checks the laboratory's TypeScript only (engine path), with the app's own compiler
+  // settings — the app's tsconfig files are not changed. Run: npx tsc -p lab/event-stats/tsconfig.json
+  // App files the lab imports are checked too, as part of the same program.
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  "include": ["engine/**/*.ts"]
+}

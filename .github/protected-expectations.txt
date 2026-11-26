@@ -2,8 +2,10 @@
 # A change to any listed file needs this manifest updated in the same PR, which the guard
 # lists under REVIEW REQUIRED. Regenerate with `test-guard.mjs update` (owner-reviewed only).
 36b7ab1ce1d7f6f14695edddf619332a0454a17866ae7c32cd50a058002e7cca  lab/event-stats/docs/KICKOUT-ORIGIN-DEFINITION.md
-47c29e0d5c56353e85e31549a4f8b9c4550c3ab985d0581d4c245030a0595596  lab/event-stats/engine/classifications.json
-0cf9d683765d2cd9bf5a0d7c14131d30bd7486bd9cb4bc8584a8af30a428e118  lab/event-stats/engine/engine-check.lab.test.ts
+ab3d61cbeddab08d92228b91b351043908863620443f7a838816b547ae655420  lab/event-stats/engine/classifications.json
+995d136a5604b58db0b827046647cdbcc35d8ddf4fe3d8c77304870d056e3e0f  lab/event-stats/engine/coverage-minimum.json
+40cfa6fd093118ed6071fad94b30e6a69618daa43882cbfb1fe0e01d5c7fba49  lab/event-stats/engine/engine-check.lab.test.ts
+1ae1e2db878484932faeb4af1b59aae5ec5e773153933a0dc0f31fd96fbedb01  lab/event-stats/engine/vitest.lab.config.ts
 f17e7b3f0c28da835951ff593bd9b361b8301b119b3b9a4527a69b3c06cf960e  lab/event-stats/expected-authoritative/VALIDATION.json
 f2f21035866eae96cba0ae0278e87e5571471d0f946f2bc35f42cb63d6c7f897  lab/event-stats/expected-authoritative/ledger-A.json
 979611a963c4e88ed7facc08f8183cbf1871fcccc8b1a23a4528d8fdc5516009  lab/event-stats/expected-authoritative/ledger-B-live.json
@@ -20,7 +22,10 @@ df6e382340e0cfeac208ed469ede080ae88ed7a834121c75cce8abb7215fcc1f  lab/event-stat
 a36c93a1670fcc160f8687ab9216a72ca3ddfc88bdf254200387ed5894fb656a  lab/event-stats/scripts/gen-fixtures.mjs
 f9c7871a470b6ee06cd6903da6c59653a4253fa2e80c7e500d55fcaea441140a  lab/event-stats/scripts/reference-kickout-phase.mjs
 2fd834e238141c43fb702c7cc3929f4b47fdf1fa5a835ee86842548a979f5841  lab/event-stats/scripts/reference.mjs
+871af812654d59f2b1b079799b667bf01b7e88a28a4e8b2338b9835b123e74bd  lab/event-stats/tools/check-lab-types.mjs
 73090ab3b0d0affa1eded7ab6ce79d311ed478e1212a712ab11f26eb291c4a02  lab/event-stats/tools/reproduce.mjs
+8e171800c31fa5acb486da91625714845320275ed2a6d68ef8053d194e0d03b4  lab/event-stats/tools/verify-lab-run.mjs
+187f56446f31082347cef4093fb56a76e82ca5ed0a2b1e8c604ec30e197a42df  lab/event-stats/tsconfig.json
 8edef0893cdb7e1d6aab6a9ab4e9a2525fac449cec8cdaf3b285bf918d883f1d  src/StatsModeSurface.saved-match-persistence.test.ts
 ab3a32d9ac41269bb3282cdd5cb89d94474be0c32a23901d5669e4b91bfe4715  src/core/stats/draw-stats-zone-overlay.test.ts
 190bcd3a0ad5a61fcb5e06e8b5fc80bc3688beba5bcafafa69a572bc5c328aeb  src/core/stats/saved-match.test.ts
