@@ -52,6 +52,13 @@ export const PROTECTED = [
   /^src\/pro-tagger\/(eventStatsP0Integration|pro-tagger-score|quickReviewShotsReconciliation|turnoverOurPlayer|pro-tagger-review-zones-parity|ProTaggerLiveScreen\.turnoverKickoutCounts|pro-tagger-adapter|pro-tagger-review-edit|pro-tagger-discipline|pro-tagger-families)\.test\.tsx?$/,
   /^src\/pro-tagger\/dashboard\/(matchMapTestFixtures\.ts|scoringMapView\.test\.ts|turnoverMapView\.test\.ts|htFtDashboardView\.test\.ts)$/,
   /^src\/StatsModeSurface\.saved-match-persistence\.test\.ts$/,
+  // Event Stats laboratory: independent reference calculators, generator, synthetic matches,
+  // expected ledgers, the kickout-origin definition, and the engine comparison + its classifications.
+  /^lab\/event-stats\/scripts\/(reference|reference-kickout-phase|gen-fixtures)\.mjs$/,
+  /^lab\/event-stats\/(fixtures|expected|expected-authoritative)\//,
+  /^lab\/event-stats\/docs\/KICKOUT-ORIGIN-DEFINITION\.md$/,
+  /^lab\/event-stats\/engine\/(engine-check\.lab\.test\.ts|classifications\.json)$/,
+  /^lab\/event-stats\/tools\/reproduce\.mjs$/,
 ];
 
 /** skip / only / todo / conditional / expected-failure markers that stop a test from really running. */

@@ -1,0 +1,53 @@
+{
+ "ledger-A": {
+  "credited": 24,
+  "correct": 23,
+  "wrong": [
+   {
+    "restart": "A-118",
+    "score": "A-X02",
+    "truthRoot": {
+     "type": "OTHER",
+     "id": null
+    }
+   }
+  ],
+  "truthKickoutOriginScores": 23,
+  "missed": []
+ },
+ "ledger-B": {
+  "credited": 21,
+  "correct": 20,
+  "wrong": [
+   {
+    "restart": "B-025",
+    "score": "B-026"
+   }
+  ],
+  "truthKickoutOriginScores": 20,
+  "missed": []
+ },
+ "ledger-B-live": {
+  "credited": 20,
+  "correct": 20,
+  "wrong": [],
+  "truthKickoutOriginScores": 20,
+  "missed": []
+ },
+ "ledger-C": {
+  "credited": 33,
+  "correct": 32,
+  "wrong": [
+   {
+    "restart": "C-135",
+    "score": "C-X01",
+    "truthRoot": {
+     "type": "OTHER",
+     "id": null
+    }
+   }
+  ],
+  "truthKickoutOriginScores": 32,
+  "missed": []
+ }
+}
