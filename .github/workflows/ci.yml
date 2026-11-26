@@ -11,6 +11,10 @@
 # still listed in the baseline, on baseline growth, or if tsc cannot run.
 # Passing it does NOT mean the code type-checks cleanly.
 #
+# Unit tests also run the test-integrity guard (.github/scripts/test-guard.mjs):
+# every baselined test must run and pass, nothing may be skipped, and protected
+# Event Stats expectation files may not change without a reviewed baseline update.
+#
 # Third-party actions are pinned to full commit SHAs (tag in the comment).
 
 name: CI
@@ -41,13 +45,38 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Two commits: on a PR the merge commit's first parent is the base, so the
+          # test-integrity baselines can be compared with the base branch's copies.
+          fetch-depth: 2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       # npm ci deletes the tracked (Windows) node_modules before installing.
       - run: npm ci --no-audit --no-fund
-      - run: npx vitest run
+      - run: npx vitest run --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/vitest-report.json"
+      - name: Self-test the test-integrity guard
+        if: always()
+        run: node --test .github/scripts/test-guard.test.mjs
+      - name: Base branch copies of the test baselines (pull requests only)
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          for f in test-baseline.txt protected-expectations.txt; do
+            if git cat-file -e "HEAD^1:.github/$f" 2>/dev/null; then
+              git show "HEAD^1:.github/$f" > "$RUNNER_TEMP/base-$f"
+            else
+              echo "::notice::Base branch has no .github/$f yet; review comparison skipped."
+            fi
+          done
+      # Runs even if the test step failed, so a crashed or partial run is still judged.
+      - name: Test-integrity guard
+        if: always()
+        run: >-
+          node .github/scripts/test-guard.mjs check
+          --report "$RUNNER_TEMP/vitest-report.json"
+          --base-baseline "$RUNNER_TEMP/base-test-baseline.txt"
+          --base-manifest "$RUNNER_TEMP/base-protected-expectations.txt"
+          --summary "$GITHUB_STEP_SUMMARY"
 
   build:
     name: Production build
