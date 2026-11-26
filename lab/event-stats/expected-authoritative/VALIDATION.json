@@ -49,5 +49,19 @@
   ],
   "truthKickoutOriginScores": 32,
   "missed": []
+ },
+ "ledger-D": {
+  "credited": 6,
+  "correct": 6,
+  "wrong": [],
+  "truthKickoutOriginScores": 6,
+  "missed": []
+ },
+ "ledger-D-live": {
+  "credited": 6,
+  "correct": 6,
+  "wrong": [],
+  "truthKickoutOriginScores": 6,
+  "missed": []
  }
 }

@@ -283,6 +283,14 @@ function compare(fx: Fixture, ledgerName: string, events: readonly LoggedMatchEv
   if (fx.sport === "hurling") {
     add("FULL", "-", "hurling prompts: no kickout / 2-pointer wording", [], prompts.filter((p) => /kick-?out|2-?point|two-?point/i.test(p.text)).map((p) => p.text));
   }
+  // Coverage of the "net restart disadvantage" sentence (the only one using the singular restart
+  // term): wherever the REFERENCE shows the home team's restart conversion trailing its restart-loss
+  // punishment by more than 10 points (≥ 3 restarts), that sentence must be produced.
+  const conv = F.chains.FOR.restartWonToScore, punish = F.chains.FOR.restartLostToScoreAgainst;
+  if (F.FOR.restartsWon + F.FOR.restartsLost >= 3 && conv.pct !== null && punish.pct !== null && conv.pct - punish.pct < -10) {
+    add("FULL", "FOR", `net restart disadvantage sentence produced (reference: ${conv.pct}% vs ${punish.pct}%)`, true,
+      prompts.some((p) => p.text.includes("of their losses produced restart-origin point value")));
+  }
   return checks;
 }
 
@@ -290,6 +298,7 @@ const MATCHES: { id: string; ledgers: { name: string; stage: "live" | "final" }[
   { id: "A", ledgers: [{ name: "ledger-A", stage: "final" }] },
   { id: "B", ledgers: [{ name: "ledger-B-live", stage: "live" }, { name: "ledger-B", stage: "final" }] },
   { id: "C", ledgers: [{ name: "ledger-C", stage: "final" }] },
+  { id: "D", ledgers: [{ name: "ledger-D-live", stage: "live" }, { name: "ledger-D", stage: "final" }] },
 ];
 
 function runAll() {

@@ -12,6 +12,7 @@ storage, download or processing cost for coaches.
 | `scripts/reference.mjs`, `scripts/reference-kickout-phase.mjs` | **Independent** reference calculators. Import only `node:` built-ins (and each other); never `src/`. |
 | `scripts/gen-fixtures.mjs` | Seeded generator of the three synthetic matches (seeds 20261107–09). |
 | `fixtures/match-{A,B,C}.json` | Synthetic matches: A football (60 min), B football stress (undo, reloads, storage failure, tab close, Review edits), C hurling. `match-B.planned.json` is the generator's plan; `match-B.json` is as run. |
+| `fixtures/match-D.json`, `scripts/gen-fixture-d.mjs` | Hand-scripted hurling match D (48 events) closing three coverage gaps: a player on a lost restart, an unattributed score, a restart net-disadvantage sentence. See `PROVENANCE.md`. |
 | `expected-authoritative/` | **The expected results** (authoritative kickout-origin definition) + `VALIDATION.json`. |
 | `expected/` | The same ledgers under the previous restart rule — kept because `reference-kickout-phase.mjs` must reproduce them before it recomputes. |
 | `docs/KICKOUT-ORIGIN-DEFINITION.md` | The written kickout-origin definition the reference implements. |
@@ -35,7 +36,7 @@ classified as an application defect or unresolved. In CI the same steps run as t
 report, a lab test skipped or not run, fewer checks than `engine/coverage-minimum.json`, a match
 or ledger missing) and writes the per-match result to the job summary.
 
-## What the engine path verifies (per match A, B before and after Review edits, C)
+## What the engine path verifies (per match A, B and D before and after Review edits, C)
 
 - Team totals for FULL / 1H / 2H, both teams: score, goals, 2-pointers, scores/attempts, shooting %,
   wides, short / post / blocked shots, own restarts retained / lost, restart share, turnovers,
@@ -48,7 +49,8 @@ or ledger missing) and writes the per-match result to the job summary.
 - Full Review player table: per player actions, goals, points value, total value, attempts,
   wides, turnovers won / lost, restarts won / lost, frees won / conceded.
 - Review edits and Review "not offered" probes; intelligence wording rules (every prompt names a
-  team and states a number; no kickout / 2-pointer wording for hurling).
+  team and states a number; no kickout / 2-pointer wording for hurling; the restart net-disadvantage
+  sentence is produced wherever the reference shows a gap of more than 10 points).
 - Every difference recorded in `VALIDATION.json` has an entry in `engine/classifications.json`.
 
 Not verifiable on this path: per-player cards (the app keeps a live sin-bin / red status, not a
