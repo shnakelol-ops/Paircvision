@@ -18,7 +18,7 @@
 # "Event Stats laboratory (engine)" runs the independent laboratory in lab/event-stats:
 # reference independence and byte-for-byte reproducibility, lab type checks, and the
 # comparison of the production statistics engine with independently calculated ledgers
-# for synthetic matches A, B and C. No retries, no repairs. Developer-side only — nothing
+# for synthetic matches A, B, C and D. No retries, no repairs. Developer-side only — nothing
 # under lab/ is built into, or served by, the app.
 #
 # Third-party actions are pinned to full commit SHAs (tag in the comment).
@@ -150,7 +150,7 @@ jobs:
       - name: Laboratory TypeScript
         if: ${{ !cancelled() }}
         run: node lab/event-stats/tools/check-lab-types.mjs
-      - name: Engine vs independent ledgers (matches A, B, C)
+      - name: Engine vs independent ledgers (matches A, B, C, D)
         if: ${{ !cancelled() }}
         run: npx vitest run --config lab/event-stats/engine/vitest.lab.config.ts --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/lab-vitest.json"
       - name: Verify the laboratory ran completely
