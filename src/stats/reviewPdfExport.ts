@@ -327,6 +327,24 @@ function koLabelPluralUC(sport: PitchSport): string {
   return isPuck(sport) ? "PUCKOUTS" : "KICKOUTS";
 }
 
+/** "Kicked Dead" (football) or "Puckout Dead" (hurling, camogie): an own restart that went dead. */
+export function restartDeadLabel(sport: PitchSport): string {
+  return isPuck(sport) ? "Puckout Dead" : "Kicked Dead";
+}
+
+/** "Free Kick Analysis" (football) or "Free Analysis" (hurling, camogie, whose frees are struck). */
+export function freeAnalysisTitle(sport: PitchSport): string {
+  return isPuck(sport) ? "Free Analysis" : "Free Kick Analysis";
+}
+
+/**
+ * Whether the sport has a sin-bin sanction — football (men's and ladies') yes; hurling and camogie no.
+ * Mirrors getDisciplineOptions in src/pro-tagger/pro-tagger-discipline.ts (kept in step by a test).
+ */
+export function sportHasSinBin(sport: PitchSport): boolean {
+  return !isPuck(sport);
+}
+
 /**
  * Replaces "kickout(s)" with "puckout(s)" in a string when sport is hurling/camogie.
  * Preserves original case (lower / Title / UPPER).
@@ -1095,7 +1113,7 @@ function drawSummaryStatsTable(
           { label: "Restart Share — Clean Lost",    value: String(st.koCleanLost) },
           { label: "Restart Share — Break Lost",    value: String(st.koBreakLost) },
           { label: "Restart Share — Foul Conceded", value: String(st.koFoulCon) },
-          { label: "Kicked Dead",    value: String(st.koKickedDead) },
+          { label: restartDeadLabel(sport), value: String(st.koKickedDead) },
         ],
       },
       {
@@ -3342,7 +3360,7 @@ export function makeKickoutChainPage(
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Lost",    String(forCleanLost),   "#fb7185", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Break Lost",    String(forBreakLost),   "#e2e8f0", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Foul Conceded", String(forFoulCon),     "#f97316", false);
-      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(forKickedDead),  "#94a3b8", true);
+      drawStatRow(COL2_X, cy, COL_W,      restartDeadLabel(sport), String(forKickedDead),  "#94a3b8", true);
     }
 
     // OPP team panel
@@ -3362,7 +3380,7 @@ export function makeKickoutChainPage(
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Lost",    String(oppCleanLost),   "#fb7185", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Break Lost",    String(oppBreakLost),   "#e2e8f0", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Foul Conceded", String(oppFoulCon),     "#f97316", false);
-      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(oppKickedDead),  "#94a3b8", true);
+      drawStatRow(COL2_X, cy, COL_W,      restartDeadLabel(sport), String(oppKickedDead),  "#94a3b8", true);
     }
   }
 
@@ -4748,13 +4766,14 @@ export function makeTacticalIntelligencePage(
       forColor: "#facc15",
       oppColor: "#facc15",
     },
-    {
+    // No sin-bin row for a sport without the sanction — unless sin bins were recorded (kept, never hidden).
+    ...(sportHasSinBin(sport) || forDiscipline.sinBins > 0 || oppDiscipline.sinBins > 0 ? [{
       label:    "Sin bins",
       forVal:   `${forDiscipline.sinBins}`,
       oppVal:   `${oppDiscipline.sinBins}`,
       forColor: "#fb923c",
       oppColor: "#fb923c",
-    },
+    }] : []),
     {
       label:    "Red cards",
       forVal:   `${forDiscipline.redCards}`,
@@ -6826,7 +6845,7 @@ function makeHowToReadPage(
       subtitle: PART_QUESTIONS.POSSESSION_FACTS,
       question: "Every restart, turnover and free is followed to its immediate outcome.",
       body:     "Each possession is tracked from its start to its immediate result — a score, a wide, or possession lost. This is the official source of truth for what we won or lost, and where.",
-      surfaces: ["Opposition Facts", "Restart Analysis", "Turnover Analysis", "Free Kick Analysis"],
+      surfaces: ["Opposition Facts", "Restart Analysis", "Turnover Analysis", freeAnalysisTitle(sport)],
     },
     {
       colour:   "#818cf8",
@@ -7876,7 +7895,7 @@ function makeFreeAnalysisPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Free Kick Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, freeAnalysisTitle(sport), `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   // Frees won / conceded (by who benefited) plus every placed-ball ATTEMPT by
@@ -8402,7 +8421,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       2, "PART 2 — POSSESSION FACTS", PART_QUESTIONS.POSSESSION_FACTS,
       "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where.",
       PART_QUESTIONS.POSSESSION_FACTS,
-      ["Opposition Facts", "Restart Analysis", "Turnover Analysis", "Free Kick Analysis"],
+      ["Opposition Facts", "Restart Analysis", "Turnover Analysis", freeAnalysisTitle(sport)],
       "#34d399", p_ch2div, TOTAL_PAGES,
     ),
     true, "Part 2 — Possession Facts",
@@ -8442,10 +8461,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   try {
     const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, halfCoverage);
     stampLayerBadge(c, "POSSESSION", "inline");
-    addCanvasPage(c, true, "Free Kick Analysis");
+    addCanvasPage(c, true, freeAnalysisTitle(sport));
   } catch (err) {
-    console.error("Free Kick Analysis page generation failed", err);
-    addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
+    console.error(`${freeAnalysisTitle(sport)} page generation failed`, err);
+    addCanvasPage(fallbackCanvas(freeAnalysisTitle(sport)), true, freeAnalysisTitle(sport));
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -13828,7 +13847,8 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   function addPage(canvas: HTMLCanvasElement, addPageFirst: boolean, pageName?: string, layer?: LayerKind): void {
     if (addPageFirst) pdf.addPage("a4", "landscape");
     // Universal engine-ownership badge — same chips as the full review PDF.
-    if (layer) stampLayerBadge(canvas, layer);
+    // Inline placement (as in the Full Review): the chip sits left of the wordmark, never over it.
+    if (layer) stampLayerBadge(canvas, layer, "inline");
     try {
       const imgData = canvas.toDataURL("image/jpeg", 0.88);
       pdf.addImage(imgData, "JPEG", 0, 0, PW, PH);

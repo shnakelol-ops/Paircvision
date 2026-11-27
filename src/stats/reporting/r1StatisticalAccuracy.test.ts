@@ -375,8 +375,12 @@ describe("Hurling and camogie reports use puckout wording and hide football's 2-
       const football = texts(makeSummaryPage(events, report, HOME, AWAY, undefined, 1, "gaelic"));
       expect(summary).not.toContain("2-Pointers");
       expect(summary.some((x) => /2-point|two-point|2PT/i.test(x))).toBe(false);
+      // The dead-restart row is sport-worded (BL-F3): "Puckout Dead" here, football keeps "Kicked Dead".
+      expect(summary).toContain("Puckout Dead");
+      expect(summary).not.toContain("Kicked Dead");
+      expect(football).toContain("Kicked Dead");
       // Football minus its two "2-Pointers" label/value pairs (the value is 0 here), ignoring the sport-worded labels.
-      const sportWords = /^(45|65|KICKOUTS|PUCKOUTS)$/;
+      const sportWords = /^(45|65|KICKOUTS|PUCKOUTS|Kicked Dead|Puckout Dead)$/;
       const strip = (t: readonly string[]) => {
         const out: string[] = [];
         for (let i = 0; i < t.length; i++) {
