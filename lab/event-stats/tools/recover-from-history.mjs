@@ -78,9 +78,15 @@ function playerMap() {
 const players = playerMap();
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** App UI text the browser driver uses as selectors — never anonymised (e.g. the venue field placeholder). */
+const APP_UI_STRINGS = ["e.g. Croke Park", "e.g. Kilkenny", "e.g. Tipperary"];
+
 function anonymise(text, path) {
   let out = text;
+  const kept = APP_UI_STRINGS.map((s, i) => [s, `\u0000UI${i}\u0000`]);
+  for (const [s, token] of kept) out = out.split(s).join(token);
   for (const [real, synthetic] of PLACES) out = out.split(real).join(synthetic);
+  for (const [s, token] of kept) out = out.split(token).join(s);
   // Player names only ever appear as whole quoted strings (squads in fixtures and the generator).
   for (const [real, synthetic] of players) {
     out = out.replace(new RegExp(`(["'])${escape(real)}\\1`, "g"), (_m, q) => `${q}${synthetic}${q}`);
@@ -103,7 +109,8 @@ const leaks = [];
 for (const file of written) {
   const text = readFileSync(file, "utf8");
   for (const real of [...PLACES.map(([r]) => r), ...players.keys()]) {
-    if (new RegExp(`(^|[^A-Za-z])${escape(real)}($|[^A-Za-z])`).test(text)) leaks.push(`${file}: ${real}`);
+    const scan = APP_UI_STRINGS.reduce((t, s) => t.split(s).join(""), text);
+    if (new RegExp(`(^|[^A-Za-z])${escape(real)}($|[^A-Za-z])`).test(scan)) leaks.push(`${file}: ${real}`);
   }
 }
 if (leaks.length) throw new Error(`original names survived:\n${leaks.join("\n")}`);

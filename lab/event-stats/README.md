@@ -19,7 +19,7 @@ storage, download or processing cost for coaches.
 | `engine/` | **Engine path**: feeds each match into the current production engine the way the live screen does and compares with the ledgers. `classifications.json` records why any mismatch exists. |
 | `tools/reproduce.mjs` | Independence + reproducibility check (no `src/`). |
 | `tools/recover-from-history.mjs` | The one-off recovery from branch `claude/pairc-event-stats-audit-ca55sj` @ `76c6139` (see `PROVENANCE.md`). |
-| `scripts/` (other), `persistence/` | Browser path (real UI in Chromium) — recovered, **not yet restored or verified**; see `docs/BROWSER-READINESS.md` and `docs/BROWSER-LAB-PLAN.md`. |
+| `scripts/` (other), `persistence/`, `browser/`, `tools/run-browser-lab.mjs` | **Browser path**: the real Event Stats UI in Chromium (Playwright) — capture, stored events, persistence, Review edits, PDFs — vs the same ledgers. `browser/known-findings.json` registers every accepted non-pass. See `docs/BROWSER-LAB.md`. |
 
 ## Run (repo root, after `npm ci`)
 
@@ -55,7 +55,15 @@ or ledger missing) and writes the per-match result to the job summary.
 
 Not verifiable on this path: per-player cards (the app keeps a live sin-bin / red status, not a
 per-player card count), anything needing the browser (persistence, reloads, storage failure,
-substitutions, PDFs themselves).
+substitutions, PDFs themselves) — those are the browser path's job.
+
+## Browser path
+
+`node lab/event-stats/tools/run-browser-lab.mjs` against a served production build (including an
+offline run of match A from the service worker); in CI the
+**Event Stats laboratory (browser)** check (`.github/workflows/browser-lab.yml`: weekly, on demand,
+and on PRs and pushes that touch Event Stats). What it checks, the failure rules and the register:
+`docs/BROWSER-LAB.md`.
 
 ## Rules
 

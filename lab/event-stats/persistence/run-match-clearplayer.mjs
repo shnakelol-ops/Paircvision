@@ -174,7 +174,7 @@ await page.getByText("New Match").click();
 await clickByText(fx.sport === "hurling" ? "Hurling" : "Gaelic Football");
 await page.getByPlaceholder("e.g. Kilkenny").fill(fx.homeTeam);
 await page.getByPlaceholder("e.g. Tipperary").fill(fx.awayTeam);
-await page.getByPlaceholder("e.g. Synthetic Venue D").fill(fx.venue);
+await page.getByPlaceholder("e.g. Croke Park").fill(fx.venue);
 await clickByText(fx.matchType);
 await clickByText(`${fx.halfMinutes} min`);
 await shot("01-setup");
@@ -205,7 +205,7 @@ for (const step of fx.steps) {
   if (step.op === "tag") {
     const ev = step.ev;
     await advanceTo(ev.clock);
-    await tagEvent(page, sportKey, ev);
+    await tagEvent(page, sportKey, ev, fx.squads);
     tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride });
     if (ev.family === "RESTART" && ev.owner === "OPP") {
       const st = await readOwnerToggle(page, sportKey);

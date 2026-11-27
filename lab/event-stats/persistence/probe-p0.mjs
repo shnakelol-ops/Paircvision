@@ -46,7 +46,8 @@ async function tag(page, ev = POINT_FOR) {
   await page.locator(sel).click();
   await page.getByRole("button", { name: "No player / Unknown" }).click();
   await pitchTap(page, ev.nx, ev.ny);
-  await page.getByText(/✓ Event saved|Save failed — storage unavailable\./).first().waitFor({ timeout: 3000 });
+  // Any save outcome the app shows: success, or a "Save failed — …" message (storage full / unavailable).
+  await page.getByText(/✓ Event saved|Save failed — /).first().waitFor({ timeout: 3000 });
 }
 /** Lets the 750 ms "Event saved" confirmation finish so the grid is back. */
 async function settle(page) { await page.clock.runFor(800); }

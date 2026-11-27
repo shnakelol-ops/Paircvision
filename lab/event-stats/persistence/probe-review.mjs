@@ -7,9 +7,10 @@ import { CHROME } from "./ui-driver.mjs";
 
 const BASE = process.argv[2] ?? "http://localhost:5199";
 const LABEL = process.argv[3] ?? "run";
-const S = "/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad";
+/** Lab root: reads lab runs (runs/<match>/state) and writes persistence/results (both gitignored). */
+const LAB = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const KEY = "pitchflow_pro_tagger_matches_v1";
-const src = JSON.parse(readFileSync(`${S}/runs-r1b/A/state/final.json`, "utf8")).reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a);
+const src = JSON.parse(readFileSync(`${LAB}/runs/A/state/final.json`, "utf8")).reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a);
 const home = src.homeSquad.id, away = src.awaySquad.id;
 const p2 = src.homeSquadLiveState.find((p) => p.number === 2);
 const base = { half: 1, period: "1H", segment: 1, createdAt: 1, team: "HOME", teamSide: "FOR" };
@@ -90,7 +91,7 @@ out.editWhileStorageFull.storedUnchanged = JSON.stringify(beforeFail) === JSON.s
 if (await openMarker(EVENTS[0])) {
   out.editWhileStorageFull.reviewShowsType = await page.evaluate(() => (document.body.innerText.match(/Type\s*\n?\s*([A-Z_ /0-9]+)/) || [null, null])[1]);
 }
-await page.screenshot({ path: `${S}/persist/results/review-${LABEL}.png` });
+await page.screenshot({ path: `${LAB}/persistence/results/review-${LABEL}.png` });
 for (const [k, v] of Object.entries(out)) console.log(k, JSON.stringify(v));
-writeFileSync(`${S}/persist/results/review-${LABEL}.json`, JSON.stringify(out, null, 1));
+writeFileSync(`${LAB}/persistence/results/review-${LABEL}.json`, JSON.stringify(out, null, 1));
 await browser.close();

@@ -4,7 +4,8 @@
 // Match time is advanced with Playwright's fake clock so events carry realistic
 // match-clock timestamps without waiting in real time.
 
-export const CHROME = "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome";
+/** Chromium binary: PLAYWRIGHT_CHROMIUM_EXECUTABLE if set, otherwise the browser installed for the project's pinned Playwright (`npx playwright install chromium`). */
+export const CHROME = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 
 const FAMILY_LABEL = {
   football: { GOAL: "Goal", POINT: "Point", TWO_POINT: "2PT", SHOT: "Shot", WIDE: "Wide", RESTART: "Kickout", FORTY_FIVE: "45", SIDELINE: "Sideline", TURNOVER: "Turnover", FREE: "Free", DISCIPLINE: "Discipline" },
@@ -69,14 +70,47 @@ export async function pitchTap(page, nx, ny) {
   await page.mouse.click(box.x + offX + svgX * scale, box.y + offY + svgY * scale);
 }
 
+/** Thrown when the live player picker does not offer the fixture's player (e.g. the wrong squad is shown). */
+export class PickerUnsupported extends Error {}
+
+/**
+ * Marks the player-picker button for a shirt number. Each picker button's text starts with the
+ * shirt number (the jersey graphic and the label both show it, then the name), so match the first
+ * line exactly rather than a text prefix ("8" must not match "88…" or "18"). When the squad name is
+ * known it must also appear on the button, so a same-numbered player of the other team never passes.
+ */
+async function markPlayer(page, number, name) {
+  const found = await page.evaluate(([n, nm]) => {
+    document.querySelectorAll("[data-audit-player]").forEach((x) => x.removeAttribute("data-audit-player"));
+    const byNumber = Array.from(document.querySelectorAll("button")).filter((b) => b.innerText.split("\n")[0].trim() === String(n));
+    const hits = nm ? byNumber.filter((b) => b.innerText.split("\n").some((l) => l.trim() === nm)) : byNumber;
+    if (hits.length === 1) hits[0].setAttribute("data-audit-player", "1");
+    return { hits: hits.length, offered: byNumber.map((b) => b.innerText.split("\n").at(-1).trim()) };
+  }, [number, name ?? null]);
+  if (found.hits === 0 && name) throw new PickerUnsupported(`player picker does not offer ${name} (#${number}); offered: ${found.offered.join(", ") || "none"}`);
+  if (found.hits !== 1) throw new Error(`player picker: expected exactly one button for #${number}${name ? ` (${name})` : ""}, found ${found.hits}`);
+  return "[data-audit-player='1']";
+}
+
 /** Enters one fixture event through the live UI. */
-export async function tagEvent(page, sportKey, ev) {
+export async function tagEvent(page, sportKey, ev, squads, { unsupportedPlayer = "throw" } = {}) {
   if (ev.family === "RESTART") await setOwner(page, sportKey, ev.owner);
   const sel = await markTile(page, sportKey, ev.family, ev.row, ev.tile);
   await page.locator(sel).click();
   // Player picker
   if (ev.player == null) await page.getByRole("button", { name: "No player / Unknown" }).click();
-  else await page.locator("button").filter({ hasText: new RegExp(`^${ev.player.number}(?!\\d)`) }).first().click();
+  else {
+    const name = squads?.[ev.player.team]?.find((p) => p.number === ev.player.number)?.name;
+    try {
+      await page.locator(await markPlayer(page, ev.player.number, name)).click();
+    } catch (e) {
+      // Only with an explicit opt-in: record the unsupported player and tag the event with no player,
+      // so the run continues and the stored-event check reports the difference (never hidden).
+      if (!(e instanceof PickerUnsupported) || unsupportedPlayer !== "unknown") throw e;
+      ev._pickerUnsupported = e.message;
+      await page.getByRole("button", { name: "No player / Unknown" }).click();
+    }
+  }
   await pitchTap(page, ev.nx, ev.ny);
   // Wrong-way guard: a second tap within 3 s overrides (fixture never relies on it, but report it).
   const warn = await page.getByText("Wrong way? Tap again to override").count();

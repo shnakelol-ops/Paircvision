@@ -51,6 +51,25 @@ The current production engine agrees with all three credits: the engine path mat
 ledgers' RESTART origin counts and values in every match, half and team. None of the three is an
 application defect. They remain documented here and in `VALIDATION.json`, unchanged.
 
+## Browser scripts: adaptations after recovery (Guardian V1 browser laboratory)
+
+The recovered browser scripts were run against `main` (`79b8d92`) and adapted. No expected value,
+fixture or ledger changed; every comparator change only re-maps where or how the app now draws a figure.
+
+| File | Change | Why |
+|---|---|---|
+| `tools/recover-from-history.mjs`, `scripts/run-match.mjs`, `persistence/run-match-clearplayer.mjs` | App UI strings used as selectors (the venue placeholder "e.g. Croke Park") are no longer anonymised | the recovery had replaced the app's own placeholder text, so the venue field could not be found |
+| `scripts/ui-driver.mjs`, `persistence/ui-driver.mjs` | Chromium from `PLAYWRIGHT_CHROMIUM_EXECUTABLE` or Playwright's own install (no hard-coded path); the player picker is matched on the exact shirt number **and** the squad name; `PickerUnsupported` when the live picker does not offer the fixture's player | picker buttons now show the number twice; a same-numbered player of the other team must never pass silently |
+| `scripts/run-match.mjs` | squads passed to the driver; opt-in `UNSUPPORTED_PLAYER=unknown` records an unsupported player and tags no player (match D only); Review targets are opened through "Events at this spot" by default (`USE_SPOT_LIST=0` disables) | match D lost-restart players (register BL-L1); the plan's "open from a list" — the Review screen has no full event list, the spot list is the list a coach uses |
+| `scripts/run-match.mjs` (hardening) | every undo, pause and reload in a fixture now records a pass/fail lifecycle check (undone tap not stored — frozen count while storage is failing; paused clock does not move, read once paused; reload keeps every event and resumes the clock) | these steps were only logged; a run could not fail on them |
+| `scripts/run-match.mjs` (offline) | `OFFLINE_SERVE_ROOT` offline mode (own preview server, install, server stopped, browser offline, negative control, Save & Finish) and `OFFLINE_PLAN` inserted close / reload steps; close and reload now also require the stored events to be byte-identical before and after | Checkpoint 2 offline reliability; the online runs keep their flow |
+| `scripts/compare.mjs` (hardening) | sport-wording checks over every page of every distinct report, Quick Review panes and counts, and the Review screen; presentation checks also on reopened reports that Review edits changed | the earlier hurling terminology check read page 1 only and missed pages 2, 16, 20, 25 and 28 |
+| `scripts/compare.mjs` | label/position re-mapping for the post-#403 layouts (value nearest a label, value below a column heading, value above a tile label); wording: singular/plural, "Own PO Retained" in hurling, "No placed balls" for 0/0, the placed-ball callout rule (scores and wides, each only when non-zero), "—" for an undefined average and for no scoring run of ≥2; drop-shadow text pairs are not overlaps | harness drift only — every adapted check still compares with the same ledger value |
+| `scripts/run-edit-probe.mjs` | team names from the saved match; passes when the football-only 2-pointer is **not** offered for a hurling point | written for the historical defect; today's rule (`pro-tagger-review-edit`) |
+| `persistence/probe-p0.mjs` | waits for any "Save failed — …" message | a quota error is now reported as "storage full" (`pro-tagger-storage.ts`) |
+| `persistence/probe-final.mjs` | realistic matches from this lab's match B run; f3 observes the leave guard instead of assuming none | the recovered f3 hard-coded "no confirmation"; the app has since added "Leave match?" (f4) |
+| `persistence/{quota,quota2,latency,savecost,probe-review}.mjs` | paths relative to the lab instead of a past session's scratch directory | no behaviour change; not part of the automated run |
+
 ## Match D (added for Guardian V1 engine completion — not historical)
 
 Hand-scripted by `scripts/gen-fixture-d.mjs` (node built-ins only, deterministic) to close three

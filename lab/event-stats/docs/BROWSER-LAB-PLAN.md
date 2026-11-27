@@ -1,3 +1,6 @@
+> **Historical (superseded).** Written before the browser path was restored; kept as the record of
+> the plan. Current state: `BROWSER-LAB.md`.
+
 # Browser laboratory — implementation plan (not started)
 
 Playwright is approved in principle as a development-only dependency. Nothing in this plan is

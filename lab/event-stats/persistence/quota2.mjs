@@ -1,8 +1,9 @@
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
 import { CHROME, markTile, pitchTap } from "./ui-driver.mjs";
-const S = "/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad";
-const d = JSON.parse(readFileSync(`${S}/runs-r1b/B/state/final.json`, "utf8"));
+/** Lab root: reads lab runs (runs/<match>/state) and writes persistence/results (both gitignored). */
+const LAB = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const d = JSON.parse(readFileSync(`${LAB}/runs/B/state/final.json`, "utf8"));
 const big = d.reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a);
 const n = Number(process.argv[2] ?? 16);
 const browser = await chromium.launch({ executablePath: CHROME });
@@ -41,5 +42,5 @@ const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pitchf
 const live = await page.evaluate(() => document.body.innerText.match(/(\d+) events? logged/)?.[1] ?? null);
 const r = { savedFinishedMatches: n, warningFirstShownAtEvent: failedAt, liveEvents: live, storedEventsForLiveMatch: stored };
 console.log(JSON.stringify(r));
-writeFileSync(`${S}/persist/results/quota-live-${n}.json`, JSON.stringify(r, null, 1));
+writeFileSync(`${LAB}/persistence/results/quota-live-${n}.json`, JSON.stringify(r, null, 1));
 await browser.close();
