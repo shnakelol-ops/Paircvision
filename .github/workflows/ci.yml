@@ -36,8 +36,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Pull requests: a newer push cancels the older run. Pushes to main and manual runs each get their
+  # own group, so no run on main is ever cancelled or replaced (a shared group keeps only one pending
+  # run and cancels older pending ones).
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.ref) || format('ci-run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: "22"

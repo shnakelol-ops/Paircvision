@@ -235,6 +235,12 @@ for (const step of fx.steps) {
     await page.getByRole("button", { name: "↩", exact: true }).first().click();
     await page.waitForTimeout(100);
     note("undo", { undoes: step.undoes });
+    // The undone tap must leave storage. While writes are failing the stored match stays frozen at
+    // the count before the failure (checked separately), so that is what is expected then.
+    const failing = lifecycleChecks.findLast((c) => c.op === "storageFail" || c.op === "storageRestore")?.op === "storageFail";
+    const expectedStored = failing ? lifecycleChecks.findLast((c) => c.op === "storageFail").storedBefore : liveCount;
+    const stored = await storedEvents();
+    lifecycleChecks.push({ op: "undo", check: `undo of ${step.undoes}: the undone event is not stored`, undoes: step.undoes, storageFailing: failing, stored, expectedStored, pass: stored === expectedStored });
   } else if (step.op === "sub") {
     await advanceTo(Math.max(await readClock(), step.clock));
     await page.getByRole("button", { name: "⇄ Subs", exact: true }).first().click();
@@ -302,12 +308,16 @@ for (const step of fx.steps) {
       pass: stored === liveCount && storedBefore === liveCount && after === before });
     note("tab closed + app reopened", { clockBefore: before, clockAfter: after, stored });
   } else if (step.op === "pause") {
-    const before = await readClock();
+    const beforePress = await readClock();
     await clickByText("⏸ Pause");
+    // Read once paused: the clock runs in real time until the press lands, so a read taken before
+    // the press can be a second behind. The check is that a paused clock does not move.
+    const before = await readClock();
     await page.clock.runFor(step.realSeconds * 1000);
     const during = await readClock();
     await clickByText("▶ Resume");
-    note("pause/resume", { before, afterPause: during, realSeconds: step.realSeconds });
+    note("pause/resume", { beforePress, before, afterPause: during, realSeconds: step.realSeconds });
+    lifecycleChecks.push({ op: "pause", check: `pause for ${step.realSeconds}s: the match clock does not advance`, before, during, pass: before === during });
   } else if (step.op === "reload") {
     await page.clock.runFor(1500); // let the 1.2 s autosave debounce fire, as on a real device
     const before = await readClock().catch(() => null);
@@ -318,7 +328,9 @@ for (const step of fx.steps) {
     const resumeBtn = page.getByRole("button", { name: "RESUME MATCH", exact: true });
     if (await resumeBtn.count()) await resumeBtn.click();
     const after = await readClock().catch(() => null);
-    note("reload + resume", { clockBefore: before, clockAfter: after, events: (await dumpStore(`reload-${tagResults.length}`))[0]?.events.length });
+    const storedAfterReload = (await dumpStore(`reload-${tagResults.length}`))[0]?.events.length;
+    note("reload + resume", { clockBefore: before, clockAfter: after, events: storedAfterReload });
+    lifecycleChecks.push({ op: "reload", check: "reload: every event kept, clock resumes where it stopped", clockBefore: before, clockAfter: after, stored: storedAfterReload, expectedStored: liveCount, pass: before != null && before === after && storedAfterReload === liveCount });
   } else if (step.op === "halftime") {
     await advanceTo(Math.max(await readClock(), step.clock));
     await clickByText("HT");

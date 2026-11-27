@@ -1,0 +1,8 @@
+{
+  "about": "Minimum coverage a browser-lab run must reach to pass. requiredMatches must all run (a partial run is INCOMPLETE, never PASS). compareChecksMin: UI/PDF comparison checks per match (the count on 79b8d92 after the Checkpoint 1 hardening; raise it when checks are added, never lower it to make a run pass). pdfsPerMatch / legacyPdfs: every report export a run must produce. Other counts (taps, lifecycle steps, Review operations, persistence scenarios) come from the fixtures and the pass rules in tools/run-browser-lab.mjs. Protected by the test-integrity guard.",
+  "requiredMatches": ["A", "B", "C", "D"],
+  "compareChecksMin": { "A": 638, "B": 1087, "C": 649, "D": 1022 },
+  "pdfsPerMatch": ["HT-snapshot-live", "HT-snapshot-reopened", "FT-snapshot-live", "FT-snapshot-reopened", "FT-snapshot-reopened2", "FullReview-live", "FullReview-reopened"],
+  "legacyPdfs": ["L-HT-snapshot-legacy", "L-FT-snapshot-legacy", "L-FullReview-legacy"],
+  "persistenceScenarios": 18
+}

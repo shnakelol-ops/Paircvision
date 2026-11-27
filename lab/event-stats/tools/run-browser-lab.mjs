@@ -35,6 +35,7 @@ const PERSISTENCE = !args.includes("--no-persistence");
 const SUMMARY = opt("--summary", null);
 const FINDINGS = JSON.parse(readFileSync(join(LAB, "browser/known-findings.json"), "utf8")).findings;
 const PDF_PAGES = JSON.parse(readFileSync(join(LAB, "browser/expected-pdf-pages.json"), "utf8")).pages;
+const COVERAGE = JSON.parse(readFileSync(join(LAB, "browser/coverage-minimum.json"), "utf8"));
 const json = (p) => JSON.parse(readFileSync(join(LAB, p), "utf8"));
 
 /** Every outcome the run reports: { area, item, status: PASS|FAIL, detail } plus classification. */
@@ -102,6 +103,18 @@ for (const m of MATCHES) {
     for (const e of rp.edits) add(`Match ${m}`, `Review edit ${e.targetId} → ${e.newKind ?? "delete"}`, e.applied !== false && !e.formError, e.applied === false || e.formError ? JSON.stringify(e) : null);
   }
   for (const t of st("tag-results.json") ?? []) if (t.pickerUnsupported) add(`Match ${m}`, `capture — ${t.id}: player not offered by the live picker`, false, t.pickerUnsupported);
+
+  // Coverage: everything the fixture asks for was actually done and judged (counts come from the
+  // fixture and browser/coverage-minimum.json, never from the run itself).
+  const fx = json(`fixtures/match-${m}.json`);
+  const cov = (item, got, want, atLeast = false) => add(`Match ${m}`, `coverage — ${item}: ${got ?? "none"} ${atLeast ? "≥" : "="} ${want}`, got != null && (atLeast ? got >= want : got === want), got != null && (atLeast ? got >= want : got === want) ? null : "incomplete run");
+  const LIFECYCLE_OPS = ["sub", "close", "storageFail", "storageRestore", "reload", "undo", "pause"];
+  cov("fixture taps entered", st("tag-results.json")?.length ?? null, fx.steps.filter((x) => x.op === "tag").length);
+  cov("lifecycle checks judged", (st("lifecycle-checks.json") ?? null)?.filter((c) => c.op !== "storageFail").length ?? null, fx.steps.filter((x) => LIFECYCLE_OPS.includes(x.op)).length);
+  cov("Review operations judged", (rp?.reachability.length ?? 0), (fx.reviewOps ?? []).length);
+  cov("stored-event stages verified", existsSync(join(LAB, `results/verify-${m}.json`)) ? json(`results/verify-${m}.json`).stages.length : null, 3);
+  cov("UI/PDF checks performed", existsSync(join(LAB, `results/compare-${m}.json`)) ? json(`results/compare-${m}.json`).summary.total : null, COVERAGE.compareChecksMin[m] ?? Infinity, true);
+  for (const name of COVERAGE.pdfsPerMatch) add(`Match ${m}`, `coverage — PDF ${m}-${name}.pdf exported`, existsSync(join(LAB, `runs/${m}/pdf/${m}-${name}.pdf`)), "missing");
 }
 
 // ── 2. Persistence probes ───────────────────────────────────────────────────
@@ -159,6 +172,15 @@ if (MATCHES.includes("C") && existsSync(join(LAB, "runs/C/state/final.json"))) {
   }
 }
 
+if (PERSISTENCE) {
+  const judged = results.filter((r) => r.area === "Persistence" && / · /.test(r.item)).length;
+  add("Persistence", `coverage — persistence scenarios judged: ${judged} ≥ ${COVERAGE.persistenceScenarios}`, judged >= COVERAGE.persistenceScenarios, judged >= COVERAGE.persistenceScenarios ? null : "incomplete run");
+}
+for (const [label, re] of [["legacy import", /^legacy import: /], ["hurling Review Edit", /^hurling Review Edit/]]) {
+  if (!results.some((r) => r.area === "Constructed" && re.test(r.item))) add("Constructed", `coverage — ${label} did not run`, false, "incomplete run");
+}
+for (const name of COVERAGE.legacyPdfs) if (!existsSync(join(LAB, `runs/A-legacy/pdf/${name}.pdf`))) add("PDF files", `coverage — A-legacy/${name}.pdf exported`, false, "missing");
+
 // ── 4. PDF files ────────────────────────────────────────────────────────────
 for (const m of [...MATCHES, ...(existsSync(join(LAB, "runs/A-legacy/pdf")) ? ["A-legacy"] : [])]) {
   const dir = join(LAB, `runs/${m}/pdf`);
@@ -191,28 +213,43 @@ for (const m of [...MATCHES, ...(existsSync(join(LAB, "runs/A-legacy/pdf")) ? ["
 // ── Classification against the known-findings register ─────────────────────
 const re = (s) => (s == null ? null : new RegExp(s));
 const used = new Map(FINDINGS.map((f) => [f.id, 0]));
+const rowMatches = (s, m, row) => s.source === "compare" && s.matches.includes(m)
+  && (!s.surface || re(s.surface).test(row.surface)) && (!s.page || re(s.page).test(row.page))
+  && (!s.stat || re(s.stat).test(row.stat)) && (!s.team || re(s.team).test(row.team ?? ""))
+  && (!s.actual || re(s.actual).test(row.actual));
+/** A row whose note lists occurrences (overlap pairs, wording hits) is explained only when EVERY
+ *  occurrence is matched by some register entry; it may need several entries (one per defect). */
+function occurrencesOf(row) {
+  try { const n = JSON.parse(row.note); return Array.isArray(n) && n.length && typeof n[0] === "object" ? n : null; } catch { return null; }
+}
+const usedPatterns = new Set(); // "findingId|selectIndex|occurrenceIndex" matched at least once
+const occMatches = (o, occ) => {
+  if (o.pair) return (occ.a === o.pair[0] && occ.b === o.pair[1]) || (occ.a === o.pair[1] && occ.b === o.pair[0]);
+  return (!o.where || re(o.where).test(occ.where ?? occ.title ?? "")) && (!o.text || re(o.text).test(occ.text ?? ""));
+};
 function classifyCompare(m, row) {
-  for (const f of FINDINGS) for (const s of f.select) {
-    if (s.source !== "compare" || !s.matches.includes(m)) continue;
-    if (s.surface && !re(s.surface).test(row.surface)) continue;
-    if (s.page && !re(s.page).test(row.page)) continue;
-    if (s.stat && !re(s.stat).test(row.stat)) continue;
-    if (s.team && !re(s.team).test(row.team ?? "")) continue;
-    if (s.actual && !re(s.actual).test(row.actual)) continue;
-    if (s.onlyOverlapPairs) {
-      let pairs; try { pairs = JSON.parse(row.note); } catch { continue; }
-      const ok = (p) => s.onlyOverlapPairs.some(([a, b]) => (p.a === a && p.b === b) || (p.a === b && p.b === a));
-      if (!pairs.length || !pairs.every(ok)) continue;
+  const occ = occurrencesOf(row);
+  const ids = new Set();
+  if (occ) {
+    for (const x of occ) {
+      let hit = null;
+      for (const F of FINDINGS) F.select.forEach((s, si) => { if (hit || !s.occurrences || !rowMatches(s, m, row)) return;
+        const oi = s.occurrences.findIndex((o) => occMatches(o, x)); if (oi >= 0) hit = [F, `${F.id}|${si}|${oi}`]; });
+      if (!hit) return null;
+      ids.add(hit[0].id);
+      usedPatterns.add(hit[1]);
     }
-    return f;
+    return [...ids].map((id) => FINDINGS.find((F) => F.id === id));
   }
-  return null;
+  const f = FINDINGS.find((F) => F.select.some((s) => !s.occurrences && rowMatches(s, m, row)));
+  return f ? [f] : null;
 }
 const classify = (r) => {
   const m = r.area.replace(/^Match /, "");
   if (r.status === "PASS") return;
   const row = (compareRows[m] ?? []).find((x) => r.item === `${x.surface} · ${x.page} · ${x.scope} · ${x.stat}${x.team ? ` · ${x.team}` : ""}`);
-  let f = row ? classifyCompare(m, row) : null;
+  let fs = row ? classifyCompare(m, row) : null;
+  let f = null;
   if (!f && /^stored events/.test(r.item)) {
     const mm = verifyMismatches[m] ?? [];
     const stage = r.item.replace(/^stored events — /, "").replace(/: .*$/, "");
@@ -223,24 +260,34 @@ const classify = (r) => {
     const id = r.item.match(/^capture — (\S+):/)[1];
     f = FINDINGS.find((F) => F.select.some((s) => s.source === "verify" && s.matches.includes(m) && s.ids.includes(id))) ?? null;
   }
-  if (!f) { r.classification = "UNCLASSIFIED"; return; }
-  used.set(f.id, used.get(f.id) + 1);
-  r.classification = f.id;
-  r.kind = f.kind;
-  r.blocking = f.kind === "app-finding" ? !f.ownerAccepted : false;
+  if (!fs && f) fs = [f];
+  if (!fs) { r.classification = "UNCLASSIFIED"; return; }
+  for (const F of fs) used.set(F.id, used.get(F.id) + 1);
+  r.classification = fs.map((F) => F.id).join("+");
+  r.kind = [...new Set(fs.map((F) => F.kind))].join("+");
+  r.blocking = fs.some((F) => F.kind === "app-finding" && !F.ownerAccepted);
 };
 results.forEach(classify);
 const ranMatches = new Set(MATCHES);
 const stale = FINDINGS.filter((f) => used.get(f.id) === 0 && f.select.some((s) => s.matches.some((m) => ranMatches.has(m))));
+// Partial fixes: every occurrence pattern of a register entry must still occur somewhere in the run.
+const stalePatterns = FINDINGS.flatMap((f) => f.select.flatMap((s, si) => (s.occurrences && s.matches.some((m) => ranMatches.has(m)))
+  ? s.occurrences.map((o, oi) => [f, `${f.id}|${si}|${oi}`, o]).filter(([, k]) => !usedPatterns.has(k)) : []));
+for (const [f, , o] of stalePatterns) if (!stale.includes(f)) stale.push({ ...f, title: `${f.title} — occurrence ${JSON.stringify(o)} no longer seen` });
 
 // ── Verdict and report ──────────────────────────────────────────────────────
 const failing = results.filter((r) => r.status === "FAIL");
 const unclassified = failing.filter((r) => r.classification === "UNCLASSIFIED");
 const openFindings = FINDINGS.filter((f) => f.kind === "app-finding" && !f.ownerAccepted && used.get(f.id) > 0);
 const blocking = failing.filter((r) => r.blocking || r.classification === "UNCLASSIFIED");
-const verdict = blocking.length === 0 && stale.length === 0 ? "PASS" : "FAIL";
+// A run that did not cover the full required scope is never PASS, whatever its results.
+const missingScope = [
+  ...COVERAGE.requiredMatches.filter((m) => !MATCHES.includes(m)).map((m) => `match ${m} not run`),
+  ...(PERSISTENCE ? [] : ["persistence probes not run"]),
+];
+const verdict = blocking.length || stale.length ? "FAIL" : missingScope.length ? "INCOMPLETE" : "PASS";
 const report = {
-  verdict, base: BASE, matches: MATCHES, persistence: PERSISTENCE, generatedAt: new Date().toISOString(),
+  verdict, missingScope, base: BASE, matches: MATCHES, persistence: PERSISTENCE, generatedAt: new Date().toISOString(),
   totals: { results: results.length, pass: results.length - failing.length, fail: failing.length, unclassified: unclassified.length, blocking: blocking.length, stale: stale.map((f) => f.id) },
   findings: FINDINGS.map((f) => ({ id: f.id, kind: f.kind, title: f.title, ownerAccepted: f.ownerAccepted ?? null, occurrences: used.get(f.id) })),
   steps, results,
@@ -248,7 +295,8 @@ const report = {
 writeFileSync(join(LAB, "out/browser-report.json"), JSON.stringify(report, null, 1));
 
 const md = [];
-md.push(`## Event Stats browser laboratory — ${verdict === "PASS" ? "✅ PASS" : "❌ FAIL"}`, "");
+md.push(`## Event Stats browser laboratory — ${verdict === "PASS" ? "✅ PASS" : verdict === "INCOMPLETE" ? "⚠️ INCOMPLETE (not a pass)" : "❌ FAIL"}`, "");
+if (missingScope.length) md.push(`Partial run — ${missingScope.join("; ")}. Only a run of the full required scope can pass.`, "");
 md.push(`Matches ${MATCHES.join(", ")} through the real UI${PERSISTENCE ? ", persistence probes" : ""}, constructed tests, PDF files. ${results.length} results: ${results.length - failing.length} pass, ${failing.length} not passing (${unclassified.length} unclassified, ${blocking.length} blocking).`, "");
 md.push("| Step | Seconds | Result |", "|---|---:|---|", ...steps.map((s) => `| ${s.label} | ${s.secs} | ${s.ok ? "ok" : `**exit ${s.exit}**`} |`), "");
 for (const m of MATCHES) { const c = results.find((r) => r.area === `Match ${m}` && r.counts); if (c) md.push(`- **Match ${m}** — ${c.item}`); }
@@ -264,4 +312,4 @@ md.push("Full results: `lab/event-stats/out/browser-report.json` (uploaded with 
 writeFileSync(join(LAB, "out/browser-report.md"), md.join("\n") + "\n");
 if (SUMMARY) appendFileSync(SUMMARY, md.join("\n") + "\n");
 console.log(`\n${md.join("\n")}`);
-process.exit(verdict === "PASS" ? 0 : 1);
+process.exit(verdict === "PASS" ? 0 : verdict === "INCOMPLETE" ? 3 : 1);

@@ -781,6 +781,54 @@ if (!finalIsLive) {
 }
 const pres = {};
 for (const [lab, pages] of [["HT Snapshot", htLive], ["FT Snapshot", ftLive], ["Full Review", frLive]]) pres[lab] = presentation(pages, lab);
+// Reopened reports differ from the live ones only after Review edits (otherwise sameText below proves
+// they are identical), so every distinct report is checked once.
+if (!finalIsLive) {
+  for (const [lab, pages] of [["HT Snapshot", htRe], ["FT Snapshot", ftRe], ["Full Review", frRe]]) pres[`${lab} (reopened after review edits)`] = presentation(pages, `${lab} (reopened after review edits)`);
+}
+
+// ── Sport wording on every screen and report page ───────────────────────────
+// Independent of the app: what each sport must never show. Hurling has no kickouts, kicked frees
+// or 2-point scores; the app's documented hurling ruleset has no sin bin. Football never shows
+// puckout wording. Every occurrence is listed (where + text), so a register entry can name exactly
+// which ones it explains and any new occurrence fails as unclassified.
+const SPORT_RULES = hurling
+  ? [
+      ["terminology: football 'kick' wording in a hurling match", /\bkick/i],
+      ["terminology: two-point wording in a hurling match", /two[- ]?point|\b2[- ]?pt\b|2-pointer/i],
+      ["discipline: 'sin bin' shown where the sport has no sin bin", /sin[- ]?bin/i],
+    ]
+  : [["terminology: hurling 'puck' wording in a football match", /\bpuck/i]];
+function screenItems(label) {
+  const f = `${run}/state/${label}-quickreview.json`;
+  if (!existsSync(f)) return null;
+  const q = JSON.parse(readFileSync(f, "utf8"));
+  return [
+    ...q.counts.map((r) => ({ where: `Quick Review ${label} counts`, text: r[1] })),
+    ...q.panes.flatMap((pane, i) => String(pane).split("\n").map((text) => ({ where: `Quick Review ${label} page ${i + 1}`, text }))),
+  ];
+}
+const pdfItems = (pages) => pages && pages.flatMap((pg) => pg.texts.map((t) => ({ where: `p${pg.index} ${pg.title}`, text: t.t })));
+const wordingSurfaces = [
+  ["Screens", "Quick Review HT", screenItems("HT")],
+  ["Screens", "Quick Review FT", screenItems("FT")],
+  ["Screens", "Review screen", existsSync(`${run}/state/review-screen.txt`) ? readFileSync(`${run}/state/review-screen.txt`, "utf8").split("\n").map((text) => ({ where: "Review screen", text })) : null],
+  ["PDF HT Snapshot", "all pages", pdfItems(htLive)],
+  ["PDF FT Snapshot", "all pages", pdfItems(ftLive)],
+  ["PDF Full Review", "all pages", pdfItems(frLive)],
+  ...(finalIsLive ? [] : [
+    ["PDF HT Snapshot (reopened after review edits)", "all pages", pdfItems(htRe)],
+    ["PDF FT Snapshot (reopened after review edits)", "all pages", pdfItems(ftRe)],
+    ["PDF Full Review (reopened after review edits)", "all pages", pdfItems(frRe)],
+  ]),
+];
+for (const [surface, page, items] of wordingSurfaces) {
+  for (const [stat, re] of SPORT_RULES) {
+    if (!items) { check(surface, page, "—", stat, null, 0, undefined); continue; }
+    const hits = items.filter((x) => re.test(x.text));
+    check(surface, page, "—", stat, null, 0, hits.length, hits.length ? JSON.stringify(hits) : null);
+  }
+}
 if (finalIsLive) {
   sameText(htLive, htRe, "HT Snapshot live vs reopened");
   sameText(ftLive, ftRe, "FT Snapshot live vs reopened");
