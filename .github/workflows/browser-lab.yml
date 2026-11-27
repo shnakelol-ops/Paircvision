@@ -1,0 +1,116 @@
+# PáircVision Guardian V1 — Event Stats browser laboratory (engineering infrastructure only).
+#
+# Drives the real Event Stats UI of the production build in Chromium (Playwright) with
+# synthetic matches A, B, C and D: capture, HT/FT, Quick Review, HT/FT Snapshot and Full Review
+# PDFs, save, Review edits, reload and reopen; persistence probes (kill/reload/background,
+# storage full and unreadable stores, save/finish); a legacy-format import and a hurling Review
+# Edit probe (constructed tests). Results are compared with the independent expected ledgers in
+# lab/event-stats/expected-authoritative/. See lab/event-stats/docs/BROWSER-LAB.md.
+#
+# When it runs:
+#   - weekly (Monday 02:41 UTC) and on demand (Actions → "Event Stats browser lab" → Run workflow);
+#   - on every pull request to main and push to main, where the first step checks the changed
+#     paths: the full browser run happens only when Event Stats code, the lab, dependencies or
+#     the build configuration changed. Otherwise the job passes in seconds with a notice — so the
+#     check always reports and can be made a required status check (see the doc).
+#
+# It changes nothing: read-only token, no secrets, no deployments, no merges, no retries, no
+# repairs. Nothing under lab/ is built into, or served by, the app. The fast engine laboratory
+# stays in ci.yml and runs on every pull request.
+#
+# Third-party actions are pinned to full commit SHAs (tag in the comment).
+
+name: Event Stats browser lab
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  browser:
+    name: Event Stats laboratory (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Two commits: HEAD^1 is the PR base (merge commit) or the previous main commit.
+          fetch-depth: 2
+      - name: Decide whether Event Stats changed
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "Full run ($EVENT_NAME)."; exit 0
+          fi
+          if ! git cat-file -e HEAD^1 2>/dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "No parent commit to compare with; full run."; exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          echo "$changed"
+          pattern='^(src/pro-tagger/|src/stats/|src/core/stats/|lab/event-stats/|package\.json$|package-lock\.json$|vite\.config\.|index\.html$|public/|\.github/workflows/browser-lab\.yml$)'
+          if echo "$changed" | grep -Eq "$pattern"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "Event Stats paths changed; full run."
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Event Stats paths changed; browser laboratory not needed for this change."
+            echo "Browser laboratory not needed: no Event Stats paths changed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.run == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # npm ci deletes the tracked (Windows) node_modules before installing.
+      - if: steps.scope.outputs.run == 'true'
+        run: npm ci --no-audit --no-fund
+      # The Chromium build matching the exact Playwright version in package-lock.json.
+      - name: Install Chromium for Playwright
+        if: steps.scope.outputs.run == 'true'
+        run: npx --no-install playwright install --with-deps chromium
+      # Same command as vercel.json "buildCommand".
+      - name: Production build
+        if: steps.scope.outputs.run == 'true'
+        run: node node_modules/vite/bin/vite.js build
+      - name: Serve the build
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          nohup node node_modules/vite/bin/vite.js preview --port 5199 --strictPort > "$RUNNER_TEMP/preview.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5199/pro-tagger > /dev/null; then echo "Serving after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/preview.log"; echo "::error::vite preview did not start"; exit 1
+      - name: Browser laboratory (matches A, B, C, D; persistence; constructed tests; PDFs)
+        if: steps.scope.outputs.run == 'true'
+        run: node lab/event-stats/tools/run-browser-lab.mjs --base http://localhost:5199 --summary "$GITHUB_STEP_SUMMARY"
+      - name: Upload report and PDFs
+        if: ${{ always() && steps.scope.outputs.run == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: event-stats-browser-lab-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            lab/event-stats/out/
+            lab/event-stats/results/
+            lab/event-stats/runs/*/pdf/
+            lab/event-stats/runs/*/state/run-log.json
+            lab/event-stats/persistence/results/

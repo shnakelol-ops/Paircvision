@@ -60,6 +60,11 @@ export const PROTECTED = [
   /^lab\/event-stats\/engine\//,
   /^lab\/event-stats\/tools\/(reproduce|check-lab-types|verify-lab-run)\.mjs$/,
   /^lab\/event-stats\/tsconfig\.json$/,
+  // Browser laboratory: the comparators that turn ledgers into expected UI/PDF text, the run's pass
+  // rules, the known-findings register and the expected PDF page counts.
+  /^lab\/event-stats\/scripts\/(verify-events|compare|compare-legacy)\.mjs$/,
+  /^lab\/event-stats\/tools\/run-browser-lab\.mjs$/,
+  /^lab\/event-stats\/browser\//,
 ];
 
 /** skip / only / todo / conditional / expected-failure markers that stop a test from really running. */

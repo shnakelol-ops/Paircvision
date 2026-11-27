@@ -80,8 +80,10 @@ const summary = (m) => m && ({ events: m.events.length, eventCount: m.eventCount
 
 
 import { readFileSync as rf } from "node:fs";
-const S = "/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad";
-const BIG = (() => { const d = JSON.parse(rf(`${S}/runs-r1b/B/state/final.json`, "utf8")); return d.reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a); })();
+// A realistic saved match (the largest in the store) from a lab run of match B: PROBE_REALISTIC_STATE,
+// or runs/B/state/final.json written by scripts/run-match.mjs. Synthetic data only.
+const REALISTIC = process.env.PROBE_REALISTIC_STATE ?? new URL("../runs/B/state/final.json", import.meta.url).pathname;
+const BIG = (() => { const d = JSON.parse(rf(REALISTIC, "utf8")); return d.reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a); })();
 const CORRUPT = '[{"id":"older-match","createdAt":1,"homeTeamName":"Older","awayTeamName":"Opp","events":[],"restoreContext":{}}, {"truncated';
 const footerOrStrip = (page) => page.evaluate(() => {
   const el = Array.from(document.querySelectorAll("span,div")).find((n) => n.children.length === 0 && /^(✓ Event saved|Save (failed|blocked)|Match saved\.)/.test(n.textContent.trim()));
@@ -171,7 +173,9 @@ const scenarios = {
     return { fillers, onFail, stripWhileFull, storedWhileFull, eventsInApp: 4, backupStatus, backupHasLiveMatch: backedUp.some((m) => m.homeTeamName === "Live FC"), backupMatches: backedUp.length, noticeBeforeDelete, deletedOne: afterDelete.length === 12, seededRemaining: afterDelete.filter((n) => n.startsWith("Saved")).length, onRecovery, stripAfter, liveEventsStored: live.events.length };
   },
 
-  async f3_storageFull_leavingLiveScreenLosesUnsavedEvents() {
+  async f3_storageFull_leavingLiveScreen() {
+    // Observed, not assumed: Options → Home while events are unsaved. (The recovered probe hard-coded
+    // "no confirmation"; the app has since added the "Leave match?" guard that f4 exercises.)
     const ctx = await freshContext();
     const page = await startMatch(ctx, "Live FC", "Opp");
     await page.clock.runFor(30_000);
@@ -182,10 +186,11 @@ const scenarios = {
     await page.getByRole("button", { name: "⋯ Options", exact: true }).click();
     await page.getByRole("button", { name: "Home", exact: true }).click();
     await page.waitForTimeout(200);
-    const promptedBeforeLeaving = false; // "Home" has no confirmation (unchanged behaviour)
+    const promptedBeforeLeaving = await page.evaluate(() => /Leave match\?/.test(document.body.innerText));
+    const leftLiveScreen = await page.evaluate(() => /New Match/.test(document.body.innerText));
     const stored = (await proMatches(page)).find((m) => m.homeTeamName === "Live FC").events.length;
     await ctx.close();
-    return { eventsInApp: 3, eventsStored: stored, unsavedLostOnLeaving: 3 - stored, promptedBeforeLeaving };
+    return { eventsInApp: 3, eventsStored: stored, promptedBeforeLeaving, leftLiveScreen, unsavedLostOnLeaving: leftLiveScreen ? 3 - stored : 0 };
   },
 
   async f4_storageFull_homeAsksFirst() {

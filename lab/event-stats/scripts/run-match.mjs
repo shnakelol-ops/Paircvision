@@ -178,7 +178,7 @@ await page.getByText("New Match").click();
 await clickByText(fx.sport === "hurling" ? "Hurling" : "Gaelic Football");
 await page.getByPlaceholder("e.g. Kilkenny").fill(fx.homeTeam);
 await page.getByPlaceholder("e.g. Tipperary").fill(fx.awayTeam);
-await page.getByPlaceholder("e.g. Synthetic Venue D").fill(fx.venue);
+await page.getByPlaceholder("e.g. Croke Park").fill(fx.venue);
 await clickByText(fx.matchType);
 await clickByText(`${fx.halfMinutes} min`);
 await shot("01-setup");
@@ -217,9 +217,10 @@ for (const step of fx.steps) {
   if (step.op === "tag") {
     const ev = step.ev;
     await advanceTo(ev.clock);
-    await tagEvent(page, sportKey, ev);
+    await tagEvent(page, sportKey, ev, fx.squads, { unsupportedPlayer: process.env.UNSUPPORTED_PLAYER === "unknown" ? "unknown" : "throw" });
     if (!ev.erroneous) liveCount++;
-    tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride });
+    tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride, ...(ev._pickerUnsupported ? { pickerUnsupported: ev._pickerUnsupported } : {}) });
+    if (ev._pickerUnsupported) note("PLAYER NOT OFFERED BY LIVE PICKER — tagged with no player", { id: ev.id, detail: ev._pickerUnsupported });
     if (pendingRecoveryCheck) {
       await page.clock.runFor(300);
       const stored = await storedEvents();
@@ -414,8 +415,8 @@ async function applyReviewOp(op, target) {
       // Read the detail panel's own Time row (a list of nearby events may also show times).
       const shownTime = await page.evaluate(() => { const t = document.body.innerText; const i = t.search(/EVENT DETAIL/i); return i < 0 ? null : ((t.slice(i).match(/\nTime\s*\n\s*(\d{2}:\d{2})/i) || [])[1] ?? null); });
       if (shownTime === `${mm}:${ss}`) { opened = true; openedView = { half: h, team: t, category: c, dx, dy }; break; }
-      // USE_SPOT_LIST=1: the marker that took the tap lists the events at its spot (N-1 repair) — pick the target there.
-      if (process.env.USE_SPOT_LIST) {
+      // The marker that took the tap lists the events at its spot ("Events at this spot", as a coach would use it) — pick the target there. USE_SPOT_LIST=0 disables.
+      if (process.env.USE_SPOT_LIST !== "0") {
         const items = page.locator('[aria-label="Events at this spot"] button').filter({ hasText: `${mm}:${ss}` });
         if (await items.count()) {
           await items.first().click();

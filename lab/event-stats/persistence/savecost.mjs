@@ -1,8 +1,9 @@
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
 import { CHROME } from "./ui-driver.mjs";
-const S = "/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad";
-const d = JSON.parse(readFileSync(`${S}/runs-r1b/B/state/final.json`, "utf8"));
+/** Lab root: reads lab runs (runs/<match>/state) and writes persistence/results (both gitignored). */
+const LAB = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const d = JSON.parse(readFileSync(`${LAB}/runs/B/state/final.json`, "utf8"));
 const big = d.reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a);
 const b = await chromium.launch({ executablePath: CHROME });
 const p = await (await b.newContext()).newPage();

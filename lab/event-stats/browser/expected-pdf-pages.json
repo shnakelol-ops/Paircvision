@@ -1,0 +1,4 @@
+{
+  "about": "Page counts each exported PDF must have. HT and FT snapshots: the approved snapshot compositions in src/stats/reviewPdfExport.ts (HT: Dashboard, Our Shots, Their Shots, Restart Battle 1H, Turnover & Territory; FT adds 2H restart and turnover pages and Shot & Scoring Efficiency). Full Review: 30 pages for every lab match (observed on main 79b8d92 for A, B, C, D and the legacy import; no page depends on squad size or event count in these matches). A change here is a reviewed change to the report composition, never a fix for a failing run.",
+  "pages": { "HT-snapshot": 5, "FT-snapshot": 8, "FullReview": 30 }
+}

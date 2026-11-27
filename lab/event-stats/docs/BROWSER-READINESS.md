@@ -1,3 +1,6 @@
+> **Historical (superseded).** Written before the browser path was restored; kept as the record of
+> the plan. Current state: `BROWSER-LAB.md`.
+
 # Browser path — readiness (not yet restored)
 
 The recovered browser scripts (`scripts/run-match.mjs`, `ui-driver.mjs`, `verify-events.mjs`,

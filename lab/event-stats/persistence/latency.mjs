@@ -8,8 +8,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { CHROME, markTile, pitchTap } from "./ui-driver.mjs";
 
 const BASE = process.argv[2] ?? "http://localhost:5199";
-const S = "/tmp/claude-0/-home-user-Paircvision/5b353f9c-46ec-5c23-9500-866989574214/scratchpad";
-const d = JSON.parse(readFileSync(`${S}/runs-r1b/B/state/final.json`, "utf8"));
+/** Lab root: reads lab runs (runs/<match>/state) and writes persistence/results (both gitignored). */
+const LAB = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const d = JSON.parse(readFileSync(`${LAB}/runs/B/state/final.json`, "utf8"));
 const big = d.reduce((a, x) => (x.events?.length ?? 0) > (a.events?.length ?? 0) ? x : a);
 const browser = await chromium.launch({ executablePath: CHROME });
 const out = [];
@@ -73,5 +74,5 @@ for (const throttle of [1, 4]) {
     await ctx.close();
   }
 }
-writeFileSync(`${S}/persist/results/latency-${process.argv[3] ?? "p0"}.json`, JSON.stringify(out, null, 1));
+writeFileSync(`${LAB}/persistence/results/latency-${process.argv[3] ?? "p0"}.json`, JSON.stringify(out, null, 1));
 await browser.close();

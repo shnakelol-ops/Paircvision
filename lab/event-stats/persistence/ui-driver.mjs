@@ -4,7 +4,8 @@
 // Match time is advanced with Playwright's fake clock so events carry realistic
 // match-clock timestamps without waiting in real time.
 
-export const CHROME = "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome";
+/** Chromium binary: PLAYWRIGHT_CHROMIUM_EXECUTABLE if set, otherwise the browser installed for the project's pinned Playwright (`npx playwright install chromium`). */
+export const CHROME = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 
 const FAMILY_LABEL = {
   football: { GOAL: "Goal", POINT: "Point", TWO_POINT: "2PT", SHOT: "Shot", WIDE: "Wide", RESTART: "Kickout", FORTY_FIVE: "45", SIDELINE: "Sideline", TURNOVER: "Turnover", FREE: "Free", DISCIPLINE: "Discipline" },

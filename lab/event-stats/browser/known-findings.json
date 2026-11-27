@@ -1,0 +1,53 @@
+{
+  "about": "Every browser-lab result that is not PASS must match an entry here, or the run fails as UNCLASSIFIED. Kinds: 'app-finding' = a genuine application defect, which still fails the run unless the product owner records ownerAccepted: true (with name and date in ownerAcceptance); 'live-not-supported' = a fixture scenario the live UI does not offer by design, so the browser path cannot reproduce it (covered by the engine path instead). An entry that matches nothing in a run fails the run as STALE, so a fixed defect must be removed from this register. Expected values are never edited to match the app. Protected by the test-integrity guard.",
+  "findings": [
+    {
+      "id": "BL-F1",
+      "kind": "app-finding",
+      "severity": "P3 cosmetic",
+      "title": "HT and FT snapshot pages draw the STATISTICS badge over the PáircVision wordmark",
+      "where": "src/stats/reviewPdfExport.ts:13831 — snapshot pages call stampLayerBadge(canvas, layer) with the default 'stacked' placement; the Full Review uses 'inline' placement, whose comment (line 6740) says the stacked placement overlapped the wordmark.",
+      "evidence": "Rendered PDF page 1 of every HT and FT snapshot (matches A, B, C, D): the italic 'PáircVision' wordmark is drawn underneath the STATISTICS chip at the top right. Statistics are unaffected.",
+      "ownerAccepted": false,
+      "select": [
+        { "source": "compare", "matches": ["A", "B", "C", "D"], "surface": "^PDF (HT|FT) Snapshot$", "stat": "^overlapping text boxes", "onlyOverlapPairs": [["PáircVision", "STATISTICS"]] }
+      ]
+    },
+    {
+      "id": "BL-F2",
+      "kind": "app-finding",
+      "severity": "P3 cosmetic",
+      "title": "Quick Review counts show a 'Sin Bins' row (always 0) for hurling, which has no sin-bin sanction in the app",
+      "where": "src/pro-tagger/ProTaggerLiveScreen.tsx:1745 — the counts rows are not sport-filtered; getDisciplineOptions('hurling') has no SIN_BIN (src/pro-tagger/pro-tagger-discipline.test.ts:39).",
+      "evidence": "Match C and D Quick Review page 2 at HT and FT: row ['0', 'Sin Bins', '0'].",
+      "ownerAccepted": false,
+      "select": [
+        { "source": "compare", "matches": ["C", "D"], "surface": "^Quick Review p2 \\(Counts\\)$", "stat": "^Sin Bins row absent in hurling", "actual": "^1$" }
+      ]
+    },
+    {
+      "id": "BL-F3",
+      "kind": "app-finding",
+      "severity": "P3 terminology",
+      "title": "Hurling Full Review Match Summary labels a puckout outcome 'Kicked Dead'",
+      "where": "src/stats/reviewPdfExport.ts:3345 and :3365 — the restart column row label is not sport-aware (the section heading correctly reads PUCKOUTS).",
+      "evidence": "Match C and D Full Review page 1: 'Kicked Dead' under PUCKOUTS for both teams (2 occurrences).",
+      "ownerAccepted": false,
+      "select": [
+        { "source": "compare", "matches": ["C", "D"], "surface": "^Full Review PDF", "stat": "^terminology: KICKOUTS section heading in hurling$", "actual": "^2$" }
+      ]
+    },
+    {
+      "id": "BL-L1",
+      "kind": "live-not-supported",
+      "title": "Match D: a player of the team that LOST a restart (D-005 home #1, D-029 away #1)",
+      "where": "Live player picker: on a lost restart it offers only the winning team's squad (observed: 'player picker does not offer D Home 1 (#1); offered: D Away 1').",
+      "evidence": "Match D represents legacy events corrected in Review (PROVENANCE.md). The browser run tags these two events with no player (UNSUPPORTED_PLAYER=unknown) and records it; the engine path verifies the expected 'restarts lost' for both players.",
+      "select": [
+        { "source": "verify", "matches": ["D"], "ids": ["D-005", "D-029"], "field": "player" },
+        { "source": "compare", "matches": ["D"], "surface": "^Capture$", "stat": "^player number recorded as tapped", "actual": "^2$" },
+        { "source": "compare", "matches": ["D"], "page": "^Player Breakdown$", "team": "^(FOR|OPP) #1$" }
+      ]
+    }
+  ]
+}

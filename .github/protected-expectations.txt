@@ -1,6 +1,8 @@
 # PáircVision Guardian V1 — protected Event Stats statistical expectations (SHA-256).
 # A change to any listed file needs this manifest updated in the same PR, which the guard
 # lists under REVIEW REQUIRED. Regenerate with `test-guard.mjs update` (owner-reviewed only).
+b097c3c2b148f092e9475954ce53e3742d9b20764710d7b6cef285c6cec6b89e  lab/event-stats/browser/expected-pdf-pages.json
+0faf1559de97c758f857d445038091c146e474ddc20f65e8a217187578694f97  lab/event-stats/browser/known-findings.json
 36b7ab1ce1d7f6f14695edddf619332a0454a17866ae7c32cd50a058002e7cca  lab/event-stats/docs/KICKOUT-ORIGIN-DEFINITION.md
 ab3d61cbeddab08d92228b91b351043908863620443f7a838816b547ae655420  lab/event-stats/engine/classifications.json
 2a5e02922faaf071e5979c150373a35086040f426d4ca7a53a2a8012451a90bd  lab/event-stats/engine/coverage-minimum.json
@@ -24,12 +26,16 @@ edd728d16c1a87cf1b61c32e6178e3f54ec7c157ae864589f8306cc455e69528  lab/event-stat
 7d26632379aea2ad68a5086967604914267077aa439c85aba200d2558d52a7f2  lab/event-stats/fixtures/match-B.planned.json
 df6e382340e0cfeac208ed469ede080ae88ed7a834121c75cce8abb7215fcc1f  lab/event-stats/fixtures/match-C.json
 4e66daf27ed3b333ecc08be386319f59a68ffe4ec9f96e4e3b4bacfccd599bb9  lab/event-stats/fixtures/match-D.json
+0c529d3e4f86ff6b46b1da612a81c161eb23480a43bc64bd8bd4f502a8622fa5  lab/event-stats/scripts/compare-legacy.mjs
+534fb2916fc16428600e1e7de9a342bfe084c32de0a1d94f5f21956e0ff06e7f  lab/event-stats/scripts/compare.mjs
 99df7489eae7d775e9608a5730fd665664f1dc1861a5e62d4c31d63676978788  lab/event-stats/scripts/gen-fixture-d.mjs
 a36c93a1670fcc160f8687ab9216a72ca3ddfc88bdf254200387ed5894fb656a  lab/event-stats/scripts/gen-fixtures.mjs
 231a5766b005af40a98d3030bf1d5bb42d87894fea4d6a77e7686baa921431a2  lab/event-stats/scripts/reference-kickout-phase.mjs
 2fd834e238141c43fb702c7cc3929f4b47fdf1fa5a835ee86842548a979f5841  lab/event-stats/scripts/reference.mjs
+d0af36fd68d98749ec36bbe3b5fb6d3a4989aab30c77228fea01055757f44a1a  lab/event-stats/scripts/verify-events.mjs
 871af812654d59f2b1b079799b667bf01b7e88a28a4e8b2338b9835b123e74bd  lab/event-stats/tools/check-lab-types.mjs
 80c53b5a5ecdd4f8e8373a9eea5894e62f47a818a9f44e8fe24617ed0ac5e88a  lab/event-stats/tools/reproduce.mjs
+6c450703fb80dd9bd770d8395084844f5f6202d8f45b73dd8ed3782d5b31e719  lab/event-stats/tools/run-browser-lab.mjs
 8e171800c31fa5acb486da91625714845320275ed2a6d68ef8053d194e0d03b4  lab/event-stats/tools/verify-lab-run.mjs
 187f56446f31082347cef4093fb56a76e82ca5ed0a2b1e8c604ec30e197a42df  lab/event-stats/tsconfig.json
 8edef0893cdb7e1d6aab6a9ab4e9a2525fac449cec8cdaf3b285bf918d883f1d  src/StatsModeSurface.saved-match-persistence.test.ts

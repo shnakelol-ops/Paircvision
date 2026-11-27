@@ -69,6 +69,28 @@ function rightOf(page, label, { side, nth = 0, maxDx = 2000, dy = 3 } = {}) {
   return page.texts.filter((t) => t !== lab && Math.abs(t.y - lab.y) <= dy && t.x > lab.x && t.x < Math.min(lim, lab.x + maxDx)).sort((a, b) => a.x - b.x).map((t) => t.t);
 }
 const val = (page, label, opts) => { const r = rightOf(page, label, opts); return r === undefined ? undefined : r.length ? r[r.length - 1] : undefined; };
+// Nearest value to the right of a label. Full Review p1 (post-#403 layout) has two label/value
+// columns per team half (SCORING / KICKOUTS, FREES / TURNOVERS), so "last on the row" would read the
+// other column. Harness reading only — expected values are never touched.
+const valNear = (page, label, opts) => rightOf(page, label, opts)?.[0];
+/** The value printed directly below a column heading (same x, within 80 px). */
+function valBelow(page, label, { side } = {}) {
+  const lab = page?.texts.find((t) => t.t === label && (side == null || (side === "L" ? t.x < 960 : t.x >= 960)));
+  if (!lab) return undefined;
+  return page.texts.filter((t) => Math.abs(t.x - lab.x) <= 4 && t.y > lab.y + 3 && t.y <= lab.y + 80).sort((a, b) => a.y - b.y)[0]?.t;
+}
+/** Label-then-value on one row, or a column heading with its value below (post-#403 Full Review). */
+function valRowOrBelow(page, label, opts) {
+  const right = rightOf(page, label, opts);
+  if (right && (!right.length || !/^[\d—+-]/.test(right[0]))) return valBelow(page, label, opts);
+  return right === undefined ? undefined : right.length ? right[right.length - 1] : undefined;
+}
+/** The value printed directly above a label (same left x, within 60 px) — post-#403 stat tiles. `label` may be a RegExp. */
+function valAbove(page, label) {
+  const lab = page?.texts.find((t) => (label instanceof RegExp ? label.test(t.t) : t.t === label));
+  if (!lab) return undefined;
+  return page.texts.filter((t) => Math.abs(t.x - lab.x) <= 4 && t.y < lab.y - 3 && t.y >= lab.y - 60).sort((a, b) => b.y - a.y)[0]?.t;
+}
 const firstMatch = (page, re) => page?.texts.find((t) => re.test(t.t))?.t;
 const column = (page, x, tol = 4) => page.texts.filter((t) => Math.abs(t.x - x) <= tol).sort((a, b) => a.y - b.y).map((t) => t.t);
 
@@ -183,7 +205,7 @@ function quickReview(label, S) {
     P("restarts lost → scores against", "FOR", `${po.restartLost.scores} scores against`, pick("Our restart lost", 1));
   }
   P("turnovers won (count)", "FOR", S.FOR.turnoversWon, after("OUR TURNOVERS WON"));
-  P("turnovers won → shots", "FOR", `${po.turnoverWon.shots} shots`, pick("OUR TURNOVERS WON", 0));
+  P("turnovers won → shots", "FOR", `${po.turnoverWon.shots} shot${po.turnoverWon.shots === 1 ? "" : "s"}`, pick("OUR TURNOVERS WON", 0));
   P("turnovers won → scores", "FOR", `${po.turnoverWon.scores} score${po.turnoverWon.scores === 1 ? "" : "s"}`, pick("OUR TURNOVERS WON", 1));
   P("turnovers lost (count)", "FOR", S.FOR.turnoversLost, after("OUR TURNOVERS LOST"));
   P("turnovers lost → shots against", "FOR", `${po.turnoverLost.shots} shots against`, pick("OUR TURNOVERS LOST", 0));
@@ -218,7 +240,7 @@ function segmentPane(label, text) {
       C("turnovers lost", exp("turnoversLost"), rowVals("Turnovers Lost"));
       C("turnovers lost — own half", exp("turnoversLostOwnHalf"), rowVals("↳ Own Half", 1));
       C("turnovers lost — opposition half", exp("turnoversLostOppHalf"), rowVals("↳ Opposition Half", 1));
-      const ownKO = rowVals("Own KO Retained")?.map((x) => x.split(" ")[0]);
+      const ownKO = rowVals(hurling ? "Own PO Retained" : "Own KO Retained")?.map((x) => x.split(" ")[0]); // label follows the sport (QuickReviewPage3 restartAbbrev)
       C("own kickouts retained/taken", exp("ownRestarts").map((x) => (x.endsWith("/0") ? "—" : x)), ownKO);
     }
   }
@@ -254,8 +276,11 @@ function snapshotDashboard(pages, label, S) {
   check(surf, pg, scope, "own restarts lost", "OPP", `Lost ${S.OPP.ownRestarts.lost}/${S.OPP.ownRestarts.taken}`, theirs[3]);
   check(surf, pg, scope, "turnovers won", "FOR", S.FOR.turnoversWon, to[2]);
   check(surf, pg, scope, "turnovers lost", "FOR", S.FOR.turnoversLost, to[4]);
-  check(surf, pg, scope, "placed balls", "FOR", `${S.FOR.placed.scores}/${S.FOR.placed.attempts} scored`, p.texts.find((t) => t.x < 100 && /scored$/.test(t.t))?.t);
-  check(surf, pg, scope, "placed balls", "OPP", `${S.OPP.placed.scores}/${S.OPP.placed.attempts} scored`, p.texts.find((t) => t.x > 900 && t.x < 1100 && /scored$/.test(t.t))?.t);
+  // Zero attempts are worded "No placed balls" (representation of 0/0 — the counts are unchanged).
+  const placedText = (pl) => (pl.attempts === 0 ? "No placed balls" : `${pl.scores}/${pl.attempts} scored`);
+  const placedRe = /scored$|^No placed balls$/;
+  check(surf, pg, scope, "placed balls", "FOR", placedText(S.FOR.placed), p.texts.find((t) => t.x < 100 && placedRe.test(t.t))?.t);
+  check(surf, pg, scope, "placed balls", "OPP", placedText(S.OPP.placed), p.texts.find((t) => t.x > 900 && t.x < 1100 && placedRe.test(t.t))?.t);
   check(surf, pg, scope, "event count footer", null, `${L.eventCounts[label === "HT" ? "h1" : "total"]} events`, firstMatch(p, /^\d+ events$/));
 }
 
@@ -266,9 +291,16 @@ function snapshotPages(pages, label) {
   const scope = label === "HT" ? "1H" : "FULL";
   // Shot profile pages
   const our = pages[1], their = pages[2];
-  check(surf, "p2 Our Shot Profile", scope, "summary", "FOR", `${S.FOR.scoresCount} scores from ${S.FOR.attempts} shots · ${pctS(S.FOR.conversion)} efficiency`, our && firstMatch(our, /scores from \d+ shots/)?.split(/ · (Best|Most)/)[0]);
-  check(surf, "p2 Our Shot Profile", scope, "placed-ball scores", "FOR", `${S.FOR.placed.scores} placed-ball score${S.FOR.placed.scores === 1 ? "" : "s"}`, our && firstMatch(our, /placed-ball/)?.replace(/^[^:]*: /, "").split(" · ")[0]);
-  check(surf, "p3 Their Shot Profile", scope, "summary", "OPP", `${S.OPP.scoresCount} scores from ${S.OPP.attempts} shots · ${pctS(S.OPP.conversion)} efficiency`, their && firstMatch(their, /scores from \d+ shots/)?.split(/ · (Best|Most)/)[0]);
+  const scoresFrom = (t) => `${t.scoresCount} score${t.scoresCount === 1 ? "" : "s"} from ${t.attempts} shots · ${pctS(t.conversion)} efficiency`;
+  check(surf, "p2 Our Shot Profile", scope, "summary", "FOR", scoresFrom(S.FOR), our && firstMatch(our, /scores? from \d+ shots/)?.split(/ · (Best|Most)/)[0]);
+  // Callout rule (reviewPdfExport shot profile strip): "N placed-ball score(s)" and "N placed-ball wide(s)",
+  // each only when non-zero; no callout when both are zero. Counts come from the reference.
+  const placedParts = (pl) => { const miss = pl.attempts - pl.scores, parts = [];
+    if (pl.scores > 0) parts.push(`${pl.scores} placed-ball score${pl.scores === 1 ? "" : "s"}`);
+    if (miss > 0) parts.push(`${miss} placed-ball wide${miss === 1 ? "" : "s"}`);
+    return parts.length ? parts.join(" · ") : "(no callout)"; };
+  check(surf, "p2 Our Shot Profile", scope, "placed-ball callout", "FOR", placedParts(S.FOR.placed), our && (firstMatch(our, /placed-ball/)?.replace(/^[^:]*: /, "") ?? "(no callout)"));
+  check(surf, "p3 Their Shot Profile", scope, "summary", "OPP", scoresFrom(S.OPP), their && firstMatch(their, /scores? from \d+ shots/)?.split(/ · (Best|Most)/)[0]);
   // Restart battle pages
   const rb = pages.filter((p) => /^Restart Battle/.test(p.title ?? ""));
   const halves = label === "HT" ? [["1H", L.H1]] : [["1H", L.H1], ["2H", L.H2]];
@@ -291,9 +323,9 @@ function snapshotPages(pages, label) {
 function efficiencyPage(p, surf, pg, S) {
   for (const [team, side] of [["FOR", "L"], ["OPP", "R"]]) {
     const b = S[team];
-    check(surf, pg, "FULL", "attempts", team, b.attempts, val(p, "Attempts", { side }));
-    check(surf, pg, "FULL", "scores", team, b.scoresCount, val(p, "Scores", { side }));
-    check(surf, pg, "FULL", "conversion", team, pctS(b.conversion), val(p, "Conversion", { side }));
+    check(surf, pg, "FULL", "attempts", team, b.attempts, valRowOrBelow(p, "Attempts", { side }));
+    check(surf, pg, "FULL", "scores", team, b.scoresCount, valRowOrBelow(p, "Scores", { side }));
+    check(surf, pg, "FULL", "conversion", team, pctS(b.conversion), valRowOrBelow(p, "Conversion", { side }));
     check(surf, pg, "FULL", "wides", team, b.wides, val(p, "Wides", { side }));
     check(surf, pg, "FULL", "blocked / saved", team, b.shotBlockSave, val(p, "Blocked / Saved", { side }));
     const src = [["Open Play", "Play"], ["Free", "Free"], ["Mark", "Mark"], [hurling ? "65" : "45", hurling ? "65" : "45"], ["Penalty", "Penalty"], ["Unclassified", "Unclassified"]];
@@ -306,7 +338,7 @@ function efficiencyPage(p, surf, pg, S) {
       check(surf, pg, "FULL", `source ${lab}: ATT|SC|MISS|CONV`, team, exp, r === undefined && e.attempts === 0 ? exp : r?.join(" | "));
     }
     if (!hurling) {
-      check(surf, pg, "FULL", "2PT scores (play/free/mark)", team, b.twoPointBySource.fromPlayFreeMark, val(p, "TWO_POINTER Scores", { side }), "label printed as raw enum");
+      check(surf, pg, "FULL", "2PT scores (play/free/mark)", team, b.twoPointBySource.fromPlayFreeMark, val(p, "Two-point scores", { side }) ?? val(p, "TWO_POINTER Scores", { side }), "label: 'Two-point scores' (formerly the raw enum)");
       check(surf, pg, "FULL", "2PT scores from 45", team, b.twoPointBySource.from45, val(p, "45+2 Scores", { side }));
       check(surf, pg, "FULL", "total 2PT scores", team, b.twoPointScores, val(p, "Total 2PT Scores", { side }));
       check(surf, pg, "FULL", "2PT points value", team, b.twoPointScores * 2, val(p, "Total 2PT Pts Value", { side }));
@@ -332,18 +364,18 @@ function fullReview(pages, label) {
   check(surf, "p1 Match Summary", "FULL", "score", "OPP", gpt(S.OPP.score), scores[1]);
   for (const [team, side] of [["FOR", "L"], ["OPP", "R"]]) {
     const b = S[team], o = S[team === "FOR" ? "OPP" : "FOR"];
-    const R = (lab, exp, note) => check(surf, "p1 Match Summary", "FULL", lab, team, exp, val(p1, lab, { side }), note);
+    const R = (lab, exp, note) => check(surf, "p1 Match Summary", "FULL", lab, team, exp, valNear(p1, lab, { side }), note);
     R("Goals", b.goals); R("Points", b.score.points, "points value incl. 2-pointers"); if (!hurling) R("2-Pointers", b.twoPointScores);
     R("Total Score", b.score.total); R("Shots", b.attempts); R("Wides", b.wides); R("Conversion", pctS(b.conversion));
     R("Short", b.shotShort); R("Post", b.shotPost);
     if (hurling) check(surf, "p1 Match Summary", "FULL", "terminology: shot-detail row says '65' in hurling", team, "65", val(p1, "65", { side }) !== undefined ? "65" : val(p1, "45", { side }) !== undefined ? "45" : undefined);
-    check(surf, "p1 Match Summary", "FULL", hurling ? "65 (row)" : "45", team, b.fortyFivesWon, val(p1, hurling ? "65" : "45", { side }) ?? val(p1, "45", { side }), "shots that went out for a 45/65 — recorded by the 45/65 family");
+    check(surf, "p1 Match Summary", "FULL", hurling ? "65 (row)" : "45", team, b.fortyFivesWon, valNear(p1, hurling ? "65" : "45", { side }) ?? valNear(p1, "45", { side }), "shots that went out for a 45/65 — recorded by the 45/65 family");
     R("Block / Save", b.shotBlockSave);
     R("Restart Share Won", b.restartsWon); R("Restart Share Conceded", b.restartsLost); R("Restart Share", pctS(b.restartShare));
     // Repair batch: these rows were renamed "Restart Share — <method>" (they count
     // all restarts won / lost, not own kickouts). The statistic name is kept so
     // the before/after join stays like-for-like; either label is read.
-    const RS = (lab, exp) => check(surf, "p1 Match Summary", "FULL", lab, team, exp, val(p1, `Restart Share — ${lab}`, { side }) ?? val(p1, lab, { side }));
+    const RS = (lab, exp) => check(surf, "p1 Match Summary", "FULL", lab, team, exp, valNear(p1, `Restart Share — ${lab}`, { side }) ?? valNear(p1, lab, { side }));
     RS("Clean Won", b.restartMethods.wonClean); RS("Break Won", b.restartMethods.wonBreak); RS("Foul Won", b.restartMethods.wonFoul);
     RS("Clean Lost", b.restartMethods.lostClean); RS("Break Lost", b.restartMethods.lostBreak); RS("Foul Conceded", b.restartMethods.lostFoul);
     R("T/O Won", b.turnoversWon); R("T/O Lost", b.turnoversLost);
@@ -420,14 +452,14 @@ function fullReview(pages, label) {
   // Opposition Facts
   const of = byTitle(pages, "Opposition Facts");
   if (of) {
-    check(surf, "Opposition Facts", "FULL", "OPP full-match score", "OPP", gpt(S.OPP.score), of.texts.find((t) => /^\d+-\d{2} \(\d+\)$/.test(t.t) && t.y < 170)?.t);
+    check(surf, "Opposition Facts", "FULL", "OPP full-match score", "OPP", gpt(S.OPP.score), valAbove(of, "FULL MATCH SCORE LINE") ?? of.texts.find((t) => /^\d+-\d{2} \(\d+\)$/.test(t.t) && t.y < 170)?.t);
     check(surf, "Opposition Facts", "1H", "OPP 1st half", "OPP", gpt(L.H1.OPP.score), val(of, "1st Half", { maxDx: 920 }));
     check(surf, "Opposition Facts", "2H", "OPP 2nd half", "OPP", gpt(L.H2.OPP.score), val(of, "2nd Half", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "OPP goals", "OPP", S.OPP.goals, val(of, "Goals", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "OPP points value", "OPP", S.OPP.score.points, val(of, hurling ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)", { maxDx: 920 }) ?? val(of, "Points (incl. frees & 2-pointers)", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "OPP conversion", "OPP", pctS(S.OPP.conversion), val(of, "Score Conversion", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "restart share won by OPP", "OPP", `${S.OPP.restartsWon} of ${S.OPP.restartsWon + S.OPP.restartsLost}`, val(of, "Restart Share won by OPP", { maxDx: 920 }));
-    check(surf, "Opposition Facts", "FULL", "turnovers gifted to OPP", "FOR", S.FOR.turnoversLost, of.texts.find((t) => t.x > 960 && t.y > 590 && t.y < 620 && /^\d+$/.test(t.t))?.t);
+    check(surf, "Opposition Facts", "FULL", "turnovers gifted to OPP", "FOR", S.FOR.turnoversLost, valAbove(of, "TURNOVERS GIFTED TO OPPOSITION") ?? of.texts.find((t) => t.x > 960 && t.y > 590 && t.y < 620 && /^\d+$/.test(t.t))?.t);
   }
   restartAnalysis(byTitle(pages, "Restart Analysis"), surf);
   turnoverAnalysis(byTitle(pages, "Turnover Analysis"), surf);
@@ -499,7 +531,10 @@ function restartAnalysis(p, surf) {
   L1("Lost → No score", c.restartLostToScoreAgainst.den - c.restartLostToScoreAgainst.num);
   L1("Restart Share", `${pctS(S.FOR.restartShare)} (${S.FOR.restartShare.num} of ${S.FOR.restartShare.den})`);
   L1(hurling ? "Own Puckout Retention" : "Own Kickout Retention", `${pctS(S.FOR.ownRestarts.retention)} (${S.FOR.ownRestarts.retained} of ${S.FOR.ownRestarts.taken})`);
-  L1("Avg secs to score (won)", c.avgSecsToScoreWon == null ? "—" : `${c.avgSecsToScoreWon}s`, "mean seconds restart→score over restarts won that produced a score");
+  // The app omits this row when no won restart produced a score (the mean is undefined): absence reads as "—".
+  check(surf, pg, "FULL", "Avg secs to score (won)", "FOR", c.avgSecsToScoreWon == null ? "—" : `${c.avgSecsToScoreWon}s`,
+    p && (val(p, "Avg secs to score (won)", { maxDx: 610 }) ?? (p.texts.some((t) => t.t === "Avg secs to score (won)") ? undefined : "—")),
+    "mean seconds restart→score over restarts won that produced a score");
   const m = S.FOR.ownRestartMethods;
   const pv = (lab) => val(p, lab, { maxDx: 610 });
   check(surf, pg, "FULL", "HOW WON — Clean Won (own restarts retained clean)", "FOR", m.retainedClean, pv("Clean Won"));
@@ -529,8 +564,9 @@ function turnoverAnalysis(p, surf) {
 function freeAnalysis(p, surf) {
   if (!p) return;
   const S = L.FULL, pg = "Free Kick Analysis";
-  check(surf, pg, "FULL", "possession frees won", "FOR", `Won ${S.FOR.freesWon} possession frees`, firstMatch(p, /^Won \d+ possession frees$/));
-  check(surf, pg, "FULL", "possession frees won by opposition", "OPP", `Opposition won ${S.OPP.freesWon} possession frees`, firstMatch(p, /^Opposition won \d+ possession frees$/));
+  const pf = (n) => `${n} possession free${n === 1 ? "" : "s"}`;
+  check(surf, pg, "FULL", "possession frees won", "FOR", `Won ${pf(S.FOR.freesWon)}`, firstMatch(p, /^Won \d+ possession frees?$/));
+  check(surf, pg, "FULL", "possession frees won by opposition", "OPP", `Opposition won ${pf(S.OPP.freesWon)}`, firstMatch(p, /^Opposition won \d+ possession frees?$/));
   check(surf, pg, "FULL", "direct placed-ball scoring", "FOR", `Direct placed-ball scoring: ${S.FOR.placed.scores}/${S.FOR.placed.attempts} scored`, p.texts.find((t) => /^Direct placed-ball scoring/.test(t.t) && t.x < 960)?.t);
   check(surf, pg, "FULL", "direct placed-ball scoring", "OPP", `Direct placed-ball scoring: ${S.OPP.placed.scores}/${S.OPP.placed.attempts} scored`, p.texts.find((t) => /^Direct placed-ball scoring/.test(t.t) && t.x >= 960)?.t);
   const tot = S.FOR.placed.scores + S.OPP.placed.scores, miss = S.FOR.placed.misses + S.OPP.placed.misses;
@@ -586,7 +622,7 @@ function intelligencePages(pages, surf) {
   if (p) {
     const pg = "Intelligence Summary";
     const lv = (lab, n) => val(p, lab, { maxDx: 920, nth: n ?? 0 });
-    check(surf, pg, "FULL", "restart share", "FOR", pctS(S.FOR.restartShare), p.texts.find((t) => t.x < 100 && t.y > 150 && t.y < 170)?.t);
+    check(surf, pg, "FULL", "restart share", "FOR", pctS(S.FOR.restartShare), valAbove(p, /^RESTART SHARE\b/) ?? p.texts.find((t) => t.x < 100 && t.y > 150 && t.y < 170)?.t);
     check(surf, pg, "FULL", "kickout wins → origin score", "FOR", pctS(f.restartWonToScore), lv("Kickout wins → origin score") ?? lv("Puckout wins → origin score"));
     check(surf, pg, "FULL", "kickout losses → origin score against", "FOR", pctS(f.restartLostToScoreAgainst), lv("Kickout losses → origin score against") ?? lv("Puckout losses → origin score against"));
     const net = f.restartWonToScore.pct - f.restartLostToScoreAgainst.pct;
@@ -594,8 +630,10 @@ function intelligencePages(pages, surf) {
     check(surf, pg, "FULL", "turnover wins → origin score", "FOR", pctS(f.turnoverWonToScore), lv("Turnover wins → origin score"));
     check(surf, pg, "FULL", "turnover wins → shot, no score", "FOR", pctS(f.turnoverWonAttemptNoScore), lv("Turnover wins → shot, no score"));
     check(surf, pg, "FULL", "turnover losses → origin score against", "FOR", pctS(f.turnoverLostToScoreAgainst), lv("Turnover losses → origin score against"));
-    check(surf, pg, "FULL", `${HOME} longest burst`, "FOR", `${S.longestRun.FOR} scores`, lv(`${HOME} longest burst`));
-    check(surf, pg, "FULL", `${AWAY} longest burst`, "OPP", `${S.longestRun.OPP} scores`, lv(`${AWAY} longest burst`));
+    // "SCORING RUNS (RUNS OF ≥2 CONSECUTIVE SCORES)": a longest run of 0 is shown as "—".
+    const burst = (n) => (n === 0 ? "—" : `${n} scores`);
+    check(surf, pg, "FULL", `${HOME} longest burst`, "FOR", burst(S.longestRun.FOR), lv(`${HOME} longest burst`));
+    check(surf, pg, "FULL", `${AWAY} longest burst`, "OPP", burst(S.longestRun.OPP), lv(`${AWAY} longest burst`));
     for (const [lab, key] of [["Yellow cards", "yellow"], ["Sin bins", "sinBin"], ["Red cards", "red"]]) {
       const r = rightOf(p, lab);
       check(surf, pg, "FULL", `team comparison — ${lab}`, "FOR", S.FOR.cards[key], r?.[0]);
@@ -660,6 +698,8 @@ function presentation(pages, label) {
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i], b = boxes[j];
       if (!a.t.t.trim() || !b.t.t.trim()) continue;
+      // Drop shadow: the same text drawn twice ≤ 3 px apart (e.g. the shadowed "↓" arrows) is one glyph, not an overlap.
+      if (a.t.t === b.t.t && Math.abs(a.t.x - b.t.x) <= 3 && Math.abs(a.t.y - b.t.y) <= 3) continue;
       const ix = Math.min(a.right, b.right) - Math.max(a.left, b.left);
       const iy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
       if (ix > 4 && iy > 4) {
@@ -750,7 +790,7 @@ sameText(ftRe, ftRe2, "FT Snapshot reopened vs reopened again");
 // Cross-surface consistency for the same fact on different pages.
 const blockSavePages = [];
 const fr = finalIsLive ? frLive : frRe;
-const sumBS = val(byTitle(fr, "Match Summary"), "Block / Save", { side: "L" });
+const sumBS = valNear(byTitle(fr, "Match Summary"), "Block / Save", { side: "L" });
 const effBS = val(byTitle(fr, "Shot & Scoring Efficiency"), "Blocked / Saved", { side: "L" });
 blockSavePages.push(sumBS, effBS);
 check("Cross-page", "Match Summary vs Shot Efficiency", "FULL", `${HOME} blocked/saved shots agree`, "FOR", sumBS, effBS);
