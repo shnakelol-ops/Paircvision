@@ -54,11 +54,12 @@ export const PROTECTED = [
   /^src\/StatsModeSurface\.saved-match-persistence\.test\.ts$/,
   // Event Stats laboratory: independent reference calculators, generator, synthetic matches,
   // expected ledgers, the kickout-origin definition, and the engine comparison + its classifications.
-  /^lab\/event-stats\/scripts\/(reference|reference-kickout-phase|gen-fixtures)\.mjs$/,
+  /^lab\/event-stats\/scripts\/(reference|reference-kickout-phase|gen-fixtures|gen-fixture-d)\.mjs$/,
   /^lab\/event-stats\/(fixtures|expected|expected-authoritative)\//,
   /^lab\/event-stats\/docs\/KICKOUT-ORIGIN-DEFINITION\.md$/,
-  /^lab\/event-stats\/engine\/(engine-check\.lab\.test\.ts|classifications\.json)$/,
-  /^lab\/event-stats\/tools\/reproduce\.mjs$/,
+  /^lab\/event-stats\/engine\//,
+  /^lab\/event-stats\/tools\/(reproduce|check-lab-types|verify-lab-run)\.mjs$/,
+  /^lab\/event-stats\/tsconfig\.json$/,
 ];
 
 /** skip / only / todo / conditional / expected-failure markers that stop a test from really running. */

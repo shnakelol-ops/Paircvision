@@ -1,0 +1,3625 @@
+{
+ "matchId": "D",
+ "title": "Lab D — Hurling: lost-puckout player, unattributed score, restart net disadvantage",
+ "sport": "hurling",
+ "homeTeam": "Lab D Home",
+ "awayTeam": "Lab D Away",
+ "generatedBy": "audit/event-stats-ultra-test/scripts/reference.mjs (no src/ imports)",
+ "eventCounts": {
+  "total": 48,
+  "h1": 31,
+  "h2": 17
+ },
+ "FULL": {
+  "eventCount": 48,
+  "FOR": {
+   "score": {
+    "goals": 0,
+    "points": 1,
+    "total": 1,
+    "text": "0-01",
+    "scores": 1
+   },
+   "scoresCount": 1,
+   "goals": 0,
+   "pointScores": 1,
+   "twoPointScores": 0,
+   "attempts": 8,
+   "wides": 5,
+   "shotsNotScoredNotWide": 2,
+   "shotShort": 0,
+   "shotBlockSave": 2,
+   "shotPost": 0,
+   "conversion": {
+    "num": 1,
+    "den": 8,
+    "pct": 13,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 12,
+    "retained": 7,
+    "lost": 5,
+    "retention": {
+     "num": 7,
+     "den": 12,
+     "pct": 58,
+     "definition": "FOR own kickouts/puckouts retained ÷ FOR own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 5,
+    "won": 1,
+    "lost": 4,
+    "winRate": {
+     "num": 1,
+     "den": 5,
+     "pct": 20,
+     "definition": "opposition kickouts/puckouts won by FOR ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 8,
+    "den": 17,
+    "pct": 47,
+    "definition": "all restarts won by FOR ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 8,
+   "restartsLost": 9,
+   "ownRestartMethods": {
+    "retainedClean": 5,
+    "retainedBreak": 1,
+    "retainedFoul": 1,
+    "lostClean": 4,
+    "lostBreak": 1,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "text": "0-01 (1 pts)"
+    },
+    "placed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)",
+     "attempts": 1
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 5,
+     "scores": 1,
+     "misses": 4
+    },
+    "Free": {
+     "attempts": 1,
+     "scores": 0,
+     "misses": 1
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 2,
+     "scores": 0,
+     "misses": 2
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 6,
+    "wonBreak": 1,
+    "wonFoul": 1,
+    "lostClean": 7,
+    "lostBreak": 2,
+    "lostFoul": 0
+   },
+   "turnoversWon": 3,
+   "turnoversLost": 3,
+   "turnoverShare": {
+    "num": 3,
+    "den": 6,
+    "pct": 50,
+    "definition": "turnovers won by FOR ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 1,
+    "Interception": 1,
+    "HP Error": 1,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 1,
+    "Interception": 1,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 1
+   },
+   "freesWon": 1,
+   "freesConceded": 1,
+   "placed": {
+    "attempts": 1,
+    "scores": 0,
+    "pointsValue": 0,
+    "misses": 1,
+    "conversion": {
+     "num": 0,
+     "den": 1,
+     "pct": 0,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 1,
+   "sidelinesWon": 0,
+   "cards": {
+    "yellow": 1,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 3,
+   "turnoversWonOppHalf": 0,
+   "turnoversLostOwnHalf": 0,
+   "turnoversLostOppHalf": 3
+  },
+  "OPP": {
+   "score": {
+    "goals": 2,
+    "points": 7,
+    "total": 13,
+    "text": "2-07",
+    "scores": 9
+   },
+   "scoresCount": 9,
+   "goals": 2,
+   "pointScores": 7,
+   "twoPointScores": 0,
+   "attempts": 12,
+   "wides": 3,
+   "shotsNotScoredNotWide": 0,
+   "shotShort": 0,
+   "shotBlockSave": 0,
+   "shotPost": 0,
+   "conversion": {
+    "num": 9,
+    "den": 12,
+    "pct": 75,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 5,
+    "retained": 4,
+    "lost": 1,
+    "retention": {
+     "num": 4,
+     "den": 5,
+     "pct": 80,
+     "definition": "OPP own kickouts/puckouts retained ÷ OPP own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 12,
+    "won": 5,
+    "lost": 7,
+    "winRate": {
+     "num": 5,
+     "den": 12,
+     "pct": 42,
+     "definition": "opposition kickouts/puckouts won by OPP ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 9,
+    "den": 17,
+    "pct": 53,
+    "definition": "all restarts won by OPP ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 9,
+   "restartsLost": 8,
+   "ownRestartMethods": {
+    "retainedClean": 3,
+    "retainedBreak": 1,
+    "retainedFoul": 0,
+    "lostClean": 1,
+    "lostBreak": 0,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 8,
+     "goals": 2,
+     "value": 12,
+     "text": "2-06 (12 pts)"
+    },
+    "placed": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "text": "0-01 (1 pts)",
+     "attempts": 1
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 11,
+     "scores": 8,
+     "misses": 3
+    },
+    "Free": {
+     "attempts": 1,
+     "scores": 1,
+     "misses": 0
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 7,
+    "wonBreak": 2,
+    "wonFoul": 0,
+    "lostClean": 6,
+    "lostBreak": 1,
+    "lostFoul": 1
+   },
+   "turnoversWon": 3,
+   "turnoversLost": 3,
+   "turnoverShare": {
+    "num": 3,
+    "den": 6,
+    "pct": 50,
+    "definition": "turnovers won by OPP ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 1,
+    "Interception": 1,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 1
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 1,
+    "Interception": 1,
+    "HP Error": 1,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "freesWon": 1,
+   "freesConceded": 1,
+   "placed": {
+    "attempts": 1,
+    "scores": 1,
+    "pointsValue": 1,
+    "misses": 0,
+    "conversion": {
+     "num": 1,
+     "den": 1,
+     "pct": 100,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 0,
+   "sidelinesWon": 1,
+   "cards": {
+    "yellow": 0,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 3,
+   "turnoversWonOppHalf": 0,
+   "turnoversLostOwnHalf": 0,
+   "turnoversLostOppHalf": 3
+  },
+  "margin": -12,
+  "longestRun": {
+   "FOR": 0,
+   "OPP": 8
+  },
+  "scoringRuns": [
+   {
+    "team": "OPP",
+    "scores": 8,
+    "value": 12,
+    "startHalf": 1,
+    "startMin": 1,
+    "endHalf": 2,
+    "endMin": 3
+   }
+  ],
+  "chains": {
+   "FOR": {
+    "restartWonToScore": {
+     "num": 0,
+     "den": 8,
+     "pct": 0,
+     "definition": "FOR restarts won followed by a FOR score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 4,
+     "den": 8,
+     "pct": 50,
+     "definition": "FOR restarts won followed by a FOR attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 4,
+    "restartWonScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "restartLostToScoreAgainst": {
+     "num": 6,
+     "den": 9,
+     "pct": 67,
+     "definition": "restarts lost by FOR followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 5,
+     "twoPointers": 0,
+     "value": 8,
+     "count": 6
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 3,
+     "twoPointers": 0,
+     "value": 3,
+     "count": 3
+    },
+    "avgSecsToScoreWon": null,
+    "turnoverWonToScore": {
+     "num": 1,
+     "den": 3,
+     "pct": 33,
+     "definition": "FOR turnovers won whose next decisive FOR action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "FOR turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 2,
+     "den": 3,
+     "pct": 67,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 1,
+     "count": 1
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 2,
+     "den": 3,
+     "pct": 67,
+     "definition": "turnovers lost by FOR followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 1,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 4,
+     "count": 2
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 0,
+      "twoPointers": 0,
+      "value": 0,
+      "count": 0
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 1,
+      "twoPointers": 0,
+      "value": 1,
+      "count": 1
+     }
+    }
+   },
+   "OPP": {
+    "restartWonToScore": {
+     "num": 6,
+     "den": 9,
+     "pct": 67,
+     "definition": "OPP restarts won followed by a OPP score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 8,
+     "den": 9,
+     "pct": 89,
+     "definition": "OPP restarts won followed by a OPP attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 1,
+    "restartWonScoreBreakdown": {
+     "goals": 1,
+     "points": 5,
+     "twoPointers": 0,
+     "value": 8,
+     "count": 6
+    },
+    "restartLostToScoreAgainst": {
+     "num": 0,
+     "den": 8,
+     "pct": 0,
+     "definition": "restarts lost by OPP followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "avgSecsToScoreWon": 22,
+    "turnoverWonToScore": {
+     "num": 2,
+     "den": 3,
+     "pct": 67,
+     "definition": "OPP turnovers won whose next decisive OPP action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "OPP turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 1,
+     "den": 3,
+     "pct": 33,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 1,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 4,
+     "count": 2
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 1,
+     "den": 3,
+     "pct": 33,
+     "definition": "turnovers lost by OPP followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 1,
+     "count": 1
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 1,
+      "points": 5,
+      "twoPointers": 0,
+      "value": 8,
+      "count": 6
+     },
+     "turnoverOrigin": {
+      "goals": 1,
+      "points": 1,
+      "twoPointers": 0,
+      "value": 4,
+      "count": 2
+     }
+    }
+   },
+   "turnoverDetail": [
+    {
+     "id": "D-001",
+     "winner": "FOR",
+     "next": "D-002",
+     "score": false
+    },
+    {
+     "id": "D-008",
+     "winner": "OPP",
+     "next": "D-009",
+     "score": false
+    },
+    {
+     "id": "D-012",
+     "winner": "OPP",
+     "next": "D-013",
+     "score": true
+    },
+    {
+     "id": "D-022",
+     "winner": "OPP",
+     "next": "D-023",
+     "score": true
+    },
+    {
+     "id": "D-027",
+     "winner": "FOR",
+     "next": "D-028",
+     "score": false
+    },
+    {
+     "id": "D-040",
+     "winner": "FOR",
+     "next": "D-041",
+     "score": true
+    }
+   ]
+  },
+  "origins": {
+   "rows": {
+    "FROM_PLAY": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    },
+    "PLACED": {
+     "FOR": 0,
+     "OPP": 1,
+     "FORn": 0,
+     "OPPn": 1
+    },
+    "RESTART": {
+     "FOR": 0,
+     "OPP": 8,
+     "FORn": 0,
+     "OPPn": 6
+    },
+    "TURNOVER": {
+     "FOR": 1,
+     "OPP": 4,
+     "FORn": 1,
+     "OPPn": 2
+    },
+    "UNATTRIBUTED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    }
+   },
+   "perScore": [
+    {
+     "id": "D-004",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-006",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-013",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "D-015",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-018",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "D-023",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "D-034",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-038",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-041",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "D-048",
+     "team": "OPP",
+     "row": "RESTART"
+    }
+   ]
+  },
+  "possession": {
+   "restartWon": {
+    "count": 8,
+    "goals": 0,
+    "points": 0,
+    "wides": 2,
+    "shots": 2,
+    "scores": 0
+   },
+   "restartLost": {
+    "count": 9,
+    "goals": 1,
+    "points": 5,
+    "wides": 2,
+    "shots": 8,
+    "scores": 6
+   },
+   "turnoverWon": {
+    "count": 3,
+    "goals": 0,
+    "points": 1,
+    "wides": 2,
+    "shots": 3,
+    "scores": 1
+   },
+   "turnoverLost": {
+    "count": 3,
+    "goals": 1,
+    "points": 1,
+    "wides": 1,
+    "shots": 3,
+    "scores": 2
+   },
+   "freeWon": {
+    "count": 1,
+    "goals": 0,
+    "points": 0,
+    "wides": 1,
+    "shots": 1,
+    "scores": 0
+   },
+   "freeConceded": {
+    "count": 1,
+    "goals": 0,
+    "points": 1,
+    "wides": 0,
+    "shots": 1,
+    "scores": 1
+   }
+  }
+ },
+ "H1": {
+  "eventCount": 31,
+  "FOR": {
+   "score": {
+    "goals": 0,
+    "points": 0,
+    "total": 0,
+    "text": "0-00",
+    "scores": 0
+   },
+   "scoresCount": 0,
+   "goals": 0,
+   "pointScores": 0,
+   "twoPointScores": 0,
+   "attempts": 4,
+   "wides": 3,
+   "shotsNotScoredNotWide": 1,
+   "shotShort": 0,
+   "shotBlockSave": 1,
+   "shotPost": 0,
+   "conversion": {
+    "num": 0,
+    "den": 4,
+    "pct": 0,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 8,
+    "retained": 5,
+    "lost": 3,
+    "retention": {
+     "num": 5,
+     "den": 8,
+     "pct": 63,
+     "definition": "FOR own kickouts/puckouts retained ÷ FOR own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 2,
+    "won": 1,
+    "lost": 1,
+    "winRate": {
+     "num": 1,
+     "den": 2,
+     "pct": 50,
+     "definition": "opposition kickouts/puckouts won by FOR ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 6,
+    "den": 10,
+    "pct": 60,
+    "definition": "all restarts won by FOR ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 6,
+   "restartsLost": 4,
+   "ownRestartMethods": {
+    "retainedClean": 4,
+    "retainedBreak": 1,
+    "retainedFoul": 0,
+    "lostClean": 2,
+    "lostBreak": 1,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    },
+    "placed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)",
+     "attempts": 0
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 3,
+     "scores": 0,
+     "misses": 3
+    },
+    "Free": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 1,
+     "scores": 0,
+     "misses": 1
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 5,
+    "wonBreak": 1,
+    "wonFoul": 0,
+    "lostClean": 3,
+    "lostBreak": 1,
+    "lostFoul": 0
+   },
+   "turnoversWon": 2,
+   "turnoversLost": 3,
+   "turnoverShare": {
+    "num": 2,
+    "den": 5,
+    "pct": 40,
+    "definition": "turnovers won by FOR ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 0,
+    "Interception": 1,
+    "HP Error": 1,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 1,
+    "Interception": 1,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 1
+   },
+   "freesWon": 0,
+   "freesConceded": 1,
+   "placed": {
+    "attempts": 0,
+    "scores": 0,
+    "pointsValue": 0,
+    "misses": 0,
+    "conversion": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 1,
+   "sidelinesWon": 0,
+   "cards": {
+    "yellow": 1,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 2,
+   "turnoversWonOppHalf": 0,
+   "turnoversLostOwnHalf": 0,
+   "turnoversLostOppHalf": 3
+  },
+  "OPP": {
+   "score": {
+    "goals": 1,
+    "points": 5,
+    "total": 8,
+    "text": "1-05",
+    "scores": 6
+   },
+   "scoresCount": 6,
+   "goals": 1,
+   "pointScores": 5,
+   "twoPointScores": 0,
+   "attempts": 8,
+   "wides": 2,
+   "shotsNotScoredNotWide": 0,
+   "shotShort": 0,
+   "shotBlockSave": 0,
+   "shotPost": 0,
+   "conversion": {
+    "num": 6,
+    "den": 8,
+    "pct": 75,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 2,
+    "retained": 1,
+    "lost": 1,
+    "retention": {
+     "num": 1,
+     "den": 2,
+     "pct": 50,
+     "definition": "OPP own kickouts/puckouts retained ÷ OPP own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 8,
+    "won": 3,
+    "lost": 5,
+    "winRate": {
+     "num": 3,
+     "den": 8,
+     "pct": 38,
+     "definition": "opposition kickouts/puckouts won by OPP ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 4,
+    "den": 10,
+    "pct": 40,
+    "definition": "all restarts won by OPP ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 4,
+   "restartsLost": 6,
+   "ownRestartMethods": {
+    "retainedClean": 1,
+    "retainedBreak": 0,
+    "retainedFoul": 0,
+    "lostClean": 1,
+    "lostBreak": 0,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 5,
+     "goals": 1,
+     "value": 7,
+     "text": "1-04 (7 pts)"
+    },
+    "placed": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "text": "0-01 (1 pts)",
+     "attempts": 1
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 7,
+     "scores": 5,
+     "misses": 2
+    },
+    "Free": {
+     "attempts": 1,
+     "scores": 1,
+     "misses": 0
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 3,
+    "wonBreak": 1,
+    "wonFoul": 0,
+    "lostClean": 5,
+    "lostBreak": 1,
+    "lostFoul": 0
+   },
+   "turnoversWon": 3,
+   "turnoversLost": 2,
+   "turnoverShare": {
+    "num": 3,
+    "den": 5,
+    "pct": 60,
+    "definition": "turnovers won by OPP ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 1,
+    "Interception": 1,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 1
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 0,
+    "Interception": 1,
+    "HP Error": 1,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "freesWon": 1,
+   "freesConceded": 0,
+   "placed": {
+    "attempts": 1,
+    "scores": 1,
+    "pointsValue": 1,
+    "misses": 0,
+    "conversion": {
+     "num": 1,
+     "den": 1,
+     "pct": 100,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 0,
+   "sidelinesWon": 1,
+   "cards": {
+    "yellow": 0,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 3,
+   "turnoversWonOppHalf": 0,
+   "turnoversLostOwnHalf": 0,
+   "turnoversLostOppHalf": 2
+  },
+  "margin": -8,
+  "longestRun": {
+   "FOR": 0,
+   "OPP": 6
+  },
+  "scoringRuns": [
+   {
+    "team": "OPP",
+    "scores": 6,
+    "value": 8,
+    "startHalf": 1,
+    "startMin": 1,
+    "endHalf": 1,
+    "endMin": 9
+   }
+  ],
+  "chains": {
+   "FOR": {
+    "restartWonToScore": {
+     "num": 0,
+     "den": 6,
+     "pct": 0,
+     "definition": "FOR restarts won followed by a FOR score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 2,
+     "den": 6,
+     "pct": 33,
+     "definition": "FOR restarts won followed by a FOR attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 4,
+    "restartWonScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "restartLostToScoreAgainst": {
+     "num": 3,
+     "den": 4,
+     "pct": 75,
+     "definition": "restarts lost by FOR followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 3,
+     "twoPointers": 0,
+     "value": 3,
+     "count": 3
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 2,
+     "twoPointers": 0,
+     "value": 2,
+     "count": 2
+    },
+    "avgSecsToScoreWon": null,
+    "turnoverWonToScore": {
+     "num": 0,
+     "den": 2,
+     "pct": 0,
+     "definition": "FOR turnovers won whose next decisive FOR action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 2,
+     "den": 2,
+     "pct": 100,
+     "definition": "FOR turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 2,
+     "den": 2,
+     "pct": 100,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 2,
+     "den": 3,
+     "pct": 67,
+     "definition": "turnovers lost by FOR followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 1,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 4,
+     "count": 2
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 0,
+      "twoPointers": 0,
+      "value": 0,
+      "count": 0
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 0,
+      "twoPointers": 0,
+      "value": 0,
+      "count": 0
+     }
+    }
+   },
+   "OPP": {
+    "restartWonToScore": {
+     "num": 3,
+     "den": 4,
+     "pct": 75,
+     "definition": "OPP restarts won followed by a OPP score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 4,
+     "den": 4,
+     "pct": 100,
+     "definition": "OPP restarts won followed by a OPP attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 0,
+    "restartWonScoreBreakdown": {
+     "goals": 0,
+     "points": 3,
+     "twoPointers": 0,
+     "value": 3,
+     "count": 3
+    },
+    "restartLostToScoreAgainst": {
+     "num": 0,
+     "den": 6,
+     "pct": 0,
+     "definition": "restarts lost by OPP followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "avgSecsToScoreWon": 22,
+    "turnoverWonToScore": {
+     "num": 2,
+     "den": 3,
+     "pct": 67,
+     "definition": "OPP turnovers won whose next decisive OPP action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "OPP turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 1,
+     "den": 3,
+     "pct": 33,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 1,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 4,
+     "count": 2
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 0,
+     "den": 2,
+     "pct": 0,
+     "definition": "turnovers lost by OPP followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 2,
+     "den": 2,
+     "pct": 100,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 3,
+      "twoPointers": 0,
+      "value": 3,
+      "count": 3
+     },
+     "turnoverOrigin": {
+      "goals": 1,
+      "points": 1,
+      "twoPointers": 0,
+      "value": 4,
+      "count": 2
+     }
+    }
+   },
+   "turnoverDetail": [
+    {
+     "id": "D-001",
+     "winner": "FOR",
+     "next": "D-002",
+     "score": false
+    },
+    {
+     "id": "D-008",
+     "winner": "OPP",
+     "next": "D-009",
+     "score": false
+    },
+    {
+     "id": "D-012",
+     "winner": "OPP",
+     "next": "D-013",
+     "score": true
+    },
+    {
+     "id": "D-022",
+     "winner": "OPP",
+     "next": "D-023",
+     "score": true
+    },
+    {
+     "id": "D-027",
+     "winner": "FOR",
+     "next": "D-028",
+     "score": false
+    }
+   ]
+  },
+  "origins": {
+   "rows": {
+    "FROM_PLAY": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    },
+    "PLACED": {
+     "FOR": 0,
+     "OPP": 1,
+     "FORn": 0,
+     "OPPn": 1
+    },
+    "RESTART": {
+     "FOR": 0,
+     "OPP": 3,
+     "FORn": 0,
+     "OPPn": 3
+    },
+    "TURNOVER": {
+     "FOR": 0,
+     "OPP": 4,
+     "FORn": 0,
+     "OPPn": 2
+    },
+    "UNATTRIBUTED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    }
+   },
+   "perScore": [
+    {
+     "id": "D-004",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-006",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-013",
+     "team": "OPP",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "D-015",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-018",
+     "team": "OPP",
+     "row": "PLACED"
+    },
+    {
+     "id": "D-023",
+     "team": "OPP",
+     "row": "TURNOVER"
+    }
+   ]
+  },
+  "possession": {
+   "restartWon": {
+    "count": 6,
+    "goals": 0,
+    "points": 0,
+    "wides": 1,
+    "shots": 1,
+    "scores": 0
+   },
+   "restartLost": {
+    "count": 4,
+    "goals": 0,
+    "points": 3,
+    "wides": 1,
+    "shots": 4,
+    "scores": 3
+   },
+   "turnoverWon": {
+    "count": 2,
+    "goals": 0,
+    "points": 0,
+    "wides": 2,
+    "shots": 2,
+    "scores": 0
+   },
+   "turnoverLost": {
+    "count": 3,
+    "goals": 1,
+    "points": 1,
+    "wides": 1,
+    "shots": 3,
+    "scores": 2
+   },
+   "freeWon": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "shots": 0,
+    "scores": 0
+   },
+   "freeConceded": {
+    "count": 1,
+    "goals": 0,
+    "points": 1,
+    "wides": 0,
+    "shots": 1,
+    "scores": 1
+   }
+  }
+ },
+ "H2": {
+  "eventCount": 17,
+  "FOR": {
+   "score": {
+    "goals": 0,
+    "points": 1,
+    "total": 1,
+    "text": "0-01",
+    "scores": 1
+   },
+   "scoresCount": 1,
+   "goals": 0,
+   "pointScores": 1,
+   "twoPointScores": 0,
+   "attempts": 4,
+   "wides": 2,
+   "shotsNotScoredNotWide": 1,
+   "shotShort": 0,
+   "shotBlockSave": 1,
+   "shotPost": 0,
+   "conversion": {
+    "num": 1,
+    "den": 4,
+    "pct": 25,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 4,
+    "retained": 2,
+    "lost": 2,
+    "retention": {
+     "num": 2,
+     "den": 4,
+     "pct": 50,
+     "definition": "FOR own kickouts/puckouts retained ÷ FOR own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 3,
+    "won": 0,
+    "lost": 3,
+    "winRate": {
+     "num": 0,
+     "den": 3,
+     "pct": 0,
+     "definition": "opposition kickouts/puckouts won by FOR ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 2,
+    "den": 7,
+    "pct": 29,
+    "definition": "all restarts won by FOR ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 2,
+   "restartsLost": 5,
+   "ownRestartMethods": {
+    "retainedClean": 1,
+    "retainedBreak": 0,
+    "retainedFoul": 1,
+    "lostClean": 2,
+    "lostBreak": 0,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "text": "0-01 (1 pts)"
+    },
+    "placed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)",
+     "attempts": 1
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 2,
+     "scores": 1,
+     "misses": 1
+    },
+    "Free": {
+     "attempts": 1,
+     "scores": 0,
+     "misses": 1
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 1,
+     "scores": 0,
+     "misses": 1
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 1,
+    "wonBreak": 0,
+    "wonFoul": 1,
+    "lostClean": 4,
+    "lostBreak": 1,
+    "lostFoul": 0
+   },
+   "turnoversWon": 1,
+   "turnoversLost": 0,
+   "turnoverShare": {
+    "num": 1,
+    "den": 1,
+    "pct": 100,
+    "definition": "turnovers won by FOR ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 1,
+    "Interception": 0,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 0,
+    "Interception": 0,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "freesWon": 1,
+   "freesConceded": 0,
+   "placed": {
+    "attempts": 1,
+    "scores": 0,
+    "pointsValue": 0,
+    "misses": 1,
+    "conversion": {
+     "num": 0,
+     "den": 1,
+     "pct": 0,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0,
+   "cards": {
+    "yellow": 0,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 1,
+   "turnoversWonOppHalf": 0,
+   "turnoversLostOwnHalf": 0,
+   "turnoversLostOppHalf": 0
+  },
+  "OPP": {
+   "score": {
+    "goals": 1,
+    "points": 2,
+    "total": 5,
+    "text": "1-02",
+    "scores": 3
+   },
+   "scoresCount": 3,
+   "goals": 1,
+   "pointScores": 2,
+   "twoPointScores": 0,
+   "attempts": 4,
+   "wides": 1,
+   "shotsNotScoredNotWide": 0,
+   "shotShort": 0,
+   "shotBlockSave": 0,
+   "shotPost": 0,
+   "conversion": {
+    "num": 3,
+    "den": 4,
+    "pct": 75,
+    "definition": "scores ÷ all attempts (goals + points + 2-pointers + wides + short/blocked/saved/post shots)"
+   },
+   "ownRestarts": {
+    "taken": 3,
+    "retained": 3,
+    "lost": 0,
+    "retention": {
+     "num": 3,
+     "den": 3,
+     "pct": 100,
+     "definition": "OPP own kickouts/puckouts retained ÷ OPP own kickouts/puckouts taken"
+    }
+   },
+   "oppRestarts": {
+    "taken": 4,
+    "won": 2,
+    "lost": 2,
+    "winRate": {
+     "num": 2,
+     "den": 4,
+     "pct": 50,
+     "definition": "opposition kickouts/puckouts won by OPP ÷ opposition kickouts/puckouts taken"
+    }
+   },
+   "restartShare": {
+    "num": 5,
+    "den": 7,
+    "pct": 71,
+    "definition": "all restarts won by OPP ÷ all restarts taken by both teams"
+   },
+   "restartsWon": 5,
+   "restartsLost": 2,
+   "ownRestartMethods": {
+    "retainedClean": 2,
+    "retainedBreak": 1,
+    "retainedFoul": 0,
+    "lostClean": 0,
+    "lostBreak": 0,
+    "lostFoul": 0
+   },
+   "directBreakdown": {
+    "fromPlay": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5,
+     "text": "1-02 (5 pts)"
+    },
+    "placed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)",
+     "attempts": 0
+    },
+    "unattributed": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "text": "0-00 (0 pts)"
+    }
+   },
+   "bySource": {
+    "45": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "65": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Play": {
+     "attempts": 4,
+     "scores": 3,
+     "misses": 1
+    },
+    "Free": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Mark": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Penalty": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    },
+    "Unclassified": {
+     "attempts": 0,
+     "scores": 0,
+     "misses": 0
+    }
+   },
+   "twoPointBySource": {
+    "fromPlayFreeMark": 0,
+    "from45": 0
+   },
+   "restartMethods": {
+    "wonClean": 4,
+    "wonBreak": 1,
+    "wonFoul": 0,
+    "lostClean": 1,
+    "lostBreak": 0,
+    "lostFoul": 1
+   },
+   "turnoversWon": 0,
+   "turnoversLost": 1,
+   "turnoverShare": {
+    "num": 0,
+    "den": 1,
+    "pct": 0,
+    "definition": "turnovers won by OPP ÷ all turnovers"
+   },
+   "turnoverMethodsWon": {
+    "Tackle": 0,
+    "Interception": 0,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "turnoverMethodsLost": {
+    "Tackle": 1,
+    "Interception": 0,
+    "HP Error": 0,
+    "KP Error": 0,
+    "Overcarried": 0
+   },
+   "freesWon": 0,
+   "freesConceded": 1,
+   "placed": {
+    "attempts": 0,
+    "scores": 0,
+    "pointsValue": 0,
+    "misses": 0,
+    "conversion": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "placed-ball scores ÷ placed-ball attempts (source Free / Penalty / Mark / 45 / 65)"
+    }
+   },
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0,
+   "cards": {
+    "yellow": 0,
+    "sinBin": 0,
+    "red": 0
+   },
+   "turnoversWonOwnHalf": 0,
+   "turnoversWonOppHalf": 0,
+   "turnoversLostOwnHalf": 0,
+   "turnoversLostOppHalf": 1
+  },
+  "margin": -4,
+  "longestRun": {
+   "FOR": 0,
+   "OPP": 2
+  },
+  "scoringRuns": [
+   {
+    "team": "OPP",
+    "scores": 2,
+    "value": 4,
+    "startHalf": 2,
+    "startMin": 1,
+    "endHalf": 2,
+    "endMin": 3
+   }
+  ],
+  "chains": {
+   "FOR": {
+    "restartWonToScore": {
+     "num": 0,
+     "den": 2,
+     "pct": 0,
+     "definition": "FOR restarts won followed by a FOR score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 2,
+     "den": 2,
+     "pct": 100,
+     "definition": "FOR restarts won followed by a FOR attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 0,
+    "restartWonScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "restartLostToScoreAgainst": {
+     "num": 3,
+     "den": 5,
+     "pct": 60,
+     "definition": "restarts lost by FOR followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 1,
+     "points": 2,
+     "twoPointers": 0,
+     "value": 5,
+     "count": 3
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 1,
+     "count": 1
+    },
+    "avgSecsToScoreWon": null,
+    "turnoverWonToScore": {
+     "num": 1,
+     "den": 1,
+     "pct": 100,
+     "definition": "FOR turnovers won whose next decisive FOR action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 1,
+     "den": 1,
+     "pct": 100,
+     "definition": "FOR turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 0,
+     "den": 1,
+     "pct": 0,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 1,
+     "count": 1
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "turnovers lost by FOR followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 0,
+      "points": 0,
+      "twoPointers": 0,
+      "value": 0,
+      "count": 0
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 1,
+      "twoPointers": 0,
+      "value": 1,
+      "count": 1
+     }
+    }
+   },
+   "OPP": {
+    "restartWonToScore": {
+     "num": 3,
+     "den": 5,
+     "pct": 60,
+     "definition": "OPP restarts won followed by a OPP score (≤90 s, before next restart) ÷ restarts won"
+    },
+    "restartWonToAttempt": {
+     "num": 4,
+     "den": 5,
+     "pct": 80,
+     "definition": "OPP restarts won followed by a OPP attempt ÷ restarts won"
+    },
+    "restartWonNoAttempt": 1,
+    "restartWonScoreBreakdown": {
+     "goals": 1,
+     "points": 2,
+     "twoPointers": 0,
+     "value": 5,
+     "count": 3
+    },
+    "restartLostToScoreAgainst": {
+     "num": 0,
+     "den": 2,
+     "pct": 0,
+     "definition": "restarts lost by OPP followed by an opposition score ÷ restarts lost"
+    },
+    "restartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "ownRestartLostScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "avgSecsToScoreWon": 22,
+    "turnoverWonToScore": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "OPP turnovers won whose next decisive OPP action (≤60 s) is a score ÷ turnovers won"
+    },
+    "turnoverWonToAttempt": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "OPP turnovers won whose next decisive action is an attempt ÷ turnovers won"
+    },
+    "turnoverWonAttemptNoScore": {
+     "num": 0,
+     "den": 0,
+     "pct": null,
+     "definition": "attempt but no score ÷ turnovers won"
+    },
+    "turnoverWonScoreBreakdown": {
+     "goals": 0,
+     "points": 0,
+     "twoPointers": 0,
+     "value": 0,
+     "count": 0
+    },
+    "turnoverLostToScoreAgainst": {
+     "num": 1,
+     "den": 1,
+     "pct": 100,
+     "definition": "turnovers lost by OPP followed by an opposition score ÷ turnovers lost"
+    },
+    "turnoverLostToAttemptAgainst": {
+     "num": 1,
+     "den": 1,
+     "pct": 100,
+     "definition": "turnovers lost followed by an opposition attempt ÷ turnovers lost"
+    },
+    "turnoverLostScoreBreakdown": {
+     "goals": 0,
+     "points": 1,
+     "twoPointers": 0,
+     "value": 1,
+     "count": 1
+    },
+    "origins": {
+     "restartOrigin": {
+      "goals": 1,
+      "points": 2,
+      "twoPointers": 0,
+      "value": 5,
+      "count": 3
+     },
+     "turnoverOrigin": {
+      "goals": 0,
+      "points": 0,
+      "twoPointers": 0,
+      "value": 0,
+      "count": 0
+     }
+    }
+   },
+   "turnoverDetail": [
+    {
+     "id": "D-040",
+     "winner": "FOR",
+     "next": "D-041",
+     "score": true
+    }
+   ]
+  },
+  "origins": {
+   "rows": {
+    "FROM_PLAY": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    },
+    "PLACED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    },
+    "RESTART": {
+     "FOR": 0,
+     "OPP": 5,
+     "FORn": 0,
+     "OPPn": 3
+    },
+    "TURNOVER": {
+     "FOR": 1,
+     "OPP": 0,
+     "FORn": 1,
+     "OPPn": 0
+    },
+    "UNATTRIBUTED": {
+     "FOR": 0,
+     "OPP": 0,
+     "FORn": 0,
+     "OPPn": 0
+    }
+   },
+   "perScore": [
+    {
+     "id": "D-034",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-038",
+     "team": "OPP",
+     "row": "RESTART"
+    },
+    {
+     "id": "D-041",
+     "team": "FOR",
+     "row": "TURNOVER"
+    },
+    {
+     "id": "D-048",
+     "team": "OPP",
+     "row": "RESTART"
+    }
+   ]
+  },
+  "possession": {
+   "restartWon": {
+    "count": 2,
+    "goals": 0,
+    "points": 0,
+    "wides": 1,
+    "shots": 1,
+    "scores": 0
+   },
+   "restartLost": {
+    "count": 5,
+    "goals": 1,
+    "points": 2,
+    "wides": 1,
+    "shots": 4,
+    "scores": 3
+   },
+   "turnoverWon": {
+    "count": 1,
+    "goals": 0,
+    "points": 1,
+    "wides": 0,
+    "shots": 1,
+    "scores": 1
+   },
+   "turnoverLost": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "shots": 0,
+    "scores": 0
+   },
+   "freeWon": {
+    "count": 1,
+    "goals": 0,
+    "points": 0,
+    "wides": 1,
+    "shots": 1,
+    "scores": 0
+   },
+   "freeConceded": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "shots": 0,
+    "scores": 0
+   }
+  }
+ },
+ "segments": {
+  "1": {
+   "FOR": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 2,
+    "wides": 1,
+    "turnoversWon": 1,
+    "turnoversLost": 3,
+    "turnoversWonOwnHalf": 1,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 3,
+    "ownRestarts": "5/8"
+   },
+   "OPP": {
+    "score": "1-05",
+    "total": 8,
+    "attempts": 8,
+    "wides": 2,
+    "turnoversWon": 3,
+    "turnoversLost": 1,
+    "turnoversWonOwnHalf": 3,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 1,
+    "ownRestarts": "1/1"
+   }
+  },
+  "2": {
+   "FOR": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 2,
+    "wides": 2,
+    "turnoversWon": 1,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 1,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   },
+   "OPP": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 1,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 1,
+    "ownRestarts": "0/1"
+   }
+  },
+  "3": {
+   "FOR": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   },
+   "OPP": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   }
+  },
+  "4": {
+   "FOR": {
+    "score": "0-01",
+    "total": 1,
+    "attempts": 4,
+    "wides": 2,
+    "turnoversWon": 1,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 1,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "2/4"
+   },
+   "OPP": {
+    "score": "1-02",
+    "total": 5,
+    "attempts": 4,
+    "wides": 1,
+    "turnoversWon": 0,
+    "turnoversLost": 1,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 1,
+    "ownRestarts": "3/3"
+   }
+  },
+  "5": {
+   "FOR": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   },
+   "OPP": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   }
+  },
+  "6": {
+   "FOR": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   },
+   "OPP": {
+    "score": "0-00",
+    "total": 0,
+    "attempts": 0,
+    "wides": 0,
+    "turnoversWon": 0,
+    "turnoversLost": 0,
+    "turnoversWonOwnHalf": 0,
+    "turnoversWonOppHalf": 0,
+    "turnoversLostOwnHalf": 0,
+    "turnoversLostOppHalf": 0,
+    "ownRestarts": "0/0"
+   }
+  }
+ },
+ "players": [
+  {
+   "team": "FOR",
+   "number": 1,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 1,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 3,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 1,
+   "yellow": 1,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 4,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 1,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 5,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 1,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 6,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 3,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 7,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 1,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 8,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 2,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 9,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 2,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 10,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 2,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 11,
+   "actions": 5,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 3,
+   "wides": 3,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 1,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 1,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 12,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 2,
+   "wides": 2,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 13,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 1,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "FOR",
+   "number": 14,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 2,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 1,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 1,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 1,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 8,
+   "actions": 6,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 6,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 9,
+   "actions": 2,
+   "goals": 0,
+   "pointsValue": 0,
+   "totalValue": 0,
+   "attempts": 0,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 2,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 11,
+   "actions": 1,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 1,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 12,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 3,
+   "totalValue": 3,
+   "attempts": 3,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 13,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 2,
+   "totalValue": 2,
+   "attempts": 3,
+   "wides": 1,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 14,
+   "actions": 3,
+   "goals": 0,
+   "pointsValue": 1,
+   "totalValue": 1,
+   "attempts": 3,
+   "wides": 2,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  },
+  {
+   "team": "OPP",
+   "number": 15,
+   "actions": 2,
+   "goals": 2,
+   "pointsValue": 0,
+   "totalValue": 6,
+   "attempts": 2,
+   "wides": 0,
+   "toWon": 0,
+   "toLost": 0,
+   "koWon": 0,
+   "koLost": 0,
+   "freesWon": 0,
+   "freesConceded": 0,
+   "yellow": 0,
+   "sinBin": 0,
+   "red": 0,
+   "fortyFivesWon": 0,
+   "sidelinesWon": 0
+  }
+ ],
+ "truthOrigins": {
+  "D-002": "TURNOVER",
+  "D-004": "RESTART",
+  "D-006": "RESTART",
+  "D-009": "TURNOVER",
+  "D-011": "RESTART",
+  "D-013": "TURNOVER",
+  "D-015": "RESTART",
+  "D-018": "PLACED",
+  "D-020": "RESTART",
+  "D-023": "TURNOVER",
+  "D-028": "TURNOVER",
+  "D-031": "RESTART",
+  "D-032": "THROW_IN",
+  "D-034": "RESTART",
+  "D-036": "RESTART",
+  "D-038": "RESTART",
+  "D-041": "TURNOVER",
+  "D-043": "RESTART",
+  "D-046": "PLACED",
+  "D-048": "RESTART"
+ },
+ "facts": [
+  {
+   "id": "D-001",
+   "half": 1,
+   "clock": 40,
+   "nx": 0.48,
+   "ny": 0.42,
+   "player": {
+    "team": "FOR",
+    "number": 7
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Interception",
+   "_seq": 0
+  },
+  {
+   "id": "D-002",
+   "half": 1,
+   "clock": 60,
+   "nx": 0.82,
+   "ny": 0.3,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 1
+  },
+  {
+   "id": "D-003",
+   "half": 1,
+   "clock": 90,
+   "nx": 0.62,
+   "ny": 0.55,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 2
+  },
+  {
+   "id": "D-004",
+   "half": 1,
+   "clock": 115,
+   "nx": 0.2,
+   "ny": 0.48,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 3
+  },
+  {
+   "id": "D-005",
+   "half": 1,
+   "clock": 140,
+   "nx": 0.4,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 1
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 4
+  },
+  {
+   "id": "D-006",
+   "half": 1,
+   "clock": 160,
+   "nx": 0.18,
+   "ny": 0.6,
+   "player": {
+    "team": "OPP",
+    "number": 13
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 5
+  },
+  {
+   "id": "D-007",
+   "half": 1,
+   "clock": 190,
+   "nx": 0.38,
+   "ny": 0.4,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 6
+  },
+  {
+   "id": "D-008",
+   "half": 1,
+   "clock": 205,
+   "nx": 0.55,
+   "ny": 0.35,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Tackle",
+   "_seq": 7
+  },
+  {
+   "id": "D-009",
+   "half": 1,
+   "clock": 225,
+   "nx": 0.16,
+   "ny": 0.7,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 8
+  },
+  {
+   "id": "D-010",
+   "half": 1,
+   "clock": 255,
+   "nx": 0.36,
+   "ny": 0.52,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 9
+  },
+  {
+   "id": "D-011",
+   "half": 1,
+   "clock": 270,
+   "nx": 0.86,
+   "ny": 0.47,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Block/Save",
+   "source": null,
+   "placed": false,
+   "_seq": 10
+  },
+  {
+   "id": "D-012",
+   "half": 1,
+   "clock": 290,
+   "nx": 0.8,
+   "ny": 0.45,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Interception",
+   "_seq": 11
+  },
+  {
+   "id": "D-013",
+   "half": 1,
+   "clock": 310,
+   "nx": 0.1,
+   "ny": 0.5,
+   "player": {
+    "team": "OPP",
+    "number": 15
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 3,
+   "goal": true,
+   "source": "Play",
+   "placed": false,
+   "_seq": 12
+  },
+  {
+   "id": "D-014",
+   "half": 1,
+   "clock": 340,
+   "nx": 0.42,
+   "ny": 0.62,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 13
+  },
+  {
+   "id": "D-015",
+   "half": 1,
+   "clock": 360,
+   "nx": 0.22,
+   "ny": 0.44,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 14
+  },
+  {
+   "id": "D-016",
+   "half": 1,
+   "clock": 390,
+   "nx": 0.4,
+   "ny": 0.38,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Break",
+   "_seq": 15
+  },
+  {
+   "id": "D-017",
+   "half": 1,
+   "clock": 410,
+   "nx": 0.3,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "free",
+   "awardedTo": "OPP",
+   "_seq": 16
+  },
+  {
+   "id": "D-018",
+   "half": 1,
+   "clock": 430,
+   "nx": 0.26,
+   "ny": 0.52,
+   "player": {
+    "team": "OPP",
+    "number": 11
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Free",
+   "placed": true,
+   "_seq": 17
+  },
+  {
+   "id": "D-019",
+   "half": 1,
+   "clock": 460,
+   "nx": 0.44,
+   "ny": 0.58,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 18
+  },
+  {
+   "id": "D-020",
+   "half": 1,
+   "clock": 480,
+   "nx": 0.15,
+   "ny": 0.3,
+   "player": {
+    "team": "OPP",
+    "number": 13
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 19
+  },
+  {
+   "id": "D-021",
+   "half": 1,
+   "clock": 510,
+   "nx": 0.37,
+   "ny": 0.45,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 20
+  },
+  {
+   "id": "D-022",
+   "half": 1,
+   "clock": 530,
+   "nx": 0.58,
+   "ny": 0.4,
+   "player": {
+    "team": "FOR",
+    "number": 10
+   },
+   "type": "turnover",
+   "winner": "OPP",
+   "loser": "FOR",
+   "method": "Overcarried",
+   "_seq": 21
+  },
+  {
+   "id": "D-023",
+   "half": 1,
+   "clock": 555,
+   "nx": 0.2,
+   "ny": 0.55,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 22
+  },
+  {
+   "id": "D-024",
+   "half": 1,
+   "clock": 590,
+   "nx": 0.39,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 23
+  },
+  {
+   "id": "D-025",
+   "half": 1,
+   "clock": 615,
+   "nx": 0.5,
+   "ny": 0.98,
+   "player": null,
+   "type": "sideline",
+   "winner": "OPP",
+   "_seq": 24
+  },
+  {
+   "id": "D-026",
+   "half": 1,
+   "clock": 640,
+   "nx": 0.4,
+   "ny": 0.55,
+   "player": {
+    "team": "FOR",
+    "number": 3
+   },
+   "type": "card",
+   "team": "FOR",
+   "card": "Yellow",
+   "_seq": 25
+  },
+  {
+   "id": "D-027",
+   "half": 1,
+   "clock": 660,
+   "nx": 0.45,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 4
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "HP Error",
+   "_seq": 26
+  },
+  {
+   "id": "D-028",
+   "half": 1,
+   "clock": 690,
+   "nx": 0.84,
+   "ny": 0.66,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 27
+  },
+  {
+   "id": "D-029",
+   "half": 1,
+   "clock": 720,
+   "nx": 0.6,
+   "ny": 0.48,
+   "player": {
+    "team": "OPP",
+    "number": 1
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 28
+  },
+  {
+   "id": "D-030",
+   "half": 1,
+   "clock": 745,
+   "nx": 0.92,
+   "ny": 0.1,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "fortyFive",
+   "winner": "FOR",
+   "_seq": 29
+  },
+  {
+   "id": "D-031",
+   "half": 1,
+   "clock": 770,
+   "nx": 0.8,
+   "ny": 0.25,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 30
+  },
+  {
+   "id": "D-032",
+   "half": 2,
+   "clock": 40,
+   "nx": 0.14,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 14
+   },
+   "type": "shot",
+   "team": "FOR",
+   "outcome": "Block/Save",
+   "source": null,
+   "placed": false,
+   "_seq": 31
+  },
+  {
+   "id": "D-033",
+   "half": 2,
+   "clock": 70,
+   "nx": 0.4,
+   "ny": 0.55,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 32
+  },
+  {
+   "id": "D-034",
+   "half": 2,
+   "clock": 95,
+   "nx": 0.82,
+   "ny": 0.45,
+   "player": {
+    "team": "OPP",
+    "number": 12
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 33
+  },
+  {
+   "id": "D-035",
+   "half": 2,
+   "clock": 120,
+   "nx": 0.62,
+   "ny": 0.4,
+   "player": {
+    "team": "FOR",
+    "number": 6
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Clean",
+   "_seq": 34
+  },
+  {
+   "id": "D-036",
+   "half": 2,
+   "clock": 140,
+   "nx": 0.18,
+   "ny": 0.28,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Play",
+   "placed": false,
+   "_seq": 35
+  },
+  {
+   "id": "D-037",
+   "half": 2,
+   "clock": 170,
+   "nx": 0.45,
+   "ny": 0.6,
+   "player": {
+    "team": "OPP",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Break",
+   "_seq": 36
+  },
+  {
+   "id": "D-038",
+   "half": 2,
+   "clock": 190,
+   "nx": 0.9,
+   "ny": 0.5,
+   "player": {
+    "team": "OPP",
+    "number": 15
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 3,
+   "goal": true,
+   "source": "Play",
+   "placed": false,
+   "_seq": 37
+  },
+  {
+   "id": "D-039",
+   "half": 2,
+   "clock": 220,
+   "nx": 0.58,
+   "ny": 0.62,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 38
+  },
+  {
+   "id": "D-040",
+   "half": 2,
+   "clock": 250,
+   "nx": 0.66,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 5
+   },
+   "type": "turnover",
+   "winner": "FOR",
+   "loser": "OPP",
+   "method": "Tackle",
+   "_seq": 39
+  },
+  {
+   "id": "D-041",
+   "half": 2,
+   "clock": 270,
+   "nx": 0.2,
+   "ny": 0.52,
+   "player": {
+    "team": "FOR",
+    "number": 13
+   },
+   "type": "score",
+   "team": "FOR",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 40
+  },
+  {
+   "id": "D-042",
+   "half": 2,
+   "clock": 300,
+   "nx": 0.42,
+   "ny": 0.5,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "OPP",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 41
+  },
+  {
+   "id": "D-043",
+   "half": 2,
+   "clock": 320,
+   "nx": 0.86,
+   "ny": 0.7,
+   "player": {
+    "team": "OPP",
+    "number": 14
+   },
+   "type": "wide",
+   "team": "OPP",
+   "source": "Play",
+   "placed": false,
+   "_seq": 42
+  },
+  {
+   "id": "D-044",
+   "half": 2,
+   "clock": 350,
+   "nx": 0.6,
+   "ny": 0.45,
+   "player": {
+    "team": "FOR",
+    "number": 9
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "FOR",
+   "method": "Foul",
+   "_seq": 43
+  },
+  {
+   "id": "D-045",
+   "half": 2,
+   "clock": 370,
+   "nx": 0.35,
+   "ny": 0.5,
+   "player": {
+    "team": "FOR",
+    "number": 11
+   },
+   "type": "free",
+   "awardedTo": "FOR",
+   "_seq": 44
+  },
+  {
+   "id": "D-046",
+   "half": 2,
+   "clock": 400,
+   "nx": 0.3,
+   "ny": 0.52,
+   "player": {
+    "team": "FOR",
+    "number": 12
+   },
+   "type": "wide",
+   "team": "FOR",
+   "source": "Free",
+   "placed": true,
+   "_seq": 45
+  },
+  {
+   "id": "D-047",
+   "half": 2,
+   "clock": 430,
+   "nx": 0.57,
+   "ny": 0.58,
+   "player": {
+    "team": "OPP",
+    "number": 8
+   },
+   "type": "restart",
+   "owner": "FOR",
+   "winner": "OPP",
+   "method": "Clean",
+   "_seq": 46
+  },
+  {
+   "id": "D-048",
+   "half": 2,
+   "clock": 450,
+   "nx": 0.84,
+   "ny": 0.4,
+   "player": {
+    "team": "OPP",
+    "number": 13
+   },
+   "type": "score",
+   "team": "OPP",
+   "value": 1,
+   "goal": false,
+   "source": "Play",
+   "placed": false,
+   "_seq": 47
+  }
+ ]
+}

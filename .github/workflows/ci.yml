@@ -15,6 +15,12 @@
 # every baselined test must run and pass, nothing may be skipped, and protected
 # Event Stats expectation files may not change without a reviewed baseline update.
 #
+# "Event Stats laboratory (engine)" runs the independent laboratory in lab/event-stats:
+# reference independence and byte-for-byte reproducibility, lab type checks, and the
+# comparison of the production statistics engine with independently calculated ledgers
+# for synthetic matches A, B, C and D. No retries, no repairs. Developer-side only — nothing
+# under lab/ is built into, or served by, the app.
+#
 # Third-party actions are pinned to full commit SHAs (tag in the comment).
 
 name: CI
@@ -122,3 +128,35 @@ jobs:
           fi
       - name: Compare tsc -b with the known-errors baseline
         run: node .github/scripts/ts-baseline.mjs check --base-baseline "$RUNNER_TEMP/base-baseline.txt" --summary "$GITHUB_STEP_SUMMARY"
+
+  lab:
+    name: Event Stats laboratory (engine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Each step runs even if an earlier one failed, so one run reports everything; the
+      # job fails if any step fails.
+      - name: Reference independence and reproducibility
+        if: ${{ !cancelled() }}
+        run: node lab/event-stats/tools/reproduce.mjs
+      - name: Laboratory TypeScript
+        if: ${{ !cancelled() }}
+        run: node lab/event-stats/tools/check-lab-types.mjs
+      - name: Engine vs independent ledgers (matches A, B, C, D)
+        if: ${{ !cancelled() }}
+        run: npx vitest run --config lab/event-stats/engine/vitest.lab.config.ts --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/lab-vitest.json"
+      - name: Verify the laboratory ran completely
+        if: ${{ !cancelled() }}
+        run: >-
+          node lab/event-stats/tools/verify-lab-run.mjs
+          --vitest-report "$RUNNER_TEMP/lab-vitest.json"
+          --engine-report lab/event-stats/out/engine-report.json
+          --summary "$GITHUB_STEP_SUMMARY"

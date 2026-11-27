@@ -26,8 +26,12 @@ import type { LoggedMatchEvent } from "../../../src/core/stats/saved-match";
 import type { MatchEventKind } from "../../../src/core/stats/stats-event-model";
 import { normalizeEventsForReporting } from "../../../src/stats/reporting/eventTagClassification";
 import { buildMatchReport } from "../../../src/stats/reporting/matchReport";
-import { buildTeamSummaryBlock, viewShootingConversion } from "../../../src/stats/reporting/teamStatsViews";
+import { buildTeamSummaryBlock, viewCoachingScoringRuns, viewShootingConversion } from "../../../src/stats/reporting/teamStatsViews";
 import type { ReportScope } from "../../../src/stats/reporting/report-types";
+import { viewScoringPossessionOrigins } from "../../../src/stats/reporting/scoringBreakdownViews";
+import { collectPlayerStats, computeDisciplineCounts, type PdfExportEvent, type PdfSquadPlayer } from "../../../src/stats/reviewPdfExport";
+import { computeProTaggerCounts } from "../../../src/pro-tagger/ProTaggerLiveScreen";
+import { deriveReviewPrompts } from "../../../src/stats/chains/review-prompts";
 
 const LAB = new URL("../", import.meta.url);
 const readJson = (rel: string) => JSON.parse(readFileSync(new URL(rel, LAB), "utf8"));
@@ -177,6 +181,115 @@ function compare(fx: Fixture, ledgerName: string, events: readonly LoggedMatchEv
       add(lk, "OPP", `origin ${refRow}: scores`, r.OPPn, e?.them.scores ?? 0);
       add(lk, "OPP", `origin ${refRow}: value`, r.OPP, e?.them.value ?? 0);
     }
+
+    for (const team of ["FOR", "OPP"] as const) {
+      const T = S[team];
+      const b = buildTeamSummaryBlock(report, team);
+      // Kickout / puckout methods: every restart the team won or lost (own and opposition).
+      add(lk, team, "restarts won clean", T.restartMethods.wonClean, b.koCleanWon);
+      add(lk, team, "restarts won from a break", T.restartMethods.wonBreak, b.koBreakWon);
+      add(lk, team, "restarts won from a foul", T.restartMethods.wonFoul, b.koFoulWon);
+      add(lk, team, "restarts lost clean", T.restartMethods.lostClean, b.koCleanLost);
+      add(lk, team, "restarts lost from a break", T.restartMethods.lostBreak, b.koBreakLost);
+      add(lk, team, "restarts lost from a foul", T.restartMethods.lostFoul, b.koFoulCon);
+      // Discipline (Intelligence Summary team comparison).
+      const d = computeDisciplineCounts(report.events as unknown as PdfExportEvent[], team);
+      add(lk, team, "yellow cards", T.cards.yellow, d.yellowCards);
+      add(lk, team, "sin bins", T.cards.sinBin, d.sinBins);
+      add(lk, team, "red cards", T.cards.red, d.redCards);
+      // Possession origins of the team's scores (Scoring Origins / coaching brief).
+      const o = viewScoringPossessionOrigins(report, team);
+      const C = S.chains[team];
+      for (const [name, eng, ref] of [["restart", o.restartOrigin, C.origins.restartOrigin], ["turnover", o.turnoverOrigin, C.origins.turnoverOrigin]] as const) {
+        add(lk, team, `${name}-origin scores: goals / points / 2-pointers`, [ref.goals, ref.points, ref.twoPointers], [eng.goals, eng.points, eng.twoPointers]);
+      }
+    }
+
+    // Restart and turnover chain metrics (engine computes them from the home team's view).
+    const CF = S.chains.FOR, CO = S.chains.OPP;
+    const fr = (f: { num: number; den: number }) => `${f.num}/${f.den}`;
+    add(lk, "FOR", "restarts won → score", fr(CF.restartWonToScore), fr(report.restarts.restartToScore));
+    add(lk, "FOR", "restarts lost → opposition score", fr(CF.restartLostToScoreAgainst), fr(report.restarts.restartLossPunishment));
+    add(lk, "OPP", "restarts won → score (= home restarts lost → opposition score)", fr(CO.restartWonToScore), fr(report.restarts.restartLossPunishment));
+    add(lk, "FOR", "own restart retention", fr(S.FOR.ownRestarts.retention), fr(report.restarts.ownKickoutRetention.full));
+    add(lk, "FOR", "opposition restarts won", fr(S.FOR.oppRestarts.winRate), fr(report.restarts.oppKickoutWinRate.full));
+    add(lk, "FOR", "restart share", fr(S.FOR.restartShare), fr(report.restarts.restartShare.full));
+    add(lk, "FOR", "avg seconds restart → score", CF.avgSecsToScoreWon ?? null, report.restarts.avgSecondsToScore.FOR);
+    add(lk, "OPP", "avg seconds restart → score", CO.avgSecsToScoreWon ?? null, report.restarts.avgSecondsToScore.OPP);
+    add(lk, "FOR", "turnover share", fr(S.FOR.turnoverShare), fr(report.turnovers.turnoverShare.full));
+    add(lk, "FOR", "turnovers won → score", fr(CF.turnoverWonToScore), fr(report.turnovers.turnoverWinsToScore));
+    add(lk, "FOR", "turnovers lost → opposition score", fr(CF.turnoverLostToScoreAgainst), fr(report.turnovers.turnoverLossPunishment));
+    add(lk, "FOR", "turnovers won → attempt, no score", fr(CF.turnoverWonAttemptNoScore), fr(report.turnovers.turnoverWonToShotOnly));
+    // Longest scoring run per team (count of consecutive scores).
+    const runs = viewCoachingScoringRuns(report);
+    add(lk, "FOR", "longest scoring run (scores)", S.longestRun.FOR, runs.longestFor?.count ?? 0);
+    add(lk, "OPP", "longest scoring run (scores)", S.longestRun.OPP, runs.longestOpp?.count ?? 0);
+  }
+
+  // ── FULL-match only: live counts strip, players, wording ──
+  const full = engineFor(events, fx, "FULL");
+  const F = L.FULL;
+  // Live screen counts strip (computeProTaggerCounts), on the stored events.
+  for (const team of ["FOR", "OPP"] as const) {
+    const c = computeProTaggerCounts(events, team);
+    const T = F[team];
+    add("FULL", team, "live strip: goals", T.goals, c.goals);
+    add("FULL", team, "live strip: 1-point scores", T.pointScores, c.points);
+    add("FULL", team, "live strip: 2-pointers", T.twoPointScores, c.twoPointers);
+    add("FULL", team, "live strip: shots (all attempts)", T.conversion.den, c.shots);
+    add("FULL", team, "live strip: wides", T.wides, c.wides);
+    add("FULL", team, "live strip: turnovers won", T.turnoversWon, c.turnoverWon);
+    add("FULL", team, "live strip: restarts won", T.restartsWon, c.kickoutWon);
+    add("FULL", team, "live strip: 45s / 65s won", T.fortyFivesWon, c.fortyFiveWon);
+    add("FULL", team, "live strip: sidelines won", T.sidelinesWon, c.sidelineWon);
+    add("FULL", team, "live strip: yellow cards", T.cards.yellow, c.yellowCards);
+    add("FULL", team, "live strip: sin bins", T.cards.sinBin, c.sinBins);
+    add("FULL", team, "live strip: red cards", T.cards.red, c.redCards);
+    // Every free is stored on the home row (kind says who won it), so the strip's frees are home-row figures.
+    if (team === "FOR") {
+      add("FULL", team, "live strip: frees won", T.freesWon, c.freeWon);
+      add("FULL", team, "live strip: frees conceded", T.freesConceded, c.freeConceded);
+    }
+  }
+
+  // Player table (Full Review player pages, collectPlayerStats) vs the reference player table.
+  const squad = (team: Team): PdfSquadPlayer[] =>
+    fx.squads[team].map((p) => ({ id: `${team === "FOR" ? "home" : "away"}-${p.number}`, number: p.number, name: p.name }));
+  const enginePlayers = collectPlayerStats(full.events as unknown as PdfExportEvent[], squad("FOR"), squad("OPP")).filter((p) => p.actions > 0);
+  const refPlayers: Record<string, number | string>[] = L.players;
+  const pkey = (team: string, n: number | null) => `${team} #${n}`;
+  const engineByKey = new Map(enginePlayers.map((p) => [pkey(p.teamSide, p.number), p]));
+  add("FULL", "-", "players with at least one tagged action", refPlayers.map((p) => pkey(String(p.team), Number(p.number))).sort(), [...engineByKey.keys()].sort());
+  for (const r of refPlayers) {
+    const e = engineByKey.get(pkey(String(r.team), Number(r.number)));
+    const who = `player ${pkey(String(r.team), Number(r.number))}`;
+    const pairs: [string, unknown, unknown][] = [
+      ["actions", r.actions, e?.actions], ["goals", r.goals, e?.goals], ["points value (excl. goals)", r.pointsValue, e?.scorePoints],
+      ["total value", r.totalValue, e?.scoreTotal], ["attempts", r.attempts, e?.shots], ["wides", r.wides, e?.wides],
+      ["turnovers won", r.toWon, e?.toWon], ["turnovers lost", r.toLost, e?.toLost],
+      ["restarts won", r.koWon, e?.koWon], ["restarts lost", r.koLost, e?.koCon],
+      ["frees won", r.freesWon, e?.freesWon], ["frees conceded", r.freesConceded, e?.freesCon],
+    ];
+    for (const [stat, exp, act] of pairs) add("FULL", String(r.team), `${who}: ${stat}`, exp, act ?? null);
+  }
+
+  // Intelligence wording: written rules, not engine values.
+  const sport = fx.sport === "hurling" ? "hurling" : "gaelic";
+  const prompts = deriveReviewPrompts(full.chain, fx.homeTeam, fx.awayTeam, sport);
+  const home = fx.homeTeam.slice(0, 18), away = fx.awayTeam.slice(0, 18);
+  add("FULL", "-", "intelligence prompts produced", true, prompts.length > 0);
+  add("FULL", "-", "every prompt names a team (CLAUDE.md attribution rule)", [], prompts.filter((p) => !p.text.includes(home) && !p.text.includes(away)).map((p) => p.text));
+  add("FULL", "-", "every prompt states a number", [], prompts.filter((p) => !/\d/.test(p.text)).map((p) => p.text));
+  if (fx.sport === "hurling") {
+    add("FULL", "-", "hurling prompts: no kickout / 2-pointer wording", [], prompts.filter((p) => /kick-?out|2-?point|two-?point/i.test(p.text)).map((p) => p.text));
+  }
+  // Coverage of the "net restart disadvantage" sentence (the only one using the singular restart
+  // term): wherever the REFERENCE shows the home team's restart conversion trailing its restart-loss
+  // punishment by more than 10 points (≥ 3 restarts), that sentence must be produced.
+  const conv = F.chains.FOR.restartWonToScore, punish = F.chains.FOR.restartLostToScoreAgainst;
+  if (F.FOR.restartsWon + F.FOR.restartsLost >= 3 && conv.pct !== null && punish.pct !== null && conv.pct - punish.pct < -10) {
+    add("FULL", "FOR", `net restart disadvantage sentence produced (reference: ${conv.pct}% vs ${punish.pct}%)`, true,
+      prompts.some((p) => p.text.includes("of their losses produced restart-origin point value")));
   }
   return checks;
 }
@@ -185,6 +298,7 @@ const MATCHES: { id: string; ledgers: { name: string; stage: "live" | "final" }[
   { id: "A", ledgers: [{ name: "ledger-A", stage: "final" }] },
   { id: "B", ledgers: [{ name: "ledger-B-live", stage: "live" }, { name: "ledger-B", stage: "final" }] },
   { id: "C", ledgers: [{ name: "ledger-C", stage: "final" }] },
+  { id: "D", ledgers: [{ name: "ledger-D-live", stage: "live" }, { name: "ledger-D", stage: "final" }] },
 ];
 
 function runAll() {
@@ -202,6 +316,12 @@ function runAll() {
     }
     for (const l of m.ledgers) all.push(...compare(fx, l.name, l.stage === "live" ? played.live : played.final));
   }
+  // Every difference VALIDATION.json records must have an entry in the classification register.
+  const validation = readJson("expected-authoritative/VALIDATION.json") as Record<string, { wrong: { restart: string; score: string }[] }>;
+  const historical = (readJson("engine/classifications.json").historicalValidation ?? {}) as Record<string, unknown>;
+  const unregistered = Object.entries(validation).flatMap(([ledger, v]) => v.wrong.map((w) => `${ledger}: ${w.restart} → ${w.score}`)).filter((k) => !(k in historical));
+  all.push({ key: "register|VALIDATION", match: "-", ledger: "VALIDATION.json", scope: "-", team: "-", stat: "every recorded validation difference is classified", expected: [], actual: unregistered, status: unregistered.length ? "FAIL" : "PASS" });
+
   // Information only: what today's Review Edit rules say about the planned Review edits that
   // were not performed in the as-run match B (fixtures/match-B.planned.json vs match-B.json).
   const planned = readJson("fixtures/match-B.planned.json") as Fixture;
