@@ -25,7 +25,13 @@ const L_LIVE = existsSync(liveLedgerPath) ? JSON.parse(readFileSync(liveLedgerPa
 let L = L_LIVE;
 // RUN_DIR (relative to the lab) selects another run of the same match, e.g. runs/A-offline.
 const run = process.env.RUN_DIR ? `${root}/${process.env.RUN_DIR}` : `${root}/runs/${id}`;
-const hurling = fx.sport === "hurling";
+// Camogie shares hurling's report layout and wording (puckouts, no football two-pointers, no sin
+// bin, "Free Analysis"); its end-line free is a 45 (Camogie Official Guide Part 2 Rule 11.14) and a
+// sideline score can be worth two (Rule 15.4). Ladies Football reports as football.
+const camogie = fx.sport === "camogie";
+const hurling = fx.sport === "hurling" || camogie;
+const END_FREE = fx.sport === "hurling" ? "65" : "45";
+const RULES = JSON.parse(readFileSync(`${root}/rules/sport-rules.json`, "utf8")).sports[fx.sport] ?? null;
 const HOME = fx.homeTeam, AWAY = fx.awayTeam;
 const checks = [];
 
@@ -105,9 +111,15 @@ function captureIntegrity() {
   check("Capture", "store@final", "FULL", "stored events after review edits/deletes", null, taps.length - deleted.size, finalStore.events.length);
   // Documented capture contract (pro-tagger-adapter.ts header comments) — the
   // check is that each tap was recorded with the right clock / player / place.
+  // Taps the app could not record (NOT_OFFERED=record, Golden Matches E / F) are never substituted:
+  // they are counted here as missing, and the per-field checks align the remaining taps with the
+  // events actually stored, so one missing event is not misreported as a clock/player/position error.
+  const tagResultsFile = `${run}/state/tag-results.json`;
+  const notEntered = new Set(existsSync(tagResultsFile) ? JSON.parse(readFileSync(tagResultsFile, "utf8")).filter((t) => t.notOffered).map((t) => t.id) : []);
+  if (notEntered.size) check("Capture", "store@FT", "FULL", "taps not entered (not offered by the app)", null, 0, notEntered.size, [...notEntered].join(", "));
   let clockBad = 0, playerBad = 0, posBad = 0, halfBad = 0;
   const bad = [];
-  taps.forEach((ev, i) => {
+  taps.filter((ev) => !notEntered.has(ev.id)).forEach((ev, i) => {
     const e = ftStore.events[i];
     if (!e) return;
     if (e.matchClockSeconds !== ev.clock) { clockBad++; bad.push({ id: ev.id, field: "clock", exp: ev.clock, got: e.matchClockSeconds }); }
@@ -146,8 +158,10 @@ function quickReview(label, S) {
     C(hurling ? "Puckout Lost" : "Kickout Lost", t, b.restartsLost);
     C("Free Won", t, b.freesWon);
     C("Free Conceded", t, b.freesConceded);
-    C(hurling ? "65 Won" : "45 Won", t, b.fortyFivesWon);
-    C(hurling ? "65 Lost" : "45 Lost", t, S[t === "FOR" ? "OPP" : "FOR"].fortyFivesWon);
+    C(`${END_FREE} Won`, t, b.fortyFivesWon);
+    C(`${END_FREE} Lost`, t, S[t === "FOR" ? "OPP" : "FOR"].fortyFivesWon);
+    // Camogie (approved report design for the Rule 15.4 sideline two-pointer): always shown.
+    if (camogie) C("Sideline 2PT", t, b.twoPointBySource.fromSideline, "sideline two-point scores (Rule 15.4) — shown at zero too");
     C("Sideline Won", t, b.sidelinesWon);
     C("Sideline Lost", t, S[t === "FOR" ? "OPP" : "FOR"].sidelinesWon);
     C("Yellow Cards", t, b.cards.yellow);
@@ -294,6 +308,14 @@ function snapshotPages(pages, label) {
   const our = pages[1], their = pages[2];
   const scoresFrom = (t) => `${t.scoresCount} score${t.scoresCount === 1 ? "" : "s"} from ${t.attempts} shots · ${pctS(t.conversion)} efficiency`;
   check(surf, "p2 Our Shot Profile", scope, "summary", "FOR", scoresFrom(S.FOR), our && firstMatch(our, /scores? from \d+ shots/)?.split(/ · (Best|Most)/)[0]);
+  if (camogie) {
+    // Approved camogie design: a callout "N sideline 2-pointer(s)" on each shot profile when non-zero.
+    for (const [team, pg, page] of [["FOR", "p2 Our Shot Profile", our], ["OPP", "p3 Their Shot Profile", their]]) {
+      const n = S[team].twoPointBySource.fromSideline;
+      const hit = page && firstMatch(page, /sideline 2-pointers?/i);
+      check(surf, pg, scope, "sideline 2-pointer callout", team, n > 0 ? `${n} sideline 2-pointer${n === 1 ? "" : "s"}` : "(no callout)", hit ? (hit.match(/(\d+) sideline 2-pointers?/i)?.[0] ?? hit) : "(no callout)");
+    }
+  }
   // Callout rule (reviewPdfExport shot profile strip): "N placed-ball score(s)" and "N placed-ball wide(s)",
   // each only when non-zero; no callout when both are zero. Counts come from the reference.
   const placedParts = (pl) => { const miss = pl.attempts - pl.scores, parts = [];
@@ -329,7 +351,7 @@ function efficiencyPage(p, surf, pg, S) {
     check(surf, pg, "FULL", "conversion", team, pctS(b.conversion), valRowOrBelow(p, "Conversion", { side }));
     check(surf, pg, "FULL", "wides", team, b.wides, val(p, "Wides", { side }));
     check(surf, pg, "FULL", "blocked / saved", team, b.shotBlockSave, val(p, "Blocked / Saved", { side }));
-    const src = [["Open Play", "Play"], ["Free", "Free"], ["Mark", "Mark"], [hurling ? "65" : "45", hurling ? "65" : "45"], ["Penalty", "Penalty"], ["Unclassified", "Unclassified"]];
+    const src = [["Open Play", "Play"], ["Free", "Free"], ...(camogie ? [] : [["Mark", "Mark"]]), [END_FREE, END_FREE], ["Penalty", "Penalty"], ...(camogie ? [["Sideline", "Sideline"]] : []), ["Unclassified", "Unclassified"]];
     for (const [lab, key] of src) {
       const r = rightOf(p, lab, { side });
       const e = b.bySource[key];
@@ -369,8 +391,9 @@ function fullReview(pages, label) {
     R("Goals", b.goals); R("Points", b.score.points, "points value incl. 2-pointers"); if (!hurling) R("2-Pointers", b.twoPointScores);
     R("Total Score", b.score.total); R("Shots", b.attempts); R("Wides", b.wides); R("Conversion", pctS(b.conversion));
     R("Short", b.shotShort); R("Post", b.shotPost);
-    if (hurling) check(surf, "p1 Match Summary", "FULL", "terminology: shot-detail row says '65' in hurling", team, "65", val(p1, "65", { side }) !== undefined ? "65" : val(p1, "45", { side }) !== undefined ? "45" : undefined);
-    check(surf, "p1 Match Summary", "FULL", hurling ? "65 (row)" : "45", team, b.fortyFivesWon, valNear(p1, hurling ? "65" : "45", { side }) ?? valNear(p1, "45", { side }), "shots that went out for a 45/65 — recorded by the 45/65 family");
+    if (hurling) check(surf, "p1 Match Summary", "FULL", `terminology: shot-detail row says '${END_FREE}' in ${fx.sport}`, team, END_FREE, val(p1, "65", { side }) !== undefined ? "65" : val(p1, "45", { side }) !== undefined ? "45" : undefined);
+    check(surf, "p1 Match Summary", "FULL", hurling ? `${END_FREE} (row)` : "45", team, b.fortyFivesWon, valNear(p1, END_FREE, { side }), "shots that went out for a 45/65 — recorded by the 45/65 family");
+    if (camogie) R("Sideline 2-pointers", b.twoPointBySource.fromSideline, "camogie sideline two-point scores (Rule 15.4) — shown at zero too");
     R("Block / Save", b.shotBlockSave);
     R("Restart Share Won", b.restartsWon); R("Restart Share Conceded", b.restartsLost); R("Restart Share", pctS(b.restartShare));
     // Repair batch: these rows were renamed "Restart Share — <method>" (they count
@@ -457,7 +480,8 @@ function fullReview(pages, label) {
     check(surf, "Opposition Facts", "1H", "OPP 1st half", "OPP", gpt(L.H1.OPP.score), val(of, "1st Half", { maxDx: 920 }));
     check(surf, "Opposition Facts", "2H", "OPP 2nd half", "OPP", gpt(L.H2.OPP.score), val(of, "2nd Half", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "OPP goals", "OPP", S.OPP.goals, val(of, "Goals", { maxDx: 920 }));
-    check(surf, "Opposition Facts", "FULL", "OPP points value", "OPP", S.OPP.score.points, val(of, hurling ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)", { maxDx: 920 }) ?? val(of, "Points (incl. frees & 2-pointers)", { maxDx: 920 }));
+    const ptsLabel = camogie ? "Points (incl. frees & sideline 2-pointers)" : hurling ? "Points (incl. frees)" : "Points (incl. frees & 2-pointers)";
+    check(surf, "Opposition Facts", "FULL", `OPP points value — '${ptsLabel}'`, "OPP", S.OPP.score.points, val(of, ptsLabel, { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "OPP conversion", "OPP", pctS(S.OPP.conversion), val(of, "Score Conversion", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "restart share won by OPP", "OPP", `${S.OPP.restartsWon} of ${S.OPP.restartsWon + S.OPP.restartsLost}`, val(of, "Restart Share won by OPP", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "turnovers gifted to OPP", "FOR", S.FOR.turnoversLost, valAbove(of, "TURNOVERS GIFTED TO OPPOSITION") ?? of.texts.find((t) => t.x > 960 && t.y > 590 && t.y < 620 && /^\d+$/.test(t.t))?.t);
@@ -556,8 +580,8 @@ function turnoverAnalysis(p, surf) {
   check(surf, pg, "FULL", "turnovers won by opposition", "OPP", `Opposition won ${S.FOR.turnoversLost} turnovers`, firstMatch(p, /^Opposition won \d+ turnovers$/));
   check(surf, pg, "FULL", "won → score", "FOR", `${c.turnoverWonToScore.num} led to score${c.turnoverWonToScore.num === 1 ? "" : "s"}`, p.texts.find((t) => /led to scores?$/.test(t.t) && t.x < 100)?.t);
   check(surf, pg, "FULL", "won → shots", "FOR", `${c.turnoverWonToAttempt.num} led to shots`, firstMatch(p, /led to shots$/));
-  check(surf, pg, "FULL", "lost → scores conceded", "FOR", `${c.turnoverLostToScoreAgainst.num} scores conceded`, firstMatch(p, /scores conceded$/));
-  check(surf, pg, "FULL", "lost → shots against", "FOR", `${c.turnoverLostToAttemptAgainst.num} shots against`, firstMatch(p, /shots against$/));
+  check(surf, pg, "FULL", "lost → scores conceded", "FOR", `${c.turnoverLostToScoreAgainst.num} score${c.turnoverLostToScoreAgainst.num === 1 ? "" : "s"} conceded`, firstMatch(p, /scores? conceded$/));
+  check(surf, pg, "FULL", "lost → shots against", "FOR", `${c.turnoverLostToAttemptAgainst.num} shot${c.turnoverLostToAttemptAgainst.num === 1 ? "" : "s"} against`, firstMatch(p, /shots? against$/));
   const pv = (lab, n = 0) => val(p, lab, { maxDx: 640, nth: n });
   check(surf, pg, "FULL", "HOW WON — Tackle / Press", "FOR", S.FOR.turnoverMethodsWon.Tackle, pv("Tackle / Press"));
   check(surf, pg, "FULL", "HOW WON — Swarm / Intercept", "FOR", S.FOR.turnoverMethodsWon.Interception, pv("Swarm / Intercept"));
@@ -802,7 +826,10 @@ if (!finalIsLive) {
 // or 2-point scores; the app's documented hurling ruleset has no sin bin. Football never shows
 // puckout wording. Every occurrence is listed (where + text), so a register entry can name exactly
 // which ones it explains and any new occurrence fails as unclassified.
-const SPORT_RULES = hurling
+const SPORT_RULES = RULES?.wording
+  // Ladies Football and Camogie: the forbidden wording in rules/sport-rules.json (each with its rule).
+  ? RULES.wording.forbidden.filter((w) => w.where !== "capture").map((w) => [`terminology (${fx.sport}): ${w.why}`, new RegExp(w.pattern, w.flags)])
+  : hurling
   ? [
       ["terminology: football 'kick' wording in a hurling match", /\bkick/i],
       ["terminology: two-point wording in a hurling match", /two[- ]?point|\b2[- ]?pt\b|2-pointer/i],

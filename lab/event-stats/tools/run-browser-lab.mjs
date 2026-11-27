@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Guardian V1 — Event Stats browser laboratory: one entry point for CI and local runs.
 //
-//   node lab/event-stats/tools/run-browser-lab.mjs [--base http://localhost:5199] [--matches A,B,C,D]
+//   node lab/event-stats/tools/run-browser-lab.mjs [--base http://localhost:5199] [--matches A,B,C,D,E,F] [--no-cross-sport]
 //        [--no-persistence] [--no-offline] [--summary <file>]
 //
 // Needs the production build served at --base (vite preview) and Playwright's Chromium
@@ -9,13 +9,15 @@
 // isolated profile. Synthetic data only.
 //
 // What it runs, in order, and what fails the run:
-//   1. Matches A, B, C, D through the real Event Stats UI (scripts/run-match.mjs): capture, HT/FT,
+//   1. Matches A–F (E Ladies Football, F Camogie — events the app does not offer are recorded, never substituted) through the real Event Stats UI (scripts/run-match.mjs): capture, HT/FT,
 //      Quick Review, HT/FT Snapshot and Full Review PDFs, save, Review edits, reload, reopen, re-export.
 //      Then scripts/verify-events.mjs (stored events vs fixture) and scripts/compare.mjs (UI and PDF
 //      text vs the independent expected ledgers in expected-authoritative/).
 //   1b. Offline reliability: match A again, entirely offline — installed online from its own
 //      `vite preview` (port 5299), then the server stopped and the browser offline; close/reopen and
 //      reload inserted (browser/offline-plan.json); a negative control with service workers blocked.
+//   1c. Cross-sport switching (scripts/run-cross-sport.mjs): the four sports created back to back in
+//      one profile vs fresh-profile baselines and rules/sport-rules.json.
 //   2. Persistence probes (persistence/probe-p0, probe-sp, probe-final) with explicit pass rules.
 //   3. Constructed tests, kept separate from capture: legacy-format import (run-legacy-import +
 //      compare-legacy) and the hurling Review Edit probe (run-edit-probe).
@@ -28,12 +30,13 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { authoritativeLedger } from "../scripts/reference-kickout-phase.mjs";
 
 const LAB = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); return i < 0 ? dflt : args[i + 1]; };
 const BASE = opt("--base", "http://localhost:5199");
-const MATCHES = opt("--matches", "A,B,C,D").split(",").map((m) => m.trim()).filter(Boolean);
+const MATCHES = opt("--matches", "A,B,C,D,E,F").split(",").map((m) => m.trim()).filter(Boolean);
 const PERSISTENCE = !args.includes("--no-persistence");
 const SUMMARY = opt("--summary", null);
 const FINDINGS = JSON.parse(readFileSync(join(LAB, "browser/known-findings.json"), "utf8")).findings;
@@ -71,6 +74,8 @@ for (const d of ["runs", "results", "out/browser", "persistence/results"]) mkdir
 // ── 1. Matches through the real UI ──────────────────────────────────────────
 const compareRows = {}; // match → non-PASS rows
 const verifyMismatches = {}; // match → [{stage, id, field}]
+const downstream = {}; // match → Set of compare row keys explained by events the app could not record
+const rowKey = (x) => `${x.surface} · ${x.page} · ${x.scope} · ${x.stat}${x.team ? ` · ${x.team}` : ""}`;
 /**
  * One match through the real UI, then every check on it. `key` names the run (results, register
  * matching, coverage): "A" … "D", or "A-offline" for match A run entirely offline.
@@ -88,15 +93,30 @@ function runMatchSuite(key, fixtureId, { env = {}, extraLifecycle = [], offline 
   const captured = run(`Match ${m}: ${what}`, ["scripts/run-match.mjs", `fixtures/match-${fixtureId}.json`, runDir, BASE], env);
   if (captured && run(`Match ${m}: stored events vs fixture`, ["scripts/verify-events.mjs", fixtureId, runDir, verifyFile])) {
     const v = json(verifyFile);
-    verifyMismatches[m] = v.stages.flatMap((s) => s.mismatches.map((x) => ({ stage: s.stage, id: x.id, field: x.field })));
-    for (const s of v.stages) add(`Match ${m}`, `stored events — ${s.stage}: ${s.stored}/${s.events} events, ${s.fieldsChecked} fields`, s.mismatches.length === 0 && s.stored === s.events, s.mismatches.length ? `${s.mismatches.length} mismatches` : null);
+    verifyMismatches[m] = v.stages.flatMap((s) => s.mismatches.map((x) => ({ stage: s.stage, id: x.id, field: x.field, kind: x.kind })));
+    for (const s of v.stages) add(`Match ${m}`, `stored events — ${s.stage}: ${s.stored}/${s.events} events, ${s.fieldsChecked} fields${s.notEntered ? `, ${s.notEntered} not entered` : ""}`, s.mismatches.length === 0 && s.stored === s.events, s.mismatches.length ? `${s.mismatches.length} mismatches` : null);
   }
   if (captured && run(`Match ${m}: UI and PDF text vs expected ledgers`, ["scripts/compare.mjs", fixtureId], { EXPECTED_DIR: "expected-authoritative", RUN_DIR: runDir, RESULTS_SUFFIX: suffix })) {
     const c = json(compareFile);
     compareRows[m] = c.checks.filter((x) => x.status === "FAIL" || x.status === "MISSING");
     add(`Match ${m}`, `UI/PDF comparison: ${c.summary.pass} pass, ${c.summary.fail} fail, ${c.summary.missing} missing, ${c.summary.unverified} unverified, ${c.summary.limitation} limitation (of ${c.summary.total})`, true);
-    for (const x of compareRows[m]) add(`Match ${m}`, `${x.surface} · ${x.page} · ${x.scope} · ${x.stat}${x.team ? ` · ${x.team}` : ""}`, false, `expected ${x.expected} | actual ${x.actual}${x.note ? ` | ${x.note.slice(0, 400)}` : ""}`);
+    for (const x of compareRows[m]) add(`Match ${m}`, rowKey(x), false, `expected ${x.expected} | actual ${x.actual}${x.note ? ` | ${x.note.slice(0, 400)}` : ""}`);
     Object.assign(results.at(-1 - compareRows[m].length), { counts: c.summary });
+    // Events the app could not record (Golden Matches E / F): re-run the comparison against the same
+    // independent reference computed without them. A row that passes there is DOWNSTREAM of the
+    // missing events; one that still fails is a direct difference needing its own register entry.
+    const notOffered = (existsSync(join(LAB, `${runDir}/state/tag-results.json`)) ? json(`${runDir}/state/tag-results.json`) : []).filter((t) => t.notOffered).map((t) => t.id);
+    if (notOffered.length) {
+      const fx0 = json(`fixtures/match-${fixtureId}.json`);
+      const dir = `results/reduced-${key}`;
+      mkdirSync(join(LAB, dir), { recursive: true });
+      writeFileSync(join(LAB, dir, `ledger-${fixtureId}.json`), JSON.stringify(authoritativeLedger({ ...fx0, excludeIds: notOffered }).ledger));
+      if ((fx0.reviewOps ?? []).length) writeFileSync(join(LAB, dir, `ledger-${fixtureId}-live.json`), JSON.stringify(authoritativeLedger({ ...fx0, reviewOps: [], excludeIds: notOffered }).ledger));
+      if (run(`Match ${m}: comparison without the ${notOffered.length} events the app could not record`, ["scripts/compare.mjs", fixtureId], { EXPECTED_DIR: dir, RUN_DIR: runDir, RESULTS_SUFFIX: `${suffix}-reduced` })) {
+        const passing = new Set(json(`results/compare-${fixtureId}${suffix}-reduced.json`).checks.filter((x) => x.status === "PASS").map(rowKey));
+        downstream[m] = new Set(compareRows[m].map(rowKey).filter((k) => passing.has(k)));
+      }
+    }
   }
   // Lifecycle and Review checks recorded by the runner itself.
   const st = (f) => (existsSync(join(LAB, `${runDir}/state/${f}`)) ? json(`${runDir}/state/${f}`) : null);
@@ -107,11 +127,24 @@ function runMatchSuite(key, fixtureId, { env = {}, extraLifecycle = [], offline 
   }
   const rp = st("review-probes.json");
   if (rp) {
-    for (const r of rp.reachability) add(`Match ${m}`, `Review — open ${r.targetId} (${r.kind}) on the Event Map`, r.opened, r.opened ? null : `not opened after ${r.taps} taps`);
+    for (const r of rp.reachability) add(`Match ${m}`, r.notEntered ? `Review — ${r.op} ${r.targetId}: target was not entered (not offered by the app)` : `Review — open ${r.targetId} (${r.kind}) on the Event Map`, r.opened, r.opened ? null : r.notEntered ? "not entered" : `not opened after ${r.taps} taps`);
     for (const p of rp.probes) add(`Match ${m}`, `Review probe ${p.targetId} — ${p.expect}`, p.pass === true, p.pass ? null : JSON.stringify(p).slice(0, 400));
     for (const e of rp.edits) add(`Match ${m}`, `Review edit ${e.targetId} → ${e.newKind ?? "delete"}`, e.applied !== false && !e.formError, e.applied === false || e.formError ? JSON.stringify(e) : null);
   }
   for (const t of st("tag-results.json") ?? []) if (t.pickerUnsupported) add(`Match ${m}`, `capture — ${t.id}: player not offered by the live picker`, false, t.pickerUnsupported);
+  for (const t of st("tag-results.json") ?? []) if (t.notOffered) add(`Match ${m}`, `capture — ${t.id}: not offered by the app (not entered)`, false, t.notOffered);
+  // Capture options the sport's rules require (rules/sport-rules.json → captureProbes).
+  const cp = st("capture-probes.json");
+  if (cp) {
+    for (const p of cp.probes) {
+      const tiles = cp.tiles[p.familyLabel];
+      add(`Match ${m}`, `capture option ${p.family}: family offered (${p.rule})`, tiles != null, tiles == null ? "not offered" : null);
+      for (const t of p.present) add(`Match ${m}`, `capture option ${p.family}: tile "${t}" offered (${p.rule})`, !!tiles?.includes(t), `tiles shown: ${JSON.stringify(tiles)}`);
+      for (const t of p.absent) add(`Match ${m}`, `capture option ${p.family}: tile "${t}" not offered (${p.rule})`, !tiles?.includes(t), `tiles shown: ${JSON.stringify(tiles)}`);
+    }
+  } else if (json("rules/sport-rules.json").sports[json(`fixtures/match-${fixtureId}.json`).sport]?.captureProbes) {
+    add(`Match ${m}`, "coverage — capture-option probes ran", false, "capture-probes.json missing");
+  }
 
   if (offline) {
     // Offline pass rules: genuinely offline (server stopped and not answering, browser offline, no
@@ -150,7 +183,8 @@ function runMatchSuite(key, fixtureId, { env = {}, extraLifecycle = [], offline 
 
 // Match D only: two events carry a player the live picker does not offer (register BL-L1); tag them
 // with no player and record it. Every other match fails on any picker mismatch.
-for (const m of MATCHES) runMatchSuite(m, m, { env: m === "D" ? { UNSUPPORTED_PLAYER: "unknown" } : {} });
+// Golden Matches E and F record (never substitute) events the app does not offer (NOT_OFFERED=record).
+for (const m of MATCHES) runMatchSuite(m, m, { env: { ...(m === "D" ? { UNSUPPORTED_PLAYER: "unknown" } : {}), ...(["E", "F"].includes(m) ? { NOT_OFFERED: "record" } : {}) } });
 
 // ── 1b. Offline reliability: match A entirely offline from the service worker ──
 // Its own `vite preview` of this repository's build (port 5299), stopped once the app is installed.
@@ -216,6 +250,20 @@ if (MATCHES.includes("C") && existsSync(join(LAB, "runs/C/state/final.json"))) {
     const r = json("out/browser/edit-probe-hurling.json");
     add("Constructed", "hurling Review Edit: football-only 2-pointer not offered; event and scoreline unchanged", r.pass === true, r.pass ? null : JSON.stringify(r).slice(0, 500));
   }
+}
+
+// Cross-sport switching (scripts/run-cross-sport.mjs): the four sports created back to back in one
+// browser profile, each compared with a fresh-profile baseline and with rules/sport-rules.json.
+const CROSS_SPORT = !args.includes("--no-cross-sport");
+if (CROSS_SPORT) {
+  rmSync(join(LAB, "runs/XS"), { recursive: true, force: true });
+  if (run("Cross-sport: four sports created back to back in one browser profile", ["scripts/run-cross-sport.mjs", "runs/XS", BASE])) {
+    const xs = json("runs/XS/state/cross-sport.json");
+    for (const [sport, checks] of Object.entries(xs.baselineChecks)) for (const c of checks) add("Cross-sport", `${sport} (fresh profile): ${c.check}`, c.pass, c.pass ? null : JSON.stringify(c.detail).slice(0, 400));
+    for (const st of xs.steps) for (const c of st.checks) add("Cross-sport", `${st.sport} (step ${st.step}${st.after ? `, after ${st.after}` : ""}): ${c.check}`, c.pass, c.pass ? null : JSON.stringify(c.detail).slice(0, 400));
+  }
+  const judged = results.filter((r) => r.area === "Cross-sport").length;
+  add("Cross-sport", `coverage — cross-sport checks judged: ${judged} ≥ ${COVERAGE.crossSportChecksMin}`, judged >= COVERAGE.crossSportChecksMin, judged >= COVERAGE.crossSportChecksMin ? null : "incomplete run");
 }
 
 if (PERSISTENCE) {
@@ -296,11 +344,22 @@ const classify = (r) => {
   const row = (compareRows[m] ?? []).find((x) => r.item === `${x.surface} · ${x.page} · ${x.scope} · ${x.stat}${x.team ? ` · ${x.team}` : ""}`);
   let fs = row ? classifyCompare(m, row) : null;
   let f = null;
+  // Downstream of events the app could not record: attributed to the register entry that owns the
+  // capture failure (blockedCapture), so it stays blocking until that defect is repaired.
+  if (!fs && row && downstream[m]?.has(r.item)) {
+    const owner = FINDINGS.find((F) => F.blockedCapture?.includes(m));
+    if (owner) { fs = [owner]; r.effect = "downstream"; }
+  }
+  // Generic item selectors (capture options, not-entered events, Review targets).
+  if (!fs) {
+    const F = FINDINGS.find((x) => x.select.some((s) => s.source === "item" && s.matches.includes(m) && new RegExp(s.item).test(r.item)));
+    if (F) fs = [F];
+  }
   if (!f && /^stored events/.test(r.item)) {
     const mm = verifyMismatches[m] ?? [];
     const stage = r.item.replace(/^stored events — /, "").replace(/: .*$/, "");
     const mine = mm.filter((x) => x.stage === stage);
-    f = FINDINGS.find((F) => F.select.some((s) => s.source === "verify" && s.matches.includes(m) && mine.length > 0 && mine.every((x) => s.ids.includes(x.id) && x.field === s.field))) ?? null;
+    f = FINDINGS.find((F) => F.select.some((s) => s.source === "verify" && s.matches.includes(m) && mine.length > 0 && mine.every((x) => s.notEntered ? x.kind === "notEntered" : s.ids?.includes(x.id) && x.field === s.field))) ?? null;
   }
   if (!f && /^capture — .*player not offered/.test(r.item)) {
     const id = r.item.match(/^capture — (\S+):/)[1];
@@ -314,7 +373,7 @@ const classify = (r) => {
   r.blocking = fs.some((F) => F.kind === "app-finding" && !F.ownerAccepted);
 };
 results.forEach(classify);
-const ranMatches = new Set([...MATCHES, ...(OFFLINE ? [`${json("browser/offline-plan.json").match}-offline`] : [])]);
+const ranMatches = new Set([...MATCHES, ...(OFFLINE ? [`${json("browser/offline-plan.json").match}-offline`] : []), ...(CROSS_SPORT ? ["Cross-sport"] : [])]);
 const stale = FINDINGS.filter((f) => used.get(f.id) === 0 && f.select.some((s) => s.matches.some((m) => ranMatches.has(m))));
 // Partial fixes: every occurrence pattern of a register entry must still occur somewhere in the run.
 const stalePatterns = FINDINGS.flatMap((f) => f.select.flatMap((s, si) => (s.occurrences && s.matches.some((m) => ranMatches.has(m)))
@@ -331,12 +390,13 @@ const missingScope = [
   ...COVERAGE.requiredMatches.filter((m) => !MATCHES.includes(m)).map((m) => `match ${m} not run`),
   ...(PERSISTENCE ? [] : ["persistence probes not run"]),
   ...(OFFLINE ? [] : ["offline reliability run not run"]),
+  ...(CROSS_SPORT ? [] : ["cross-sport switching test not run"]),
 ];
 const verdict = blocking.length || stale.length ? "FAIL" : missingScope.length ? "INCOMPLETE" : "PASS";
 const report = {
   verdict, missingScope, base: BASE, matches: MATCHES, persistence: PERSISTENCE, generatedAt: new Date().toISOString(),
   totals: { results: results.length, pass: results.length - failing.length, fail: failing.length, unclassified: unclassified.length, blocking: blocking.length, stale: stale.map((f) => f.id) },
-  findings: FINDINGS.map((f) => ({ id: f.id, kind: f.kind, title: f.title, ownerAccepted: f.ownerAccepted ?? null, occurrences: used.get(f.id) })),
+  findings: FINDINGS.map((f) => ({ id: f.id, kind: f.kind, title: f.title, ownerAccepted: f.ownerAccepted ?? null, occurrences: used.get(f.id), downstream: failing.filter((r) => r.effect === "downstream" && r.classification === f.id).length })),
   steps, results,
 };
 writeFileSync(join(LAB, "out/browser-report.json"), JSON.stringify(report, null, 1));
@@ -349,8 +409,11 @@ md.push("| Step | Seconds | Result |", "|---|---:|---|", ...steps.map((s) => `| 
 for (const m of ranMatches) { const c = results.find((r) => r.area === `Match ${m}` && r.counts); if (c) md.push(`- **Match ${m}** — ${c.item}`); }
 md.push("");
 if (openFindings.length || FINDINGS.some((f) => used.get(f.id) > 0)) {
-  md.push("### Registered findings seen in this run", "", "| Id | Kind | Finding | Occurrences | Blocks the run |", "|---|---|---|---:|---|");
-  for (const f of FINDINGS.filter((F) => used.get(F.id) > 0)) md.push(`| ${f.id} | ${f.kind} | ${f.title} | ${used.get(f.id)} | ${f.kind === "app-finding" && !f.ownerAccepted ? "yes (open app finding)" : "no"} |`);
+  md.push("### Registered findings seen in this run", "", "| Id | Kind | Finding | Occurrences (direct + downstream) | Blocks the run |", "|---|---|---|---:|---|");
+  for (const f of FINDINGS.filter((F) => used.get(F.id) > 0)) {
+    const ds = failing.filter((r) => r.effect === "downstream" && r.classification === f.id).length;
+    md.push(`| ${f.id} | ${f.kind} | ${f.title} | ${used.get(f.id)}${ds ? ` (${used.get(f.id) - ds} + ${ds})` : ""} | ${f.kind === "app-finding" && !f.ownerAccepted ? "yes (open app finding)" : "no"} |`);
+  }
   md.push("");
 }
 if (unclassified.length) md.push("### ❌ Unclassified results (not in browser/known-findings.json)", "", ...unclassified.map((r) => `- ${r.area}: ${r.item} — ${r.detail ?? ""}`.slice(0, 600)), "");

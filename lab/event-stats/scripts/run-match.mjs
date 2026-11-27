@@ -17,7 +17,7 @@
 import { chromium, devices } from "playwright";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { CHROME, tagEvent, readOwnerToggle } from "./ui-driver.mjs";
+import { CHROME, tagEvent, readOwnerToggle, readFamilyTiles } from "./ui-driver.mjs";
 
 const [fixturePath, outDir, baseUrlArg = "http://localhost:5199"] = process.argv.slice(2);
 // OFFLINE_SERVE_ROOT=<repo root with a production build in dist/>: offline mode. This runner starts its
@@ -28,7 +28,9 @@ const OFFLINE_ROOT = process.env.OFFLINE_SERVE_ROOT ?? null;
 const OFFLINE_PORT = Number(process.env.OFFLINE_PORT ?? 5299);
 let baseUrl = OFFLINE_ROOT ? `http://localhost:${OFFLINE_PORT}` : baseUrlArg;
 const fx = JSON.parse(readFileSync(fixturePath, "utf8"));
-const sportKey = fx.sport === "hurling" ? "hurling" : "football";
+// Laboratory sport → driver labels (kick-out / puck-out families) and the app's sport button.
+const sportKey = fx.sport === "hurling" || fx.sport === "camogie" ? "hurling" : "football";
+const SPORT_BUTTON = { football: "Gaelic Football", ladies_football: "Ladies Football", hurling: "Hurling", camogie: "Camogie" };
 mkdirSync(`${outDir}/pdf`, { recursive: true });
 mkdirSync(`${outDir}/pdf-text`, { recursive: true });
 mkdirSync(`${outDir}/screens`, { recursive: true });
@@ -225,7 +227,7 @@ if (offline) {
 await page.goto(`${baseUrl}/pro-tagger`);
 if (offline) offline.openedOffline = await page.getByText("New Match").isVisible();
 await page.getByText("New Match").click();
-await clickByText(fx.sport === "hurling" ? "Hurling" : "Gaelic Football");
+await clickByText(SPORT_BUTTON[fx.sport]);
 await page.getByPlaceholder("e.g. Kilkenny").fill(fx.homeTeam);
 await page.getByPlaceholder("e.g. Tipperary").fill(fx.awayTeam);
 await page.getByPlaceholder("e.g. Croke Park").fill(fx.venue);
@@ -251,6 +253,18 @@ await page.getByText(fx.attackDirection === "right" ? "RIGHT" : "LEFT", { exact:
 await clickByText("▶ Start");
 note("match started");
 
+// Capture options the sport's rules require (rules/sport-rules.json → captureProbes): the tiles the
+// live screen renders for each listed family, read before any tap.
+{
+  const rules = JSON.parse(readFileSync(new URL("../rules/sport-rules.json", import.meta.url), "utf8")).sports[fx.sport];
+  const probes = rules?.captureProbes ?? [];
+  if (probes.length) {
+    const tiles = await readFamilyTiles(page, probes.map((p) => p.familyLabel));
+    writeFileSync(`${outDir}/state/capture-probes.json`, JSON.stringify({ sport: fx.sport, probes, tiles }, null, 1));
+    note("capture options read", tiles);
+  }
+}
+
 // ── 2. Replay the fixture through the UI ────────────────────────────────────
 const ownerToggleChecks = [];
 const tagResults = [];
@@ -274,9 +288,10 @@ for (const step of runSteps) {
   if (step.op === "tag") {
     const ev = step.ev;
     await advanceTo(ev.clock);
-    await tagEvent(page, sportKey, ev, fx.squads, { unsupportedPlayer: process.env.UNSUPPORTED_PLAYER === "unknown" ? "unknown" : "throw" });
-    if (!ev.erroneous) liveCount++;
-    tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride, ...(ev._pickerUnsupported ? { pickerUnsupported: ev._pickerUnsupported } : {}) });
+    await tagEvent(page, sportKey, ev, fx.squads, { unsupportedPlayer: process.env.UNSUPPORTED_PLAYER === "unknown" ? "unknown" : "throw", sport: fx.sport, notOffered: process.env.NOT_OFFERED === "record" ? "record" : "throw" });
+    if (!ev.erroneous && !ev._notOffered) liveCount++;
+    tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride, ...(ev._pickerUnsupported ? { pickerUnsupported: ev._pickerUnsupported } : {}), ...(ev._notOffered ? { notOffered: ev._notOffered } : {}), ...(ev._labelShown ? { labelShown: ev._labelShown } : {}) });
+    if (ev._notOffered) { note("NOT OFFERED BY THE APP — not entered", { id: ev.id, detail: ev._notOffered }); continue; }
     if (ev._pickerUnsupported) note("PLAYER NOT OFFERED BY LIVE PICKER — tagged with no player", { id: ev.id, detail: ev._pickerUnsupported });
     if (pendingRecoveryCheck) {
       await page.clock.runFor(300);
@@ -454,13 +469,20 @@ if (fx.reviewOps?.length) {
   const store = await dumpStore("before-review-ops");
   const saved = store.find((m) => m.homeTeamName === fx.homeTeam);
   // Map fixture ids → stored events by tap order (undone taps were removed by ↩).
-  const liveTags = fx.steps.filter((s) => s.op === "tag" && !s.ev.erroneous).map((s) => s.ev);
+  const notEntered = new Set(tagResults.filter((t) => t.notOffered).map((t) => t.id));
+  const liveTags = fx.steps.filter((s) => s.op === "tag" && !s.ev.erroneous && !notEntered.has(s.ev.id)).map((s) => s.ev);
   if (liveTags.length !== saved.events.length) note("EVENT COUNT MISMATCH before review ops", { fixture: liveTags.length, stored: saved.events.length });
   const idMap = new Map(liveTags.map((e, i) => [e.id, saved.events[i]]));
   await page.getByRole("button", { name: /Event Map/ }).first().click();
   await page.waitForTimeout(1200);
   for (const op of fx.reviewOps) {
     const target = idMap.get(op.targetId);
+    if (!target && notEntered.has(op.targetId)) {
+      // The target could not be entered (the app does not offer it): reported, never retargeted.
+      reachability.push({ targetId: op.targetId, op: op.op, kind: null, opened: false, notEntered: true, taps: 0 });
+      note("REVIEW OP: target was not entered (not offered by the app)", { op });
+      continue;
+    }
     await applyReviewOp(op, target);
   }
   await clickByText("← Review");
@@ -475,7 +497,9 @@ async function applyReviewOp(op, target) {
   // covers it, tap the uncovered edge of it, or try a different filter view.
   const CATEGORY = { GOAL: "SCORES", POINT: "SCORES", TWO_POINTER: "SCORES", FORTY_FIVE_TWO_POINT: "SCORES", SHOT: "SHOTS", WIDE: "WIDES",
     TURNOVER_WON: "T/O", TURNOVER_LOST: "T/O", KICKOUT_WON: "K/O", KICKOUT_CONCEDED: "K/O", FREE_WON: "FREES", FREE_CONCEDED: "FREES" };
-  const cat = CATEGORY[target.kind] ?? "ALL";
+  // The restart filter chip is sport-aware in the app's Review screen: "P/O" for hurling / camogie.
+  const cat0 = CATEGORY[target.kind] ?? "ALL";
+  const cat = cat0 === "K/O" && sportKey === "hurling" ? "P/O" : cat0;
   const halfBtn = target.period === "1H" ? "H1" : "H2";
   const views = [[halfBtn, target.teamSide, cat], [halfBtn, "ALL", cat], [halfBtn, target.teamSide, "ALL"], ["ALL", target.teamSide, cat]];
   const mm = String(Math.floor(target.matchClockSeconds / 60)).padStart(2, "0");

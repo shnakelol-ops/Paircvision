@@ -24,10 +24,10 @@ Verified:
   anonymised real-match fixture already committed in `src/stats/reporting/fixtures/`; its other
   examples (B-265, B-266) refer to the earlier red-repairs match set.
 
-## Reproducibility (`tools/reproduce.mjs`, 31/31)
+## Reproducibility (`tools/reproduce.mjs`, 65/65)
 
 - The reference calculators and the generator import only `node:` built-ins and each other.
-- The generator reproduces `match-A`, `match-B.planned` and `match-C` byte for byte.
+- The generators reproduce `match-A`, `match-B.planned`, `match-C`, `match-D`, `match-E` and `match-F` byte for byte.
 - `match-B` (as run) equals the plan except two planned Review edits that were not performed
   (B-059 → Sin Bin, B-007 → Wide). Historical run log: "could not open target marker" — a
   browser-harness limitation. Today's Review Edit rules offer and accept both edits
@@ -89,3 +89,48 @@ The one change to a recovered script: `scripts/reference-kickout-phase.mjs` `TAR
 `["D", "ledger-D"], ["D", "ledger-D-live"]`. Its computation is unchanged; ledgers A, B, B-live, C
 and their `VALIDATION.json` entries regenerate byte for byte. `VALIDATION.json` for D: 6 credited,
 6 correct, 0 wrong, 0 missed against the hand-written ground truth.
+
+## Golden Matches E (Ladies Football) and F (Camogie) — Guardian V1 Phase B, not historical
+
+Built before any Ladies Football or Camogie repair, from the official rules only
+(`rules/sport-rules.json`, every rule cited): E — LGFA Official Guide 2026 as amended by the motions
+approved at Special Congress, 15 April 2026, senior adult club championship; F — Camogie Official
+Guide 2025 standard playing rules. Expected results come only from `reference.mjs` and
+`reference-kickout-phase.mjs`; ground truth (`truth`) is written by the generator from the scenario,
+never by a calculator.
+
+**Generator.** `scripts/gen-fixture-ef.mjs` reuses the seeded simulator of `gen-fixtures.mjs` (now
+exporting `simulate`, `insertAt`, `squad`, `applySubsAndDiscipline`, `finalize`). A scenario hook in
+`simulate()` (`cfg.scenarios`) plays each rule scenario at a possession boundary, so the possession
+chain around it stays coherent; it draws nothing from the PRNG and A, B.planned and C regenerate
+byte for byte. A scenario that is never played throws. Only cards are inserted by time.
+The camogie flag also selects hurling's restart model (puck-outs) and a "45" end-line free.
+
+| Match | Events | Rule scenarios | Discipline | Review |
+|---|---|---|---|---|
+| E | 140 taps (2 erroneous, undone), 137 final; FT Lab E Home 2-12 (18) v 0-24 (24) | fisted point beyond the arc (1); kick-out mark from the arc (2); 45 retouched by a team-mate (1); foul on the 45 → free from the arc (2); penalty goal; penalty point (1, never 2 — Rule 426); kick-out mark wide; solo-and-go from the arc (2); team-official misconduct free from the arc apex (2); 45 direct (2); 45 bouncing over (2); 13 m free point | OPP #4 Yellow 1H 10:00 and 2H 20:00 (sin bin, then dismissal); FOR #6 Yellow 1H 27:00, Yellow 2H 15:00, Red 2H 15:03 (one dismissal); OPP #12 direct Red 2H 25:00 | 6 edits, 1 delete; probes: penalty point → 2PT not offered, Yellow → Sin Bin not offered, turnover |
+| F | 155 taps (2 erroneous), 152 final; FT Lab F Home 4-10 (22) v 0-20 (20) | sideline 2-pointer FOR 1H and OPP 2H (Rule 15.4); sideline touched in flight → 1 point; sideline wides FOR and OPP; 45 wide; penalty goal; 45 point | FOR #7 Yellow, Yellow + Red; OPP #6 Red; no sin bin | 6 edits, 1 delete; probes: point → no 2PT kinds, Yellow → no Sin Bin, 45 |
+
+Lifecycle in both: 2 undos, pause, reload, tab close and reopen, 2 substitutions per team (limit 5).
+
+**Never substituted.** An event the app does not offer (F: the five sideline events) is recorded as
+not entered — engine path `blocked`, browser path `NOT_OFFERED=record` → `state/tag-results.json` —
+and never replaced by another event. Its effect is classified by recomputing the same reference
+without it (`excludeIds`): what then passes is downstream of the capture defect.
+
+**Kickout-origin validation (`VALIDATION.json`).** Classified like A–C (none is an application defect):
+
+| Ledger | Difference | Classification |
+|---|---|---|
+| E, E-live | E-014 (kickout) → E-017 (score) missed | the written definition's 90-second cap: the score comes more than 90 s after the kickout; the simulator's truth has no cap — reference definition, not a defect |
+| F, F-live | F-095 → F-098 missed | same 90-second cap |
+| E | E-078 → E-079 wrong; E-020 → E-022 and E-075 → E-077 missed | Review edits (E-079, E-022, E-077 changed by Review) — the validation's truth predates the edit, as B-025 → B-026 |
+
+**Comparator / runner additions (no expected value changed).** `compare.mjs`: Ladies / Camogie
+wording from the rules table; camogie "Sideline 2PT" Quick Review row, "Sideline 2-pointers" Match
+Summary row (shown at zero too), Sideline source breakdown, "45" for camogie, Opposition Facts points
+label; singular "1 score conceded" / "1 shot against" (the app's correct grammar — A–D never had
+exactly one); capture alignment skips not-entered taps and counts them. `run-match.mjs`: the Review
+restart filter chip is "P/O" in camogie as in hurling. `verify-events.mjs`: the camogie end-line
+free stored under the app's internal code `65` is decoded as the 45-metre free (display wording is
+checked separately).

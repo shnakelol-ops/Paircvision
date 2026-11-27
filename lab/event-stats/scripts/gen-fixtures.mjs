@@ -12,12 +12,16 @@
 // (who acted, what happened, and the true origin of the possession it sits
 // in). The reference calculator reads facts, never production kinds.
 //
-// Usage: node gen-fixtures.mjs <outDir>
+// Usage: node gen-fixtures.mjs <outDir>   (writes matches A, B (as planned) and C)
+//
+// The building blocks are exported for scripts/gen-fixture-ef.mjs (matches E and F); running this
+// file directly writes exactly the same A, B and C as before.
 
 import { writeFileSync, mkdirSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 // ─── Deterministic PRNG ──────────────────────────────────────────────────────
-function mulberry32(seed) {
+export function mulberry32(seed) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -43,9 +47,11 @@ const other = (t) => (t === "FOR" ? "OPP" : "FOR");
 
 // ─── Match simulator ────────────────────────────────────────────────────────
 
-function simulate(cfg) {
+export function simulate(cfg) {
   const r = mulberry32(cfg.seed);
-  const hurling = cfg.sport === "hurling";
+  // Camogie plays like hurling here (puck-outs, no 2-point score from play or frees); its end-line
+  // free is a 45 (Camogie Official Guide Part 2, Rule 11.14), hurling's a 65.
+  const hurling = cfg.sport === "hurling" || cfg.sport === "camogie";
   const steps = [];
   let seq = 0;
   const nextId = () => `${cfg.prefix}-${String(++seq).padStart(3, "0")}`;
@@ -117,6 +123,24 @@ function simulate(cfg) {
       t += gap();
       if (t >= halfLen - 20) break;
       const P = poss, D = other(P);
+      // Scripted scenarios (matches E and F only): a rule-specific passage of play started at a
+      // possession boundary, so its chain stays coherent. Uses no random numbers — A–C unchanged.
+      const due = cfg.scenarios?.find((x) => !x.done && x.half === half && t >= x.at && (!x.team || x.team === P));
+      if (due) {
+        due.done = true;
+        due.run({
+          P, D, half,
+          wait: (s) => { t += s; },
+          tag: (ev) => tag(half, t, ev),
+          shot: (team, family, tile, d, player, extraTruth) => shotFrom(team, family, tile, d, player, extraTruth),
+          kickout: (owner) => kickout(owner),
+          attackNx: (team, d) => attackNx(team, half, d),
+          ownNx: (team, d) => ownNx(team, half, d),
+          setPossession: (team, o) => { poss = team; origin = o; },
+          origin: () => ({ ...origin }),
+        });
+        continue;
+      }
       const roll = weighted(r, [
         ["turnover", cfg.p.turnover],
         ["free", cfg.p.free],
@@ -214,7 +238,7 @@ function simulate(cfg) {
         if (outcome === "Block/Save" && r() < 0.5) {
           // Deflected out → 45 (football) / 65 (hurling) to the attackers.
           t += ibetween(r, 5, 12);
-          const fortyFive = hurling ? "65" : "45";
+          const fortyFive = cfg.sport === "hurling" ? "65" : "45";
           const dist = hurling ? 0.45 : 0.31;
           const awardEv = tag(half, t, {
             family: "FORTY_FIVE", row: P, tile: "Won",
@@ -245,12 +269,14 @@ function simulate(cfg) {
     }
     steps.push({ op: half === 1 ? "halftime" : "fulltime", clock: Math.max(t + 20, halfLen) });
   }
+  const missed = (cfg.scenarios ?? []).filter((x) => !x.done);
+  if (missed.length) throw new Error(`scenarios not played: ${missed.map((x) => x.name).join(", ")}`);
   return steps;
 }
 
 // Inserts a scripted event at a given clock (kept in clock order). Used for rare
 // facts the random model would not reliably produce (penalties, marks, cards).
-function insertAt(steps, prefix, half, clock, ev) {
+export function insertAt(steps, prefix, half, clock, ev) {
   const id = `${prefix}-X${String(steps.filter((s) => s.ev?.id?.includes("-X")).length + 1).padStart(2, "0")}`;
   const step = { op: "tag", ev: { id, half, clock, ...ev } };
   let idx = steps.findIndex((s) => (s.op === "tag" && s.ev.half === half && s.ev.clock > clock) || (s.op === "halftime" && half === 1) || (s.op === "fulltime" && half === 2));
@@ -260,7 +286,7 @@ function insertAt(steps, prefix, half, clock, ev) {
   return step.ev;
 }
 
-function squad(names) {
+export function squad(names) {
   return Array.from({ length: 20 }, (_, i) => ({ number: i + 1, name: names[i] ?? "" }));
 }
 
@@ -269,7 +295,7 @@ function squad(names) {
 // never tagged; the action is credited to the player who came on (substitution)
 // or to a deterministic team-mate (red card / sin bin window).
 const after = (ev, half, clock) => ev.half > half || (ev.half === half && ev.clock >= clock);
-function applySubsAndDiscipline(steps, subs, sinBinSeconds) {
+export function applySubsAndDiscipline(steps, subs, sinBinSeconds) {
   const tags = () => steps.filter((s) => s.op === "tag");
   const ordered = [...subs].sort((a, b) => a.half - b.half || a.clock - b.clock);
   for (const sub of ordered) {
@@ -523,9 +549,8 @@ function matchC() {
   };
 }
 
-const out = process.argv[2];
-mkdirSync(out, { recursive: true });
-for (const m of [matchA(), matchB(), matchC()]) {
+/** Unique ids, strictly increasing clocks, time budgets around corrections / reloads, and the summary. */
+export function finalize(m) {
   const tags = m.steps.filter((s) => s.op === "tag");
   // Guarantee unique ids and strictly increasing clocks within each half.
   const ids = new Set();
@@ -564,6 +589,15 @@ for (const m of [matchA(), matchB(), matchC()]) {
     finalEventsAfterReviewOps: live.length - m.reviewOps.filter((o) => o.op === "delete").length,
     byFamily: live.reduce((acc, s) => ((acc[s.ev.family] = (acc[s.ev.family] ?? 0) + 1), acc), {}),
   };
-  writeFileSync(`${out}/match-${m.matchId}.json`, JSON.stringify(m, null, 1));
-  console.log(m.matchId, JSON.stringify(m.summary));
+  return m;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const out = process.argv[2];
+  mkdirSync(out, { recursive: true });
+  for (const m of [matchA(), matchB(), matchC()]) {
+    finalize(m);
+    writeFileSync(`${out}/match-${m.matchId}.json`, JSON.stringify(m, null, 1));
+    console.log(m.matchId, JSON.stringify(m.summary));
+  }
 }

@@ -17,12 +17,31 @@ const TURNOVER_ROW_LABEL = {
   OPP: { Tackle: "Dispossessed", Interception: "Intercepted", "HP Error": "HP Error", "KP Error": "KP Error", Overcarried: "Overcarried" },
 };
 
+/** Thrown when the live screen does not offer a fixture event's family or tile (recorded, never substituted). */
+export class NotOffered extends Error {}
+
+/**
+ * Labels the app may show for the same fact. Camogie's end-line free is a "45" (Camogie Official
+ * Guide Rule 11.14); the app currently shows "65" (finding CF-1) — the event is still entered, and
+ * the label shown is recorded so the wording checks report it.
+ */
+const LABEL_ALTERNATIVES = { camogie: { family: { FORTY_FIVE: ["45", "65"] }, tile: { "45": ["45", "65"] } } };
+
 /** Marks the exact tile button with data-audit-target and returns its selector. */
-async function markTile(page, sportKey, family, row, tile) {
-  const familyLabel = FAMILY_LABEL[sportKey][family];
-  let display = tile;
-  if (family === "TURNOVER") display = TURNOVER_ROW_LABEL[row][tile];
-  const ok = await page.evaluate(({ familyLabel, row, display }) => {
+async function markTile(page, sportKey, family, row, tile, sport) {
+  const alts = LABEL_ALTERNATIVES[sport] ?? {};
+  const familyLabels = alts.family?.[family] ?? [FAMILY_LABEL[sportKey][family]];
+  const displays = family === "TURNOVER" ? [TURNOVER_ROW_LABEL[row][tile]] : (alts.tile?.[tile] ?? [tile]);
+  for (const familyLabel of familyLabels) for (const display of displays) {
+    if (familyLabel == null) continue;
+    const found = await markTileLabel(page, familyLabel, row, display);
+    if (found) return { selector: "[data-audit-target='1']", familyLabel, display };
+  }
+  throw new NotOffered(`not offered: ${family}/${row}/${tile} (looked for family ${familyLabels.join(" | ")}, tile ${displays.join(" | ")})`);
+}
+
+async function markTileLabel(page, familyLabel, row, display) {
+  return page.evaluate(({ familyLabel, row, display }) => {
     document.querySelectorAll("[data-audit-target]").forEach((n) => n.removeAttribute("data-audit-target"));
     const spans = Array.from(document.querySelectorAll("span")).filter((s) => s.textContent === familyLabel.toUpperCase() || s.textContent === familyLabel);
     for (const span of spans) {
@@ -40,8 +59,24 @@ async function markTile(page, sportKey, family, row, tile) {
     }
     return false;
   }, { familyLabel, row, display });
-  if (!ok) throw new Error(`tile not found: ${family}/${row}/${tile}`);
-  return "[data-audit-target='1']";
+}
+
+/**
+ * The tiles the live screen renders for each family (home row), read without tapping — for the
+ * capture-option probes in rules/sport-rules.json. Returns null for a family that is not shown.
+ */
+export async function readFamilyTiles(page, familyLabels) {
+  return page.evaluate((labels) => {
+    const out = {};
+    for (const label of labels) {
+      const span = Array.from(document.querySelectorAll("span")).find((s) => s.textContent === label.toUpperCase() || s.textContent === label);
+      const header = span?.parentElement, card = header?.parentElement;
+      if (!card) { out[label] = null; continue; }
+      const tiles = Array.from(card.querySelectorAll("button")).filter((b) => !header.contains(b) && !(b.getAttribute("aria-label") || "").startsWith("Opposition ")).map((b) => b.textContent.trim());
+      out[label] = [...new Set(tiles)];
+    }
+    return out;
+  }, familyLabels);
 }
 
 async function setOwner(page, sportKey, owner) {
@@ -93,10 +128,20 @@ async function markPlayer(page, number, name) {
 }
 
 /** Enters one fixture event through the live UI. */
-export async function tagEvent(page, sportKey, ev, squads, { unsupportedPlayer = "throw" } = {}) {
+export async function tagEvent(page, sportKey, ev, squads, { unsupportedPlayer = "throw", sport = null, notOffered = "throw" } = {}) {
   if (ev.family === "RESTART") await setOwner(page, sportKey, ev.owner);
-  const sel = await markTile(page, sportKey, ev.family, ev.row, ev.tile);
-  await page.locator(sel).click();
+  let marked;
+  try {
+    marked = await markTile(page, sportKey, ev.family, ev.row, ev.tile, sport);
+  } catch (e) {
+    // Only with an explicit opt-in (Golden Matches E and F): record that the app does not offer this
+    // event and enter nothing in its place. The stored-event check reports it as not entered.
+    if (!(e instanceof NotOffered) || notOffered !== "record") throw e;
+    ev._notOffered = e.message;
+    return;
+  }
+  if (marked.display !== ev.tile && ev.family !== "TURNOVER") ev._labelShown = marked.display;
+  await page.locator(marked.selector).click();
   // Player picker
   if (ev.player == null) await page.getByRole("button", { name: "No player / Unknown" }).click();
   else {

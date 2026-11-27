@@ -21,17 +21,19 @@ Output (gitignored): `out/browser-report.{json,md}`, `results/`, `runs/<match>/{
 
 | Area | How | Fails on |
 |---|---|---|
-| Capture (A, B, C, D) | `scripts/run-match.mjs`: every fixture event entered as a coach would (family tile, owner toggle, player picker, pitch tap), Playwright fake clock, fresh browser profile per match | any step that cannot be done; a player the picker does not offer (except register entry BL-L1) |
+| Capture (A–F) | `scripts/run-match.mjs`: every fixture event entered as a coach would (family tile, owner toggle, player picker, pitch tap), Playwright fake clock, fresh browser profile per match | any step that cannot be done; a player the picker does not offer (except register entry BL-L1). Golden Matches E and F run with `NOT_OFFERED=record`: an event whose family or source tile the app does not offer is **recorded as not entered and never substituted** (`state/tag-results.json`), and fails as its own result |
 | Stored events | `scripts/verify-events.mjs`: `localStorage` at HT, FT and after Review/reopen vs the fixture — kind, team, half, clock second, player, position, tags | any missing, extra or altered event or field |
 | Lifecycle | every fixture lifecycle step is judged: undo (the undone tap is not stored, also while storage is failing), pause (the clock does not move), reload mid-half (every event kept, clock resumes), tab closed and reopened, storage writes failing then recovering (failure strip, leave guard, recovery), substitutions | any check not passing |
-| Review Edit (A–D) | Review → Event Map → marker → (Events at this spot) → Edit/Delete; probes that a type is not offered or is refused | a target that cannot be opened, a probe that fails, an edit not applied |
+| Capture options (E, F) | before the first tap, the tiles the live screen shows for each family listed in `rules/sport-rules.json` → `captureProbes` (`state/capture-probes.json`): each required source must be offered, each invalid one must not (e.g. Ladies Football: no Penalty 2PT, no separate Sin Bin; Camogie: Sideline 2PT, a "45", no Mark, no Sin Bin) | any option missing or wrongly offered |
+| Review Edit (A–F) | Review → Event Map → marker → (Events at this spot) → Edit/Delete; probes that a type is not offered or is refused | a target that cannot be opened, a probe that fails, an edit not applied |
 | UI and PDF figures | `scripts/compare.mjs`: Quick Review panes and the text the app draws on every HT Snapshot, FT Snapshot and Full Review page (live and reopened) vs `expected-authoritative/` | any FAIL or MISSING not in the register |
 | PDF presentation (automated) | every distinct report (live; reopened too when Review edits change it): text off the page edge, overlapping text, internal enum names, `undefined/NaN/null`, page-header team names, two-way splits totalling 100% | as above |
-| Sport wording (automated) | every page of every distinct report, Quick Review counts and panes at HT and FT, and the Review screen. Hurling: no "kick" wording, no two-point wording, no "sin bin" (the app's hurling ruleset has none). Football: no "puck" wording. Each occurrence is listed | any occurrence not explained occurrence by occurrence in the register |
+| Sport wording (automated) | every page of every distinct report, Quick Review counts and panes at HT and FT, and the Review screen. Hurling: no "kick" wording, no two-point wording, no "sin bin" (the app's hurling ruleset has none). Football: no "puck" wording. Ladies Football and Camogie: the forbidden patterns in `rules/sport-rules.json` → `wording` (Ladies: no "puck", no "65"; Camogie: no "kick", no "65", no football two-point arc material, no "sin bin"). Each occurrence is listed | any occurrence not explained occurrence by occurrence in the register |
 | Coverage | every fixture tap entered; one lifecycle check per fixture lifecycle step; one result per Review operation; three stored-event stages; UI/PDF checks ≥ `browser/coverage-minimum.json`; all 7 PDF exports per match and the 3 legacy PDFs; ≥ 18 persistence scenarios; both constructed tests | any shortfall |
 | PDF files | present, `%PDF-` header and `%%EOF` trailer, ≥ 1 KB, page count = `browser/expected-pdf-pages.json` = pages the app drew, no page with fewer than 5 drawn text items | any problem |
 | Offline reliability | match A again, **entirely offline** (key `A-offline`): the runner starts its own `vite preview` of the production build (port 5299), installs the app online (service worker active, page controlled after a reload, precache populated), then **stops the server** (checked: it no longer answers) and takes the browser offline. Event Stats is opened offline; all 134 events are captured; the app is closed and reopened offline mid first half and reloaded offline mid second half (`browser/offline-plan.json`; stored events must be byte-identical before and after, the clock must resume); HT, FT, Save & Finish; reopened from Saved Matches; HT Snapshot, FT Snapshot and Full Review exported offline (live and reopened). Everything is then judged exactly like match A: stored events vs the fixture, every UI and PDF figure vs the independent ledger, the full PDF set. No network response may come from the app's origin while offline. Negative control: the same app, loaded online with service workers blocked, must fail to open offline | any rule not met, any missing result or PDF |
 | Persistence | `persistence/probe-p0.mjs` (T1–T10: kill after event/undo/HT/FT, rapid taps, background, reload), `probe-sp.mjs` (21st match, unreadable stores, malformed record, storage full), `probe-final.mjs` (save/finish with a failing archive copy, storage full → backup → delete → recovery, leave guard) | any scenario not meeting its pass rule in `tools/run-browser-lab.mjs` |
+| Cross-sport switching | `scripts/run-cross-sport.mjs`: each of the four sports created first in a fresh profile (baseline), then all four created back to back in ONE profile (order football → camogie → Ladies → hurling → camogie → football → Ladies → hurling). Each switched match must show exactly its fresh-profile families, tiles and restart term (K/O or P/O), keep every earlier match, be stored as the chosen sport, and meet the sport's rules (restart term, live-screen wording, capture probes) | any carry-over, any rule not met (≥ `crossSportChecksMin` checks) |
 | Constructed tests | legacy-format import of match A through Options → Import (`run-legacy-import.mjs`, `compare-legacy.mjs`); hurling Review Edit on a copy of match C (`run-edit-probe.mjs`) | any check not passing |
 
 Constructed tests are kept apart from capture: they are the only places a match is loaded into
@@ -45,6 +47,13 @@ storage rather than entered through the UI.
   run** until it is fixed or the product owner records `ownerAccepted: true`.
 - **live-not-supported** — a fixture scenario the live UI does not offer by design (match D's lost-restart
   players). The engine path covers it.
+
+**Direct and downstream (E, F).** When events could not be entered, the run recomputes the
+independent reference without exactly those events (`authoritativeLedger` with `excludeIds`,
+`results/reduced-<match>/`) and compares the same UI and PDFs again. A row that fails against the
+full reference but passes against the reduced one is **downstream** of the capture defect and is
+attributed to the register entry that names the match in `blockedCapture` (it still blocks). A row
+that still fails is **direct** and needs its own entry. The summary shows both counts.
 
 A non-passing result that matches no entry fails as **UNCLASSIFIED**. Where a result lists
 occurrences, each occurrence must match an entry's pattern. An entry — or any single occurrence
@@ -86,10 +95,26 @@ Workflow `.github/workflows/browser-lab.yml`, job **Event Stats laboratory (brow
    for it (about 7–8 minutes).
 4. Keep "Require branches to be up to date" so the check is judged on the merge result.
 
+## Planted-defect detection (four-sport isolation)
+
+`node lab/event-stats/tools/planted-defects.mjs <disposable clone>` plants, one at a time in a
+clone (it refuses the working repository), six sport-specific application defects — camogie 2PT
+family offered, camogie Sin Bin offered, Ladies Football "P/O" wording, Ladies Football kickout
+owner taken from the tapped side, camogie goals recorded as 1-point scores, camogie PDFs saying
+"Kickout" — and requires each to be detected, as new unexplained failures, **in its own sport
+only** (engine laboratory over all six matches; browser laboratory over the cross-sport test and,
+for the PDF defect, matches C and F). Every plant is reverted and the clone's results must return
+to the baseline. Not part of CI (about 15 minutes); run before changing the register, the
+comparators or the rules table.
+
 ## Limitations
 
 - Match D's two lost-restart players (D-005, D-029) cannot be entered live; the run tags them with
   no player and the register records the expected differences (engine path covers them).
+- Golden Match F's 5 sideline events cannot be entered until CF-2 is repaired; until then their
+  figures are verified only as "not entered" (and the downstream rows against the reduced reference).
+- The camogie end-line free is stored under the app's internal code `65` (shared with hurling);
+  `verify-events.mjs` decodes it as the 45-metre free. Coach-facing wording is checked separately.
 - The browser lab checks one browser engine (Chromium) and one viewport (430 × 932); no WebKit or
   real-device run.
 - PDF pages are JPEG images; figures are read from the text the app draws, not from the pixels.

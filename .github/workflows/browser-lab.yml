@@ -1,7 +1,7 @@
 # PáircVision Guardian V1 — Event Stats browser laboratory (engineering infrastructure only).
 #
 # Drives the real Event Stats UI of the production build in Chromium (Playwright) with
-# synthetic matches A, B, C and D: capture, HT/FT, Quick Review, HT/FT Snapshot and Full Review
+# synthetic matches A–F (E Ladies Football, F Camogie): capture, HT/FT, Quick Review, HT/FT Snapshot and Full Review
 # PDFs, save, Review edits, reload and reopen; persistence probes (kill/reload/background,
 # storage full and unreadable stores, save/finish); a legacy-format import and a hurling Review
 # Edit probe (constructed tests). Results are compared with the independent expected ledgers in
@@ -72,7 +72,7 @@ jobs:
             sleep 1
           done
           cat "$RUNNER_TEMP/preview.log"; echo "::error::vite preview did not start"; exit 1
-      - name: Browser laboratory (matches A, B, C, D; persistence; constructed tests; PDFs)
+      - name: Browser laboratory (matches A–F; offline; cross-sport; persistence; constructed tests; PDFs)
         run: node lab/event-stats/tools/run-browser-lab.mjs --base http://localhost:5199 --summary "$GITHUB_STEP_SUMMARY"
       - name: Upload report and PDFs
         if: ${{ always() }}

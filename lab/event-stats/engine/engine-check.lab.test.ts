@@ -18,7 +18,9 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { adaptProTaggerAction } from "../../../src/pro-tagger/pro-tagger-adapter";
-import { getFamiliesForSport, getTileLabel, resolveTileRestartOwner } from "../../../src/pro-tagger/pro-tagger-families";
+import { getFamiliesForSport, getFamilyLabel, getFamilyTiles, getTileLabel, resolveTileRestartOwner } from "../../../src/pro-tagger/pro-tagger-families";
+import { buildDisciplineStatusMap } from "../../../src/pro-tagger/pro-tagger-discipline";
+import { authoritativeLedger } from "../scripts/reference-kickout-phase.mjs";
 import { applyReviewKindEdit, editableKindsFor } from "../../../src/pro-tagger/pro-tagger-review-edit";
 import { toEventStatsReportEvents } from "../../../src/pro-tagger/pro-tagger-review-adapter";
 import type { ProTaggerSport } from "../../../src/pro-tagger/pro-tagger-session";
@@ -39,27 +41,37 @@ const readJson = (rel: string) => JSON.parse(readFileSync(new URL(rel, LAB), "ut
 type Team = "FOR" | "OPP";
 type FixtureEv = {
   id: string; half: 1 | 2; clock: number; family: string; row: Team; tile: string; owner?: Team;
-  player: { team: Team; number: number } | null; nx: number; ny: number;
+  player: { team: Team; number: number } | null; nx: number; ny: number; erroneous?: boolean;
 };
 type Step = { op: string; ev?: FixtureEv; undoes?: string };
 type ReviewOp = { op: "edit" | "delete" | "probe"; targetId: string; newKind?: MatchEventKind; clearPlayer?: boolean; expect?: string; attemptKinds?: MatchEventKind[] };
 type Fixture = {
-  matchId: string; sport: "football" | "hurling"; homeTeam: string; awayTeam: string;
+  matchId: string; sport: "football" | "hurling" | "ladies_football" | "camogie"; homeTeam: string; awayTeam: string; halfMinutes?: number;
   squads: Record<Team, { number: number; name: string }[]>; steps: Step[]; reviewOps: ReviewOp[];
 };
 
 type Status = "PASS" | "FAIL";
-type Check = { key: string; match: string; ledger: string; scope: string; team: string; stat: string; expected: unknown; actual: unknown; status: Status; classification?: string };
+type Check = { key: string; match: string; ledger: string; scope: string; team: string; stat: string; expected: unknown; actual: unknown; status: Status; classification?: string; finding?: string; effect?: "direct" | "downstream" };
 
 const SQUAD_IDS = { home: "home-squad", away: "away-squad" };
-const CLASSIFICATIONS: Record<string, { category: string; evidence: string }> = readJson("engine/classifications.json").checks ?? {};
+const CLASSIFICATIONS: Record<string, { category: string; evidence: string; finding?: string }> = readJson("engine/classifications.json").checks ?? {};
+/** Exact key, or a "re:<regex>" entry (Golden Matches E and F register findings by pattern). */
+function classify(key: string): { category: string; finding?: string } | undefined {
+  if (CLASSIFICATIONS[key]) return CLASSIFICATIONS[key];
+  const hit = Object.entries(CLASSIFICATIONS).find(([k]) => k.startsWith("re:") && new RegExp(k.slice(3)).test(key));
+  return hit?.[1];
+}
+const SPORT_RULES = readJson("rules/sport-rules.json").sports as Record<string, { captureProbes?: { family: string; familyLabel: string; present: string[]; absent: string[]; rule: string }[] }>;
+/** Laboratory sport → the app's sport. */
+const APP_SPORT: Record<Fixture["sport"], ProTaggerSport> = { football: "gaelic", hurling: "hurling", ladies_football: "ladies_football", camogie: "camogie" };
 
 /** One fixture tap → the same ProTaggerAction the live screen builds (ProTaggerLiveScreen handleTileTap/handlePitchTap). */
-function capture(fx: Fixture, sport: ProTaggerSport, ev: FixtureEv): LoggedMatchEvent {
+function capture(fx: Fixture, sport: ProTaggerSport, ev: FixtureEv): LoggedMatchEvent | { notOffered: string } {
+  // An event the app does not offer is reported and left out — never replaced by another event.
   const family = getFamiliesForSport(sport).find((f) => f.id === ev.family);
-  if (!family) throw new Error(`${ev.id}: family ${ev.family} is not offered for ${sport}`);
-  const tile = family.tiles.find((t) => getTileLabel(t, sport) === ev.tile || t.label === ev.tile);
-  if (!tile) throw new Error(`${ev.id}: tile ${ev.tile} not in ${ev.family}`);
+  if (!family) return { notOffered: `family ${ev.family} is not offered for ${sport}` };
+  const tile = getFamilyTiles(family, sport).find((t) => getTileLabel(t, sport) === ev.tile || t.label === ev.tile);
+  if (!tile) return { notOffered: `tile ${ev.tile} is not offered in ${ev.family} for ${sport}` };
   const p = ev.player;
   const squadPlayer = p ? fx.squads[p.team].find((s) => s.number === p.number) : null;
   return adaptProTaggerAction({
@@ -84,13 +96,16 @@ function capture(fx: Fixture, sport: ProTaggerSport, ev: FixtureEv): LoggedMatch
 
 /** Captured events (after undo) and, separately, after the Review operations. */
 function playMatch(fx: Fixture) {
-  const sport: ProTaggerSport = fx.sport === "hurling" ? "hurling" : "gaelic";
+  const sport: ProTaggerSport = APP_SPORT[fx.sport];
   const byFixtureId = new Map<string, LoggedMatchEvent>();
   const order: string[] = [];
   const notes: string[] = [];
+  const blocked: { id: string; family: string; tile: string; reason: string }[] = [];
   for (const step of fx.steps) {
     if (step.op === "tag" && step.ev) {
-      byFixtureId.set(step.ev.id, capture(fx, sport, step.ev));
+      const got = capture(fx, sport, step.ev);
+      if ("notOffered" in got) { if (!step.ev.erroneous) blocked.push({ id: step.ev.id, family: step.ev.family, tile: step.ev.tile, reason: got.notOffered }); continue; }
+      byFixtureId.set(step.ev.id, got);
       order.push(step.ev.id);
     } else if (step.op === "undo" && step.undoes) {
       if (!byFixtureId.delete(step.undoes)) throw new Error(`undo of unknown ${step.undoes}`);
@@ -105,6 +120,7 @@ function playMatch(fx: Fixture) {
   const edits: { targetId: string; ok: boolean; reason: string | null }[] = [];
   for (const op of fx.reviewOps) {
     const ev = reviewed.get(op.targetId);
+    if (!ev && blocked.some((b) => b.id === op.targetId)) { notes.push(`review ${op.op} skipped: target ${op.targetId} could not be entered`); continue; }
     if (!ev) throw new Error(`review op on unknown ${op.targetId}`);
     if (op.op === "delete") reviewed.delete(op.targetId);
     else if (op.op === "probe") {
@@ -118,7 +134,7 @@ function playMatch(fx: Fixture) {
     }
   }
   const final = order.filter((id) => reviewed.has(id)).map((id) => reviewed.get(id)!);
-  return { sport, live, final, probes, edits, notes, byFixtureId };
+  return { sport, live, final, probes, edits, notes, byFixtureId, blocked };
 }
 
 function engineFor(events: readonly LoggedMatchEvent[], fx: Fixture, scope: ReportScope) {
@@ -129,13 +145,14 @@ function engineFor(events: readonly LoggedMatchEvent[], fx: Fixture, scope: Repo
 const SCOPES: [ReportScope, "FULL" | "H1" | "H2"][] = [["FULL", "FULL"], ["1H", "H1"], ["2H", "H2"]];
 const ROW_MAP: Record<string, string> = { FROM_PLAY: "FROM_PLAY", PLACED: "PLACED", RESTART: "RESTART_WON", TURNOVER: "TURNOVER_WON", UNATTRIBUTED: "UNATTRIBUTED" };
 
-function compare(fx: Fixture, ledgerName: string, events: readonly LoggedMatchEvent[]): Check[] {
-  const L = readJson(`expected-authoritative/${ledgerName}.json`);
+function compare(fx: Fixture, ledgerName: string, events: readonly LoggedMatchEvent[], ledger?: Record<string, any>): Check[] {
+  const L = ledger ?? readJson(`expected-authoritative/${ledgerName}.json`);
   const checks: Check[] = [];
   const add = (scope: string, team: string, stat: string, expected: unknown, actual: unknown) => {
     const key = `${ledgerName}|${scope}|${team}|${stat}`;
     const status: Status = JSON.stringify(expected) === JSON.stringify(actual) ? "PASS" : "FAIL";
-    checks.push({ key, match: fx.matchId, ledger: ledgerName, scope, team, stat, expected, actual, status, classification: status === "FAIL" ? CLASSIFICATIONS[key]?.category : undefined });
+    const c = status === "FAIL" ? classify(key) : undefined;
+    checks.push({ key, match: fx.matchId, ledger: ledgerName, scope, team, stat, expected, actual, status, classification: c?.category, finding: c?.finding, effect: c ? "direct" : undefined });
   };
 
   for (const [scope, lk] of SCOPES) {
@@ -274,14 +291,15 @@ function compare(fx: Fixture, ledgerName: string, events: readonly LoggedMatchEv
   }
 
   // Intelligence wording: written rules, not engine values.
-  const sport = fx.sport === "hurling" ? "hurling" : "gaelic";
+  // The PDF / prompt sport: ladies' football reports as football (pro-tagger-review-adapter).
+  const sport = fx.sport === "hurling" || fx.sport === "camogie" ? fx.sport : "gaelic";
   const prompts = deriveReviewPrompts(full.chain, fx.homeTeam, fx.awayTeam, sport);
   const home = fx.homeTeam.slice(0, 18), away = fx.awayTeam.slice(0, 18);
   add("FULL", "-", "intelligence prompts produced", true, prompts.length > 0);
   add("FULL", "-", "every prompt names a team (CLAUDE.md attribution rule)", [], prompts.filter((p) => !p.text.includes(home) && !p.text.includes(away)).map((p) => p.text));
   add("FULL", "-", "every prompt states a number", [], prompts.filter((p) => !/\d/.test(p.text)).map((p) => p.text));
-  if (fx.sport === "hurling") {
-    add("FULL", "-", "hurling prompts: no kickout / 2-pointer wording", [], prompts.filter((p) => /kick-?out|2-?point|two-?point/i.test(p.text)).map((p) => p.text));
+  if (fx.sport === "hurling" || fx.sport === "camogie") {
+    add("FULL", "-", `${fx.sport} prompts: no kickout / 2-pointer wording`, [], prompts.filter((p) => /kick-?out|2-?point|two-?point/i.test(p.text)).map((p) => p.text));
   }
   // Coverage of the "net restart disadvantage" sentence (the only one using the singular restart
   // term): wherever the REFERENCE shows the home team's restart conversion trailing its restart-loss
@@ -299,7 +317,65 @@ const MATCHES: { id: string; ledgers: { name: string; stage: "live" | "final" }[
   { id: "B", ledgers: [{ name: "ledger-B-live", stage: "live" }, { name: "ledger-B", stage: "final" }] },
   { id: "C", ledgers: [{ name: "ledger-C", stage: "final" }] },
   { id: "D", ledgers: [{ name: "ledger-D-live", stage: "live" }, { name: "ledger-D", stage: "final" }] },
+  { id: "E", ledgers: [{ name: "ledger-E-live", stage: "live" }, { name: "ledger-E", stage: "final" }] },
+  { id: "F", ledgers: [{ name: "ledger-F-live", stage: "live" }, { name: "ledger-F", stage: "final" }] },
 ];
+
+/**
+ * Capture options the rules require (rules/sport-rules.json → captureProbes): every listed tile
+ * present in, or absent from, the family the live screen renders for the sport.
+ */
+function captureOptionChecks(fx: Fixture): Check[] {
+  const sport = APP_SPORT[fx.sport];
+  const checks: Check[] = [];
+  for (const probe of SPORT_RULES[fx.sport]?.captureProbes ?? []) {
+    const family = getFamiliesForSport(sport).find((f) => f.id === probe.family);
+    const labels = family ? getFamilyTiles(family, sport).map((t) => getTileLabel(t, sport)) : [];
+    const add = (stat: string, ok: boolean, actual: unknown) => {
+      const key = `options|${fx.sport}|${probe.family}|${stat}`;
+      const c = ok ? undefined : classify(key);
+      checks.push({ key, match: fx.matchId, ledger: "-", scope: "-", team: "-", stat: `capture option ${probe.family}: ${stat} (${probe.rule})`, expected: true, actual, status: ok ? "PASS" : "FAIL", classification: c?.category, finding: c?.finding, effect: c ? "direct" : undefined });
+    };
+    add("family offered", family != null, family ? getFamilyLabel(family, sport) : "not offered");
+    for (const t of probe.present) add(`tile "${t}" offered`, labels.includes(t), labels);
+    for (const t of probe.absent) add(`tile "${t}" not offered`, !labels.includes(t), labels);
+  }
+  return checks;
+}
+
+/**
+ * Constructed LGFA discipline probes (Official Guide 2026 Rule 327): the live screen's sanction
+ * status (buildDisciplineStatusMap) at the moments the rule fixes — shorter halves and the
+ * half-time carry-over (a sin bin counts playing time across the interval).
+ */
+function disciplineProbeChecks(): Check[] {
+  const fx = readJson("fixtures/match-E.json") as Fixture;
+  const sport = APP_SPORT[fx.sport];
+  const card = (id: string, tile: string, half: 1 | 2, clock: number, number: number): LoggedMatchEvent => {
+    const got = capture(fx, sport, { id, half, clock, family: "DISCIPLINE", row: "FOR", tile, player: { team: "FOR", number }, nx: 0.5, ny: 0.5 });
+    if ("notOffered" in got) throw new Error(got.notOffered);
+    return got;
+  };
+  const probes: { name: string; events: LoggedMatchEvent[]; at: ["1H" | "2H", number]; expected: string | null; note: string }[] = [
+    { name: "30-min halves: first yellow at 10:00 — sin bin active at 19:59", events: [card("p1", "Yellow", 1, 600, 6)], at: ["1H", 1199], expected: "SIN_BIN", note: "10 minutes in games of one hour" },
+    { name: "30-min halves: first yellow at 10:00 — sin bin over at 20:00", events: [card("p1", "Yellow", 1, 600, 6)], at: ["1H", 1200], expected: null, note: "10 minutes in games of one hour" },
+    { name: "25-min halves: first yellow at 10:00 — sin bin active at 14:59", events: [card("p2", "Yellow", 1, 600, 6)], at: ["1H", 899], expected: "SIN_BIN", note: "5 minutes where less than 30 minutes a half" },
+    { name: "25-min halves: first yellow at 10:00 — sin bin over at 15:00", events: [card("p2", "Yellow", 1, 600, 6)], at: ["1H", 900], expected: null, note: "5 minutes where less than 30 minutes a half" },
+    { name: "15-min halves: first yellow at 05:00 — sin bin active at 07:59", events: [card("p3", "Yellow", 1, 300, 6)], at: ["1H", 479], expected: "SIN_BIN", note: "3 minutes where 15 minutes or less per half" },
+    { name: "15-min halves: first yellow at 05:00 — sin bin over at 08:00", events: [card("p3", "Yellow", 1, 300, 6)], at: ["1H", 480], expected: null, note: "3 minutes where 15 minutes or less per half" },
+    { name: "first yellow at 27:00 of a 30-min first half (ended 30:00) — 7 minutes left: active at 2H 06:59", events: [card("p4", "Yellow", 1, 1620, 6)], at: ["2H", 419], expected: "SIN_BIN", note: "playing time carries across half-time" },
+    { name: "first yellow at 27:00 of a 30-min first half (ended 30:00) — over at 2H 07:00", events: [card("p4", "Yellow", 1, 1620, 6)], at: ["2H", 420], expected: null, note: "playing time carries across half-time" },
+    { name: "historical Sin Bin at 27:00 of a 30-min first half (ended 30:00) — over at 2H 07:00", events: [card("p5", "Sin Bin", 1, 1620, 6)], at: ["2H", 420], expected: null, note: "existing half-time behaviour: playing time carries across half-time" },
+    { name: "second yellow — dismissed", events: [card("p6a", "Yellow", 1, 300, 6), card("p6b", "Yellow", 2, 300, 6)], at: ["2H", 900], expected: "RED", note: "second yellow followed by a red card" },
+  ];
+  return probes.map((p) => {
+    const status = buildDisciplineStatusMap(p.events, p.at[0], p.at[1]).get("home-6") ?? null;
+    const key = `discipline|ladies_football|${p.name}`;
+    const ok = status === p.expected;
+    const c = ok ? undefined : classify(key);
+    return { key, match: "E", ledger: "-", scope: p.at.join(" "), team: "FOR", stat: `discipline probe: ${p.name} (Rule 327: ${p.note})`, expected: p.expected, actual: status, status: ok ? "PASS" : "FAIL", classification: c?.category, finding: c?.finding, effect: c ? "direct" : undefined } as Check;
+  });
+}
 
 function runAll() {
   const all: Check[] = [];
@@ -309,13 +385,36 @@ function runAll() {
     const played = playMatch(fx);
     extras[m.id] = { notExercised: [...new Set(played.notes)], reviewEdits: played.edits, reviewProbes: played.probes };
     for (const edit of played.edits) {
-      all.push({ key: `review|${m.id}|edit ${edit.targetId}`, match: m.id, ledger: "-", scope: "-", team: "-", stat: `Review edit ${edit.targetId} accepted`, expected: true, actual: edit.ok, status: edit.ok ? "PASS" : "FAIL" });
+      const key = `review|${m.id}|edit ${edit.targetId}`, c = edit.ok ? undefined : classify(key);
+      all.push({ key, match: m.id, ledger: "-", scope: "-", team: "-", stat: `Review edit ${edit.targetId} accepted`, expected: true, actual: edit.ok, status: edit.ok ? "PASS" : "FAIL", classification: c?.category, finding: c?.finding, effect: c ? "direct" : undefined });
     }
     for (const p of played.probes) {
-      all.push({ key: `review|${m.id}|probe ${p.targetId}`, match: m.id, ledger: "-", scope: "-", team: "-", stat: `Review probe ${p.targetId}: listed kinds not offered`, expected: [], actual: p.forbidden, status: p.forbidden.length ? "FAIL" : "PASS" });
+      const key = `review|${m.id}|probe ${p.targetId}`, c = p.forbidden.length ? classify(key) : undefined;
+      all.push({ key, match: m.id, ledger: "-", scope: "-", team: "-", stat: `Review probe ${p.targetId}: listed kinds not offered`, expected: [], actual: p.forbidden, status: p.forbidden.length ? "FAIL" : "PASS", classification: c?.category, finding: c?.finding, effect: c ? "direct" : undefined });
     }
-    for (const l of m.ledgers) all.push(...compare(fx, l.name, l.stage === "live" ? played.live : played.final));
+    // Fixture events the app could not record: each is a direct failure (registered by family/tile).
+    for (const b of played.blocked) {
+      const key = `capture|${m.id}|${b.family}/${b.tile}`;
+      const c = classify(key);
+      all.push({ key: `${key}|${b.id}`, match: m.id, ledger: "-", scope: "-", team: "-", stat: `event ${b.id} (${b.family} / ${b.tile}) can be entered — ${b.reason}`, expected: true, actual: false, status: "FAIL", classification: c?.category, finding: c?.finding, effect: c ? "direct" : undefined });
+    }
+    for (const l of m.ledgers) {
+      const events = l.stage === "live" ? played.live : played.final;
+      const checks = compare(fx, l.name, events);
+      if (played.blocked.length) {
+        // Downstream of the missing events: a check that fails against the full independent ledger
+        // but passes against the same reference computed without the events the app could not
+        // record. Anything else is a direct difference and needs its own classification.
+        const reduced = authoritativeLedger({ ...fx, ...(l.stage === "live" ? { reviewOps: [] } : {}), excludeIds: played.blocked.map((b) => b.id) }).ledger;
+        const passesReduced = new Set(compare(fx, l.name, events, reduced).filter((c) => c.status === "PASS").map((c) => c.key));
+        const blockedBy = [...new Set(played.blocked.map((b) => classify(`capture|${m.id}|${b.family}/${b.tile}`)?.finding ?? "unregistered capture failure"))].join("+");
+        for (const c of checks) if (c.status === "FAIL" && !c.classification && passesReduced.has(c.key)) Object.assign(c, { classification: "downstream-of-capture-defect", finding: blockedBy, effect: "downstream" });
+      }
+      all.push(...checks);
+    }
+    all.push(...captureOptionChecks(fx));
   }
+  all.push(...disciplineProbeChecks());
   // Every difference VALIDATION.json records must have an entry in the classification register.
   const validation = readJson("expected-authoritative/VALIDATION.json") as Record<string, { wrong: { restart: string; score: string }[] }>;
   const historical = (readJson("engine/classifications.json").historicalValidation ?? {}) as Record<string, unknown>;
@@ -341,7 +440,7 @@ function runAll() {
 function verdict(checks: Check[]) {
   const fails = checks.filter((c) => c.status === "FAIL");
   const unclassified = fails.filter((c) => !c.classification);
-  const defects = fails.filter((c) => c.classification === "confirmed-application-defect" || c.classification === "unresolved");
+  const defects = fails.filter((c) => c.classification === "confirmed-application-defect" || c.classification === "unresolved" || c.classification === "downstream-of-capture-defect");
   return { total: checks.length, passed: checks.length - fails.length, failed: fails.length, unclassified: unclassified.length, verdict: fails.length === 0 ? "GREEN" : unclassified.length || defects.length ? "RED" : "AMBER" };
 }
 
@@ -360,16 +459,16 @@ describe("Event Stats laboratory — engine path vs independent ledgers", () => 
       "",
       `${v.passed}/${v.total} checks passed; ${v.failed} failed (${v.unclassified} unclassified).`,
       "",
-      "| Match | Ledger | Scope | Team | Statistic | Expected (independent) | Engine | Classification |",
-      "|---|---|---|---|---|---|---|---|",
-      ...fails.map((c) => `| ${c.match} | ${c.ledger} | ${c.scope} | ${c.team} | ${c.stat} | ${JSON.stringify(c.expected)} | ${JSON.stringify(c.actual)} | ${c.classification ?? "**UNCLASSIFIED**"} |`),
+      "| Match | Ledger | Scope | Team | Statistic | Expected (independent) | Engine | Classification | Finding | Effect |",
+      "|---|---|---|---|---|---|---|---|---|---|",
+      ...fails.map((c) => `| ${c.match} | ${c.ledger} | ${c.scope} | ${c.team} | ${c.stat} | ${JSON.stringify(c.expected)} | ${JSON.stringify(c.actual)} | ${c.classification ?? "**UNCLASSIFIED**"} | ${c.finding ?? ""} | ${c.effect ?? ""} |`),
     ].join("\n");
     writeFileSync(new URL("out/engine-report.md", LAB), `${md}\n`);
     console.log(`ENGINE PATH: ${v.verdict} — ${v.passed}/${v.total} passed, ${v.failed} failed, ${v.unclassified} unclassified`);
   });
 
   it("has no failed check that is unclassified or a confirmed application defect", () => {
-    const bad = all.filter((c) => c.status === "FAIL" && (!c.classification || c.classification === "confirmed-application-defect" || c.classification === "unresolved"));
+    const bad = all.filter((c) => c.status === "FAIL" && (!c.classification || c.classification === "confirmed-application-defect" || c.classification === "unresolved" || c.classification === "downstream-of-capture-defect"));
     expect(bad.map((c) => `${c.key}: expected ${JSON.stringify(c.expected)}, engine ${JSON.stringify(c.actual)}`)).toEqual([]);
   });
 });

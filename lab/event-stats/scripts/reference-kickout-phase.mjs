@@ -27,6 +27,7 @@
 //
 //   node reference-kickout-phase.mjs        (writes expected-authoritative/)
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { buildFacts, buildLedger } from "./reference.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -184,18 +185,13 @@ function rescope(block, facts) {
   return { block: out, restarts };
 }
 
-// Match D (hand-scripted, Guardian V1 coverage additions) appended; A–C unchanged.
-const TARGETS = [["A", "ledger-A"], ["B", "ledger-B"], ["B", "ledger-B-live"], ["C", "ledger-C"], ["D", "ledger-D"], ["D", "ledger-D-live"]];
-const outDir = `${root}/expected-authoritative`;
-mkdirSync(outDir, { recursive: true });
-const validation = {};
-for (const [id, name] of TARGETS) {
-  const fixture = JSON.parse(readFileSync(`${root}/fixtures/match-${id}.json`, "utf8"));
-  const fx = name.endsWith("-live") ? { ...fixture, reviewOps: [] } : fixture;
-  const original = JSON.parse(readFileSync(`${root}/expected/${name}.json`, "utf8"));
-  // Guard: the unchanged reference must reproduce the committed ledger exactly.
-  const regenerated = buildLedger(fx);
-  if (JSON.stringify(regenerated.FULL) !== JSON.stringify(original.FULL)) throw new Error(`${name}: reference.mjs no longer reproduces expected/${name}.json`);
+/**
+ * The authoritative ledger for a fixture: reference.mjs's ledger with the kickout-origin fields
+ * recomputed under the authoritative definition. Used for every committed ledger below, and by
+ * the laboratories to compute a reduced ledger without events the app could not record
+ * (fixture.excludeIds) — so downstream mismatches can be told apart from direct defects.
+ */
+export function authoritativeLedger(fx, original = buildLedger(fx)) {
   const facts = buildFacts(fx);
   const next = structuredClone(original);
   let restartsFull = null;
@@ -206,6 +202,24 @@ for (const [id, name] of TARGETS) {
   }
   next.generatedBy = "audit/event-stats-red-repairs/scripts/reference-kickout-phase.mjs over reference.mjs (no src/ imports) — authoritative kickout-origin definition";
   next.definitionChange = "Kickout-origin fields (chains.*.restart*, chains.*.origins, origins) use the authoritative kickout-origin possession; possession.restartWon/Lost use the immediate-outcome model with the same change-of-possession rule. All other fields equal expected/.";
+  return { ledger: next, facts, restartsFull };
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Match D (hand-scripted, Guardian V1 coverage additions) and Golden Matches E (Ladies Football)
+// and F (Camogie) appended; A–C unchanged.
+const TARGETS = [["A", "ledger-A"], ["B", "ledger-B"], ["B", "ledger-B-live"], ["C", "ledger-C"], ["D", "ledger-D"], ["D", "ledger-D-live"], ["E", "ledger-E"], ["E", "ledger-E-live"], ["F", "ledger-F"], ["F", "ledger-F-live"]];
+const outDir = `${root}/expected-authoritative`;
+mkdirSync(outDir, { recursive: true });
+const validation = {};
+for (const [id, name] of TARGETS) {
+  const fixture = JSON.parse(readFileSync(`${root}/fixtures/match-${id}.json`, "utf8"));
+  const fx = name.endsWith("-live") ? { ...fixture, reviewOps: [] } : fixture;
+  const original = JSON.parse(readFileSync(`${root}/expected/${name}.json`, "utf8"));
+  // Guard: the unchanged reference must reproduce the committed ledger exactly.
+  const regenerated = buildLedger(fx);
+  if (JSON.stringify(regenerated.FULL) !== JSON.stringify(original.FULL)) throw new Error(`${name}: reference.mjs no longer reproduces expected/${name}.json`);
+  const { ledger: next, facts, restartsFull } = authoritativeLedger(fx, original);
   writeFileSync(`${outDir}/${name}.json`, JSON.stringify(next, null, 1));
   // Ground-truth validation (FULL): credited kickout-origin scores vs possession roots.
   const roots = possessionRoots(fx, facts);
@@ -217,3 +231,4 @@ for (const [id, name] of TARGETS) {
 }
 writeFileSync(`${outDir}/VALIDATION.json`, JSON.stringify(validation, null, 1));
 for (const [k, v] of Object.entries(validation)) console.log(k, `credited ${v.credited}, correct vs simulator possession roots ${v.correct}, wrong ${v.wrong.length}, missed ${v.missed.length} (truth kickout-origin scores ${v.truthKickoutOriginScores})`, v.wrong.length || v.missed.length ? JSON.stringify({ wrong: v.wrong, missed: v.missed }) : "");
+}
