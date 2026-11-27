@@ -30,6 +30,7 @@ Output (gitignored): `out/browser-report.{json,md}`, `results/`, `runs/<match>/{
 | Sport wording (automated) | every page of every distinct report, Quick Review counts and panes at HT and FT, and the Review screen. Hurling: no "kick" wording, no two-point wording, no "sin bin" (the app's hurling ruleset has none). Football: no "puck" wording. Each occurrence is listed | any occurrence not explained occurrence by occurrence in the register |
 | Coverage | every fixture tap entered; one lifecycle check per fixture lifecycle step; one result per Review operation; three stored-event stages; UI/PDF checks ≥ `browser/coverage-minimum.json`; all 7 PDF exports per match and the 3 legacy PDFs; ≥ 18 persistence scenarios; both constructed tests | any shortfall |
 | PDF files | present, `%PDF-` header and `%%EOF` trailer, ≥ 1 KB, page count = `browser/expected-pdf-pages.json` = pages the app drew, no page with fewer than 5 drawn text items | any problem |
+| Offline reliability | match A again, **entirely offline** (key `A-offline`): the runner starts its own `vite preview` of the production build (port 5299), installs the app online (service worker active, page controlled after a reload, precache populated), then **stops the server** (checked: it no longer answers) and takes the browser offline. Event Stats is opened offline; all 134 events are captured; the app is closed and reopened offline mid first half and reloaded offline mid second half (`browser/offline-plan.json`; stored events must be byte-identical before and after, the clock must resume); HT, FT, Save & Finish; reopened from Saved Matches; HT Snapshot, FT Snapshot and Full Review exported offline (live and reopened). Everything is then judged exactly like match A: stored events vs the fixture, every UI and PDF figure vs the independent ledger, the full PDF set. No network response may come from the app's origin while offline. Negative control: the same app, loaded online with service workers blocked, must fail to open offline | any rule not met, any missing result or PDF |
 | Persistence | `persistence/probe-p0.mjs` (T1–T10: kill after event/undo/HT/FT, rapid taps, background, reload), `probe-sp.mjs` (21st match, unreadable stores, malformed record, storage full), `probe-final.mjs` (save/finish with a failing archive copy, storage full → backup → delete → recovery, leave guard) | any scenario not meeting its pass rule in `tools/run-browser-lab.mjs` |
 | Constructed tests | legacy-format import of match A through Options → Import (`run-legacy-import.mjs`, `compare-legacy.mjs`); hurling Review Edit on a copy of match C (`run-edit-probe.mjs`) | any check not passing |
 
@@ -92,7 +93,12 @@ Workflow `.github/workflows/browser-lab.yml`, job **Event Stats laboratory (brow
 - The browser lab checks one browser engine (Chromium) and one viewport (430 × 932); no WebKit or
   real-device run.
 - PDF pages are JPEG images; figures are read from the text the app draws, not from the pixels.
-- Service-worker offline behaviour is not exercised beyond what the build registers by itself.
+- Offline: the fixtures set no crests or images, so offline display of team crests and other PNG / JPG
+  assets (which the service worker does not precache — `globPatterns` covers js, css, html, svg, json,
+  webmanifest) is not exercised; any same-origin request that fails offline is listed in the report.
+  Service-worker **updates** (a new build replacing an installed one; `skipWaiting` / `clientsClaim`
+  are off) are not tested. The offline run is Chromium only; iOS Safari's service-worker and storage
+  behaviour is not covered.
 - `persistence/quota*.mjs`, `latency.mjs`, `savecost.mjs`, `probe-review.mjs`, `probe.mjs` and
   `run-match-clearplayer.mjs` are recovered measurement and historical probe scripts; they are not
   part of the automated run.

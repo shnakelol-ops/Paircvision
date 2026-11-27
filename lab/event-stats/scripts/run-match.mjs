@@ -16,9 +16,17 @@
 
 import { chromium, devices } from "playwright";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { CHROME, tagEvent, readOwnerToggle } from "./ui-driver.mjs";
 
-const [fixturePath, outDir, baseUrl = "http://localhost:5199"] = process.argv.slice(2);
+const [fixturePath, outDir, baseUrlArg = "http://localhost:5199"] = process.argv.slice(2);
+// OFFLINE_SERVE_ROOT=<repo root with a production build in dist/>: offline mode. This runner starts its
+// own `vite preview` of that build, installs the app online, then stops the server and takes the
+// browser offline before the match is created — every later step runs from the service worker.
+// OFFLINE_PLAN=<json>: lifecycle steps (close / reload) inserted after given tap counts.
+const OFFLINE_ROOT = process.env.OFFLINE_SERVE_ROOT ?? null;
+const OFFLINE_PORT = Number(process.env.OFFLINE_PORT ?? 5299);
+let baseUrl = OFFLINE_ROOT ? `http://localhost:${OFFLINE_PORT}` : baseUrlArg;
 const fx = JSON.parse(readFileSync(fixturePath, "utf8"));
 const sportKey = fx.sport === "hurling" ? "hurling" : "football";
 mkdirSync(`${outDir}/pdf`, { recursive: true });
@@ -172,8 +180,50 @@ async function captureQuickReview(label) {
   return data;
 }
 
+// ── 0. Offline mode: install online, then go genuinely offline ─────────────
+const offline = OFFLINE_ROOT ? { port: OFFLINE_PORT } : null;
+if (offline) {
+  const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "preview", "--port", String(OFFLINE_PORT), "--strictPort"], { cwd: OFFLINE_ROOT, stdio: "ignore" });
+  // The runner never waits on its server: it is stopped below, and killed on any exit path.
+  server.unref();
+  offline.stopServer = () => { try { server.kill("SIGKILL"); } catch { /* already gone */ } };
+  process.on("exit", offline.stopServer);
+  const up = async () => { try { return (await fetch(`${baseUrl}/pro-tagger`)).ok; } catch { return false; } };
+  for (let i = 0; i < 100 && !(await up()); i++) await new Promise((r) => setTimeout(r, 200));
+  offline.serverUpBeforeInstall = await up();
+  // Negative control: service workers blocked, the same app loaded online in its own context.
+  const negContext = await browser.newContext({ serviceWorkers: "block", viewport: { width: 430, height: 932 } });
+  const negPage = await negContext.newPage();
+  await negPage.goto(`${baseUrl}/pro-tagger`);
+  offline.negativeLoadedOnline = await negPage.getByText("New Match").isVisible();
+  // Install: first load registers the service worker (on window load); a reload makes it control the page.
+  await page.goto(`${baseUrl}/pro-tagger`);
+  offline.swActive = await page.evaluate(() => Promise.race([navigator.serviceWorker.ready.then((r) => !!r.active), new Promise((r) => setTimeout(() => r(false), 15000))]));
+  await page.reload();
+  offline.controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
+  offline.precache = await page.evaluate(async () => { const ks = await caches.keys(); let n = 0; for (const k of ks) n += (await (await caches.open(k)).keys()).length; return { caches: ks.length, entries: n }; });
+  // Genuinely offline: the server is stopped (and must not answer) and the browser is offline.
+  server.kill("SIGTERM");
+  await new Promise((r) => server.once("exit", r));
+  offline.serverStopped = !(await up());
+  await context.setOffline(true);
+  await negContext.setOffline(true);
+  offline.networkResponsesWhileOffline = 0;
+  context.on("response", (r) => { if (r.url().startsWith(baseUrl) && !r.fromServiceWorker()) offline.networkResponsesWhileOffline++; });
+  // Same-origin requests that fail offline (not precached, e.g. PNG / JPG images): recorded as evidence.
+  offline.failedRequestsWhileOffline = [];
+  context.on("requestfailed", (r) => { if (r.url().startsWith(baseUrl)) { const u = r.url().slice(baseUrl.length); if (!offline.failedRequestsWhileOffline.includes(u)) offline.failedRequestsWhileOffline.push(u); } });
+  // The negative control must fail: without a service worker nothing can open offline.
+  try { await negPage.reload({ timeout: 10000 }); offline.negativeControl = { navigationFailed: false, appShown: await negPage.getByText("New Match").isVisible().catch(() => false) }; }
+  catch (e) { offline.negativeControl = { navigationFailed: true, error: String(e.message).split("\n")[0].slice(0, 200) }; }
+  await negContext.close();
+  writeFileSync(`${outDir}/state/offline-checks.json`, JSON.stringify(offline, null, 1));
+  note("offline: installed, server stopped, browser offline", offline);
+}
+
 // ── 1. Create match ──────────────────────────────────────────────────────────
 await page.goto(`${baseUrl}/pro-tagger`);
+if (offline) offline.openedOffline = await page.getByText("New Match").isVisible();
 await page.getByText("New Match").click();
 await clickByText(fx.sport === "hurling" ? "Hurling" : "Gaelic Football");
 await page.getByPlaceholder("e.g. Kilkenny").fill(fx.homeTeam);
@@ -210,10 +260,17 @@ const reachability = [];
 const lifecycleChecks = [];   // substitutions, storage failure, closure — each with its observed result
 let liveCount = 0;            // events that should be in the match right now
 let pendingRecoveryCheck = null;
+/** The stored events of the live match, exactly as saved (for identity checks across close / reload). */
+const storedEventsJson = async () => page.evaluate(() => { try { return JSON.stringify(JSON.parse(localStorage.getItem("pitchflow_pro_tagger_matches_v1") || "[]")[0]?.events ?? null); } catch { return null; } });
 const storedEvents = async () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem("pitchflow_pro_tagger_matches_v1") || "[]")[0]?.events?.length ?? 0; } catch { return -1; } });
 const saveStripText = async () => page.evaluate(() => { const t = document.body.innerText; const m = t.match(/(✓ Event saved|Save failed[^\n]*|Save blocked[^\n]*)/); return m ? m[1] : null; });
 let half = 1;
-for (const step of fx.steps) {
+// Offline plan: extra close / reload steps after given tap counts (stat-neutral; each is judged).
+const OFFLINE_PLAN = process.env.OFFLINE_PLAN ? JSON.parse(readFileSync(process.env.OFFLINE_PLAN, "utf8")).insert : [];
+const runSteps = [];
+{ let taps = 0;
+  for (const st of fx.steps) { runSteps.push(st); if (st.op === "tag") { taps++; for (const x of OFFLINE_PLAN.filter((y) => y.afterTap === taps)) runSteps.push({ op: x.op, planned: true }); } } }
+for (const step of runSteps) {
   if (step.op === "tag") {
     const ev = step.ev;
     await advanceTo(ev.clock);
@@ -292,6 +349,7 @@ for (const step of fx.steps) {
     await page.clock.runFor(1500);
     const before = await readClock().catch(() => null);
     const storedBefore = await storedEvents();
+    const jsonBefore = await storedEventsJson();
     await page.close();
     page = await context.newPage();
     attach(page);
@@ -304,8 +362,9 @@ for (const step of fx.steps) {
     if (sawResume) await resumeBtn.click();
     const after = await readClock().catch(() => null);
     const stored = await storedEvents();
-    lifecycleChecks.push({ op: "close", check: "tab closed and app reopened: every event kept, clock resumes where it stopped", storedBefore, stored, expectedStored: liveCount, clockBefore: before, clockAfter: after, sawResumeScreen: sawResume > 0,
-      pass: stored === liveCount && storedBefore === liveCount && after === before });
+    const eventsIdentical = jsonBefore != null && jsonBefore === (await storedEventsJson());
+    lifecycleChecks.push({ op: "close", check: "tab closed and app reopened: every event kept unchanged, clock resumes where it stopped", storedBefore, stored, expectedStored: liveCount, clockBefore: before, clockAfter: after, sawResumeScreen: sawResume > 0, eventsIdentical,
+      pass: stored === liveCount && storedBefore === liveCount && after === before && eventsIdentical });
     note("tab closed + app reopened", { clockBefore: before, clockAfter: after, stored });
   } else if (step.op === "pause") {
     const beforePress = await readClock();
@@ -321,6 +380,7 @@ for (const step of fx.steps) {
   } else if (step.op === "reload") {
     await page.clock.runFor(1500); // let the 1.2 s autosave debounce fire, as on a real device
     const before = await readClock().catch(() => null);
+    const jsonBefore = await storedEventsJson();
     await page.reload();
     await page.getByText("Resume in-progress match").click();
     await page.waitForTimeout(300);
@@ -330,7 +390,8 @@ for (const step of fx.steps) {
     const after = await readClock().catch(() => null);
     const storedAfterReload = (await dumpStore(`reload-${tagResults.length}`))[0]?.events.length;
     note("reload + resume", { clockBefore: before, clockAfter: after, events: storedAfterReload });
-    lifecycleChecks.push({ op: "reload", check: "reload: every event kept, clock resumes where it stopped", clockBefore: before, clockAfter: after, stored: storedAfterReload, expectedStored: liveCount, pass: before != null && before === after && storedAfterReload === liveCount });
+    const eventsIdentical = jsonBefore != null && jsonBefore === (await storedEventsJson());
+    lifecycleChecks.push({ op: "reload", check: "reload: every event kept unchanged, clock resumes where it stopped", clockBefore: before, clockAfter: after, stored: storedAfterReload, expectedStored: liveCount, eventsIdentical, pass: before != null && before === after && storedAfterReload === liveCount && eventsIdentical });
   } else if (step.op === "halftime") {
     await advanceTo(Math.max(await readClock(), step.clock));
     await clickByText("HT");
@@ -356,9 +417,23 @@ for (const step of fx.steps) {
     await openOptions();
     await exportPdf("FT Snapshot PDF", "FT-snapshot-live");
     await exportPdf("Full Review PDF", "FullReview-live");
-    await clickByText("Save Match");
-    await closeOptions();
-    note("full time + saved");
+    if (offline) {
+      // Offline run: the coach's Save & Finish (the online runs keep Options → Save Match).
+      await closeOptions();
+      await page.getByRole("button", { name: "Save & Finish", exact: true }).click();
+      await page.waitForTimeout(100);
+      const feedback = await page.evaluate(() => (document.body.innerText.match(/(Match saved[^\n]*|Save failed[^\n]*|Save blocked[^\n]*)/) || [])[1] ?? null);
+      await page.clock.runFor(3500);
+      await page.waitForTimeout(200);
+      const leftToHome = await page.evaluate(() => /New Match/.test(document.body.innerText));
+      const m = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem("pitchflow_pro_tagger_matches_v1") || "[]")[0] ?? null; } catch { return null; } });
+      offline.saveAndFinish = { feedback, leftToHome, storedState: m?.restoreContext?.matchState ?? null, storedEvents: m?.events?.length ?? null, expectedEvents: liveCount };
+      note("full time + Save & Finish (offline)", offline.saveAndFinish);
+    } else {
+      await clickByText("Save Match");
+      await closeOptions();
+      note("full time + saved");
+    }
   }
 }
 writeFileSync(`${outDir}/state/owner-toggle-checks.json`, JSON.stringify(ownerToggleChecks, null, 1));
@@ -514,5 +589,7 @@ await page.waitForTimeout(400);
 await exportPdf("FT Snapshot PDF", "FT-snapshot-reopened2");
 
 writeFileSync(`${outDir}/state/run-log.json`, JSON.stringify(log, null, 1));
+if (offline) writeFileSync(`${outDir}/state/offline-checks.json`, JSON.stringify(offline, null, 1));
 await browser.close();
+offline?.stopServer();
 note("done");

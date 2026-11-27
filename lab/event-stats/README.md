@@ -59,7 +59,8 @@ substitutions, PDFs themselves) — those are the browser path's job.
 
 ## Browser path
 
-`node lab/event-stats/tools/run-browser-lab.mjs` against a served production build; in CI the
+`node lab/event-stats/tools/run-browser-lab.mjs` against a served production build (including an
+offline run of match A from the service worker); in CI the
 **Event Stats laboratory (browser)** check (`.github/workflows/browser-lab.yml`: weekly, on demand,
 and on PRs and pushes that touch Event Stats). What it checks, the failure rules and the register:
 `docs/BROWSER-LAB.md`.

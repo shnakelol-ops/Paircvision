@@ -1,0 +1,8 @@
+{
+  "about": "Offline reliability run (tools/run-browser-lab.mjs): match A through the real UI entirely offline — installed online, then the preview server stopped and the browser taken offline before the match is created. These lifecycle steps are added to match A's fixture steps; they do not change any event, so match A's independent ledger applies unchanged. Each is judged: every stored event identical before and after, the clock resuming where it stopped. Protected by the test-integrity guard.",
+  "match": "A",
+  "insert": [
+    { "afterTap": 40, "op": "close", "why": "close the app offline mid first half and reopen it from the service worker" },
+    { "afterTap": 100, "op": "reload", "why": "reload offline mid second half" }
+  ]
+}

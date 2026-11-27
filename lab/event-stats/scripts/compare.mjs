@@ -23,7 +23,8 @@ const liveLedgerPath = `${root}/${EXPECTED_DIR}/ledger-${id}-live.json`;
 // against the match as it stood then; reopened exports against the final match.
 const L_LIVE = existsSync(liveLedgerPath) ? JSON.parse(readFileSync(liveLedgerPath, "utf8")) : L_FINAL;
 let L = L_LIVE;
-const run = `${root}/runs/${id}`;
+// RUN_DIR (relative to the lab) selects another run of the same match, e.g. runs/A-offline.
+const run = process.env.RUN_DIR ? `${root}/${process.env.RUN_DIR}` : `${root}/runs/${id}`;
 const hurling = fx.sport === "hurling";
 const HOME = fx.homeTeam, AWAY = fx.awayTeam;
 const checks = [];

@@ -7,10 +7,10 @@
       "severity": "P3 cosmetic",
       "title": "HT and FT snapshot pages draw the STATISTICS badge over the PáircVision wordmark",
       "where": "src/stats/reviewPdfExport.ts:13831 — snapshot pages call stampLayerBadge(canvas, layer) with the default 'stacked' placement; the Full Review uses 'inline' placement, whose comment (line 6740) says the stacked placement overlapped the wordmark.",
-      "evidence": "Every page of every HT and FT snapshot (matches A–D, live and reopened): the italic 'PáircVision' wordmark is drawn underneath the STATISTICS chip at the top right. Statistics are unaffected.",
+      "evidence": "Every page of every HT and FT snapshot (matches A–D, live and reopened, and the offline run of A): the italic 'PáircVision' wordmark is drawn underneath the STATISTICS chip at the top right. Statistics are unaffected.",
       "ownerAccepted": false,
       "select": [
-        { "source": "compare", "matches": ["A", "B", "C", "D"], "surface": "^PDF (HT|FT) Snapshot( \\(reopened after review edits\\))?$", "stat": "^overlapping text boxes", "occurrences": [{ "pair": ["PáircVision", "STATISTICS"] }] }
+        { "source": "compare", "matches": ["A", "B", "C", "D", "A-offline"], "surface": "^PDF (HT|FT) Snapshot( \\(reopened after review edits\\))?$", "stat": "^overlapping text boxes", "occurrences": [{ "pair": ["PáircVision", "STATISTICS"] }] }
       ]
     },
     {

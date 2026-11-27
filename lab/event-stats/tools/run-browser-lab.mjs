@@ -2,7 +2,7 @@
 // Guardian V1 — Event Stats browser laboratory: one entry point for CI and local runs.
 //
 //   node lab/event-stats/tools/run-browser-lab.mjs [--base http://localhost:5199] [--matches A,B,C,D]
-//        [--no-persistence] [--summary <file>]
+//        [--no-persistence] [--no-offline] [--summary <file>]
 //
 // Needs the production build served at --base (vite preview) and Playwright's Chromium
 // (`npx playwright install chromium`, or PLAYWRIGHT_CHROMIUM_EXECUTABLE=<binary>). Every browser run uses a fresh,
@@ -13,6 +13,9 @@
 //      Quick Review, HT/FT Snapshot and Full Review PDFs, save, Review edits, reload, reopen, re-export.
 //      Then scripts/verify-events.mjs (stored events vs fixture) and scripts/compare.mjs (UI and PDF
 //      text vs the independent expected ledgers in expected-authoritative/).
+//   1b. Offline reliability: match A again, entirely offline — installed online from its own
+//      `vite preview` (port 5299), then the server stopped and the browser offline; close/reopen and
+//      reload inserted (browser/offline-plan.json); a negative control with service workers blocked.
 //   2. Persistence probes (persistence/probe-p0, probe-sp, probe-final) with explicit pass rules.
 //   3. Constructed tests, kept separate from capture: legacy-format import (run-legacy-import +
 //      compare-legacy) and the hurling Review Edit probe (run-edit-probe).
@@ -68,29 +71,35 @@ for (const d of ["runs", "results", "out/browser", "persistence/results"]) mkdir
 // ── 1. Matches through the real UI ──────────────────────────────────────────
 const compareRows = {}; // match → non-PASS rows
 const verifyMismatches = {}; // match → [{stage, id, field}]
-for (const m of MATCHES) {
-  rmSync(join(LAB, "runs", m), { recursive: true, force: true });
-  rmSync(join(LAB, `results/compare-${m}.json`), { force: true });
-  rmSync(join(LAB, `results/verify-${m}.json`), { force: true });
-  // Match D only: two events carry a player the live picker does not offer (register BL-L1); tag
-  // them with no player and record it. Every other match fails on any picker mismatch.
-  const env = m === "D" ? { UNSUPPORTED_PLAYER: "unknown" } : {};
-  const captured = run(`Match ${m}: real-UI capture, PDFs, save, Review, reopen`, ["scripts/run-match.mjs", `fixtures/match-${m}.json`, `runs/${m}`, BASE], env);
-  if (!captured) continue;
-  if (run(`Match ${m}: stored events vs fixture`, ["scripts/verify-events.mjs", m, `runs/${m}`, `results/verify-${m}.json`])) {
-    const v = json(`results/verify-${m}.json`);
+/**
+ * One match through the real UI, then every check on it. `key` names the run (results, register
+ * matching, coverage): "A" … "D", or "A-offline" for match A run entirely offline.
+ */
+function runMatchSuite(key, fixtureId, { env = {}, extraLifecycle = [], offline = false } = {}) {
+  const m = key;
+  const runDir = `runs/${key}`;
+  const suffix = key === fixtureId ? "" : key.slice(fixtureId.length);
+  const compareFile = `results/compare-${fixtureId}${suffix}.json`;
+  const verifyFile = `results/verify-${key}.json`;
+  rmSync(join(LAB, runDir), { recursive: true, force: true });
+  rmSync(join(LAB, compareFile), { force: true });
+  rmSync(join(LAB, verifyFile), { force: true });
+  const what = offline ? "entirely OFFLINE (service worker): install, capture, close/reopen, reload, HT/FT, PDFs, save, reopen" : "real-UI capture, PDFs, save, Review, reopen";
+  const captured = run(`Match ${m}: ${what}`, ["scripts/run-match.mjs", `fixtures/match-${fixtureId}.json`, runDir, BASE], env);
+  if (captured && run(`Match ${m}: stored events vs fixture`, ["scripts/verify-events.mjs", fixtureId, runDir, verifyFile])) {
+    const v = json(verifyFile);
     verifyMismatches[m] = v.stages.flatMap((s) => s.mismatches.map((x) => ({ stage: s.stage, id: x.id, field: x.field })));
     for (const s of v.stages) add(`Match ${m}`, `stored events — ${s.stage}: ${s.stored}/${s.events} events, ${s.fieldsChecked} fields`, s.mismatches.length === 0 && s.stored === s.events, s.mismatches.length ? `${s.mismatches.length} mismatches` : null);
   }
-  if (run(`Match ${m}: UI and PDF text vs expected ledgers`, ["scripts/compare.mjs", m], { EXPECTED_DIR: "expected-authoritative" })) {
-    const c = json(`results/compare-${m}.json`);
+  if (captured && run(`Match ${m}: UI and PDF text vs expected ledgers`, ["scripts/compare.mjs", fixtureId], { EXPECTED_DIR: "expected-authoritative", RUN_DIR: runDir, RESULTS_SUFFIX: suffix })) {
+    const c = json(compareFile);
     compareRows[m] = c.checks.filter((x) => x.status === "FAIL" || x.status === "MISSING");
     add(`Match ${m}`, `UI/PDF comparison: ${c.summary.pass} pass, ${c.summary.fail} fail, ${c.summary.missing} missing, ${c.summary.unverified} unverified, ${c.summary.limitation} limitation (of ${c.summary.total})`, true);
     for (const x of compareRows[m]) add(`Match ${m}`, `${x.surface} · ${x.page} · ${x.scope} · ${x.stat}${x.team ? ` · ${x.team}` : ""}`, false, `expected ${x.expected} | actual ${x.actual}${x.note ? ` | ${x.note.slice(0, 400)}` : ""}`);
     Object.assign(results.at(-1 - compareRows[m].length), { counts: c.summary });
   }
   // Lifecycle and Review checks recorded by the runner itself.
-  const st = (f) => (existsSync(join(LAB, `runs/${m}/state/${f}`)) ? json(`runs/${m}/state/${f}`) : null);
+  const st = (f) => (existsSync(join(LAB, `${runDir}/state/${f}`)) ? json(`${runDir}/state/${f}`) : null);
   for (const c of st("lifecycle-checks.json") ?? []) {
     if (c.op === "storageFail") continue; // the start marker; judged by the next two entries
     const pass = c.op === "storageFailing" ? c.stored === c.expectedStored && /^Save failed/.test(c.strip ?? "") && c.leaveDialog && c.stayedInMatch : c.pass === true;
@@ -104,17 +113,54 @@ for (const m of MATCHES) {
   }
   for (const t of st("tag-results.json") ?? []) if (t.pickerUnsupported) add(`Match ${m}`, `capture — ${t.id}: player not offered by the live picker`, false, t.pickerUnsupported);
 
+  if (offline) {
+    // Offline pass rules: genuinely offline (server stopped and not answering, browser offline, no
+    // network response from the app's origin), served by the service worker, and the negative control
+    // (service workers blocked) unable to open the app.
+    const o = st("offline-checks.json");
+    const rules = [
+      ["preview server answered before installation", (x) => x.serverUpBeforeInstall === true],
+      ["service worker installed and active", (x) => x.swActive === true],
+      ["page controlled by the service worker after a reload", (x) => x.controlled === true],
+      ["precache populated", (x) => (x.precache?.entries ?? 0) > 0],
+      ["preview server stopped and no longer answering", (x) => x.serverStopped === true],
+      ["Event Stats opened with no server and the browser offline", (x) => x.openedOffline === true],
+      ["no response from the network for the app's origin while offline", (x) => x.networkResponsesWhileOffline === 0],
+      ["Save & Finish offline: no failure shown, returned home, match stored FULL_TIME with every event", (x) => !/fail|blocked/i.test(x.saveAndFinish?.feedback ?? "") && x.saveAndFinish?.leftToHome === true && x.saveAndFinish?.storedState === "FULL_TIME" && x.saveAndFinish?.storedEvents === x.saveAndFinish?.expectedEvents],
+      ["negative control: the same app loaded online with service workers blocked", (x) => x.negativeLoadedOnline === true],
+      ["negative control: with service workers blocked it cannot open offline", (x) => x.negativeControl?.navigationFailed === true],
+    ];
+    for (const [item, rule] of rules) add(`Match ${m}`, `offline — ${item}`, !!o && rule(o), o ? (rule(o) ? null : JSON.stringify(o).slice(0, 500)) : "offline-checks.json missing");
+    // Not precached by the app's service worker (documented limitation, reported — not judged).
+    if (o?.failedRequestsWhileOffline?.length) add(`Match ${m}`, `offline — same-origin requests not served offline (not precached; limitation): ${o.failedRequestsWhileOffline.join(", ")}`, true);
+  }
+
   // Coverage: everything the fixture asks for was actually done and judged (counts come from the
   // fixture and browser/coverage-minimum.json, never from the run itself).
-  const fx = json(`fixtures/match-${m}.json`);
+  const fx = json(`fixtures/match-${fixtureId}.json`);
   const cov = (item, got, want, atLeast = false) => add(`Match ${m}`, `coverage — ${item}: ${got ?? "none"} ${atLeast ? "≥" : "="} ${want}`, got != null && (atLeast ? got >= want : got === want), got != null && (atLeast ? got >= want : got === want) ? null : "incomplete run");
   const LIFECYCLE_OPS = ["sub", "close", "storageFail", "storageRestore", "reload", "undo", "pause"];
   cov("fixture taps entered", st("tag-results.json")?.length ?? null, fx.steps.filter((x) => x.op === "tag").length);
-  cov("lifecycle checks judged", (st("lifecycle-checks.json") ?? null)?.filter((c) => c.op !== "storageFail").length ?? null, fx.steps.filter((x) => LIFECYCLE_OPS.includes(x.op)).length);
+  cov("lifecycle checks judged", (st("lifecycle-checks.json") ?? null)?.filter((c) => c.op !== "storageFail").length ?? null, fx.steps.filter((x) => LIFECYCLE_OPS.includes(x.op)).length + extraLifecycle.length);
   cov("Review operations judged", (rp?.reachability.length ?? 0), (fx.reviewOps ?? []).length);
-  cov("stored-event stages verified", existsSync(join(LAB, `results/verify-${m}.json`)) ? json(`results/verify-${m}.json`).stages.length : null, 3);
-  cov("UI/PDF checks performed", existsSync(join(LAB, `results/compare-${m}.json`)) ? json(`results/compare-${m}.json`).summary.total : null, COVERAGE.compareChecksMin[m] ?? Infinity, true);
-  for (const name of COVERAGE.pdfsPerMatch) add(`Match ${m}`, `coverage — PDF ${m}-${name}.pdf exported`, existsSync(join(LAB, `runs/${m}/pdf/${m}-${name}.pdf`)), "missing");
+  cov("stored-event stages verified", existsSync(join(LAB, verifyFile)) ? json(verifyFile).stages.length : null, 3);
+  cov("UI/PDF checks performed", existsSync(join(LAB, compareFile)) ? json(compareFile).summary.total : null, COVERAGE.compareChecksMin[m] ?? Infinity, true);
+  for (const name of COVERAGE.pdfsPerMatch) add(`Match ${m}`, `coverage — PDF ${key}/${fixtureId}-${name}.pdf exported`, existsSync(join(LAB, `${runDir}/pdf/${fixtureId}-${name}.pdf`)), "missing");
+}
+
+// Match D only: two events carry a player the live picker does not offer (register BL-L1); tag them
+// with no player and record it. Every other match fails on any picker mismatch.
+for (const m of MATCHES) runMatchSuite(m, m, { env: m === "D" ? { UNSUPPORTED_PLAYER: "unknown" } : {} });
+
+// ── 1b. Offline reliability: match A entirely offline from the service worker ──
+// Its own `vite preview` of this repository's build (port 5299), stopped once the app is installed.
+const OFFLINE = !args.includes("--no-offline");
+if (OFFLINE) {
+  const plan = json("browser/offline-plan.json");
+  runMatchSuite(`${plan.match}-offline`, plan.match, {
+    offline: true, extraLifecycle: plan.insert,
+    env: { OFFLINE_SERVE_ROOT: join(LAB, "../.."), OFFLINE_PLAN: join(LAB, "browser/offline-plan.json") },
+  });
 }
 
 // ── 2. Persistence probes ───────────────────────────────────────────────────
@@ -182,7 +228,7 @@ for (const [label, re] of [["legacy import", /^legacy import: /], ["hurling Revi
 for (const name of COVERAGE.legacyPdfs) if (!existsSync(join(LAB, `runs/A-legacy/pdf/${name}.pdf`))) add("PDF files", `coverage — A-legacy/${name}.pdf exported`, false, "missing");
 
 // ── 4. PDF files ────────────────────────────────────────────────────────────
-for (const m of [...MATCHES, ...(existsSync(join(LAB, "runs/A-legacy/pdf")) ? ["A-legacy"] : [])]) {
+for (const m of [...MATCHES, ...(OFFLINE ? [`${json("browser/offline-plan.json").match}-offline`] : []), ...(existsSync(join(LAB, "runs/A-legacy/pdf")) ? ["A-legacy"] : [])]) {
   const dir = join(LAB, `runs/${m}/pdf`);
   if (!existsSync(dir)) continue;
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".pdf")).sort()) {
@@ -268,7 +314,7 @@ const classify = (r) => {
   r.blocking = fs.some((F) => F.kind === "app-finding" && !F.ownerAccepted);
 };
 results.forEach(classify);
-const ranMatches = new Set(MATCHES);
+const ranMatches = new Set([...MATCHES, ...(OFFLINE ? [`${json("browser/offline-plan.json").match}-offline`] : [])]);
 const stale = FINDINGS.filter((f) => used.get(f.id) === 0 && f.select.some((s) => s.matches.some((m) => ranMatches.has(m))));
 // Partial fixes: every occurrence pattern of a register entry must still occur somewhere in the run.
 const stalePatterns = FINDINGS.flatMap((f) => f.select.flatMap((s, si) => (s.occurrences && s.matches.some((m) => ranMatches.has(m)))
@@ -284,6 +330,7 @@ const blocking = failing.filter((r) => r.blocking || r.classification === "UNCLA
 const missingScope = [
   ...COVERAGE.requiredMatches.filter((m) => !MATCHES.includes(m)).map((m) => `match ${m} not run`),
   ...(PERSISTENCE ? [] : ["persistence probes not run"]),
+  ...(OFFLINE ? [] : ["offline reliability run not run"]),
 ];
 const verdict = blocking.length || stale.length ? "FAIL" : missingScope.length ? "INCOMPLETE" : "PASS";
 const report = {
@@ -299,7 +346,7 @@ md.push(`## Event Stats browser laboratory — ${verdict === "PASS" ? "✅ PASS"
 if (missingScope.length) md.push(`Partial run — ${missingScope.join("; ")}. Only a run of the full required scope can pass.`, "");
 md.push(`Matches ${MATCHES.join(", ")} through the real UI${PERSISTENCE ? ", persistence probes" : ""}, constructed tests, PDF files. ${results.length} results: ${results.length - failing.length} pass, ${failing.length} not passing (${unclassified.length} unclassified, ${blocking.length} blocking).`, "");
 md.push("| Step | Seconds | Result |", "|---|---:|---|", ...steps.map((s) => `| ${s.label} | ${s.secs} | ${s.ok ? "ok" : `**exit ${s.exit}**`} |`), "");
-for (const m of MATCHES) { const c = results.find((r) => r.area === `Match ${m}` && r.counts); if (c) md.push(`- **Match ${m}** — ${c.item}`); }
+for (const m of ranMatches) { const c = results.find((r) => r.area === `Match ${m}` && r.counts); if (c) md.push(`- **Match ${m}** — ${c.item}`); }
 md.push("");
 if (openFindings.length || FINDINGS.some((f) => used.get(f.id) > 0)) {
   md.push("### Registered findings seen in this run", "", "| Id | Kind | Finding | Occurrences | Blocks the run |", "|---|---|---|---:|---|");
