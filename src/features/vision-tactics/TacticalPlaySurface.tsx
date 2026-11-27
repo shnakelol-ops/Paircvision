@@ -66,12 +66,19 @@ import {
   type TacticalTemplateSport,
 } from "./tacticalTemplates";
 import {
+  MAX_SCENARIOS,
+  clearScenarioDraft,
   deleteScenario,
-  duplicateScenario,
   listScenarios,
+  loadScenarioDraft,
   renameScenario,
-  saveScenario,
+  saveScenarioDraft,
+  tryDuplicateScenario,
+  trySaveScenario,
+  tryUpdateScenario,
+  type ScenarioWriteFailure,
   type TacticalScenario,
+  type TacticalScenarioContent,
 } from "./tacticalPlayStorage";
 import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
@@ -93,6 +100,9 @@ import {
   ARRANGE_MODE_LABEL,
   computeAnyBottomPanelOpen,
   situationDisplayLabel,
+  TP_DEFAULT_SPEED_MULTIPLIER,
+  playbackSpeedPresetFor,
+  resolveSavedSpeedMultiplier,
 } from "./tacticalPlayUi";
 
 type SetupSport = Extract<TacticalTemplateSport, "football" | "hurling">;
@@ -1052,7 +1062,6 @@ function getFormationPos(team: "home" | "away", number: number): { x: number; y:
   return team === "away" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
 }
 
-const TP_DEFAULT_SPEED_MULTIPLIER = 1.0;
 const MAX_ZONES = 12;
 
 const ZONE_COLOR_COACHING_LABEL: Record<string, string> = {
@@ -1061,16 +1070,20 @@ const ZONE_COLOR_COACHING_LABEL: Record<string, string> = {
   blue:   "Structure",
   green:  "Trigger",
 };
-const TP_ENUM_TO_MULTIPLIER: Record<string, number> = {
-  slow: 0.5,
-  normal: 1.0,
-  fast: 1.25,
-};
+// Autosave baseline sentinel after a draft restore: never equal to a real
+// board signature, so the restored (still unsaved) work keeps being written.
+const RESTORED_UNSAVED_BASELINE = "restored-unsaved-draft";
 
-function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
-  if (n < 0.85) return "slow";
-  if (n > 1.15) return "fast";
-  return "normal";
+// Coach-facing copy for a play that could not be written. Nothing is ever
+// removed to make room, so every message says the board is still intact.
+function scenarioWriteFailureMessage(reason: ScenarioWriteFailure): string {
+  if (reason === "limit") {
+    return `You already have ${MAX_SCENARIOS} saved plays. Delete one you no longer need, then save again.\nNothing was deleted, and your board is unchanged.`;
+  }
+  if (reason === "missing") {
+    return "That saved play no longer exists. Use Save New to keep this board as a new play.";
+  }
+  return "This play could not be saved. Device storage may be full or unavailable.\nYour board is unchanged.";
 }
 
 // PR4: Game Timing's Draw tool order/labels. Deliberately the V1 subset —
@@ -1219,6 +1232,22 @@ export default function TacticalPlaySurface() {
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
+  // The saved play this board was opened from (or last saved as), so Save can
+  // update it in place instead of always creating another copy.
+  const [loadedScenario, setLoadedScenario] = useState<{ id: string; name: string } | null>(null);
+  const [updateFlash, setUpdateFlash] = useState(false);
+  const loadedScenarioRef = useRef<{ id: string; name: string } | null>(null);
+  loadedScenarioRef.current = loadedScenario;
+  // Autosave draft bookkeeping (see the autosave effect below).
+  // baseline: signature of the board as last loaded / saved / reset — the
+  // draft is only written when the board differs from it. null means "take
+  // the next stable board as the baseline".
+  const draftBaselineSignatureRef = useRef<string | null>(null);
+  const lastDraftSignatureRef = useRef<string | null>(null);
+  // True while the "restore unsaved work?" question is open: nothing may
+  // overwrite the stored draft until the coach has answered.
+  const draftDecisionPendingRef = useRef(false);
+  const draftCheckedRef = useRef(false);
   const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
   const [labelToolActive, setLabelToolActive] = useState(false);
   // Tactical drawing (PR4) — same shared engine/tool vocabulary as Standard
@@ -1229,9 +1258,25 @@ export default function TacticalPlaySurface() {
   const [gtDrawTool, setGtDrawTool] = useState<TacticalDrawingTool>("plain-line");
   const [gtDrawColor, setGtDrawColor] = useState<number>(WHITEBOARD_PEN_COLOR_CHOICES[0]?.value ?? 0x111111);
   const editRunPlayerIdRef = useRef<string | null>(null);
+  // Latest page-owned board values, readable from callbacks created once at
+  // mount (context-loss remount, autosave timer, pagehide) without stale closures.
+  const boardValuesRef = useRef({
+    units: [] as TacticalUnit[],
+    textAnnotations: [] as SlateTextAnnotation[],
+    ourTeamKit: DEFAULT_OUR_TEAM_KIT as TeamKit,
+    goalkeeperKit: DEFAULT_GOALKEEPER_KIT as TeamKit | undefined,
+    bibKit: DEFAULT_BIB_KIT as TeamKit,
+    playbackSpeedMultiplier: TP_DEFAULT_SPEED_MULTIPLIER,
+  });
+  boardValuesRef.current = { units, textAnnotations, ourTeamKit, goalkeeperKit, bibKit, playbackSpeedMultiplier };
+  // Assigned below once the functions exist; read only after mount.
+  const captureScenarioContentRef = useRef<(shell: MovementCanvasShellHandle) => TacticalScenarioContent>(() => {
+    throw new Error("captureScenarioContent used before render");
+  });
+  const applyScenarioContentRef = useRef<(shell: MovementCanvasShellHandle, content: TacticalScenarioContent) => void>(() => {});
+  const offerDraftRestoreRef = useRef<() => void>(() => {});
   // Ref bridge so the stale mount-time closure in the shell useEffect can read
   // the latest units value (needed for WebGL context-loss restore).
-  const unitsRef = useRef<TacticalUnit[]>([]);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1336,18 +1381,12 @@ export default function TacticalPlaySurface() {
     let resizeFrameA = 0;
     let resizeFrameB = 0;
 
-    // Holds a snapshot captured just before a WebGL context-loss remount so the
-    // fresh shell can be restored to exactly the same board state.
-    let lastSnapshot: {
-      tokens: MovementBoardToken[];
-      routes: MovementBoardRoute[];
-      ballState: { carrierId?: string; position?: NormalizedPoint; ballType?: BallType };
-      passEvents: TacticalPassEvent[];
-      shotEvents: TacticalShotEvent[];
-      zones: ZoneRecord[];
-      trainingItems: TacticalTrainingItem[];
-      units: TacticalUnit[];
-    } | null = null;
+    // Holds the board captured just before a WebGL context-loss remount so the
+    // fresh shell can be restored. Captured exactly as a saved play is — from
+    // the sequence START (start positions, start ball) plus drawings, kits and
+    // speed — so a remount after playback can never turn the players' end
+    // positions into their new start positions.
+    let lastSnapshot: TacticalScenarioContent | null = null;
 
     // EXPERIMENTAL Goal View: its module must load before the shell creates
     // its Pixi renderer (see preloadGoalViewBeforeShell). Compiled out when
@@ -1494,26 +1533,11 @@ export default function TacticalPlaySurface() {
         if (lastSnapshot) {
           const snap = lastSnapshot;
           lastSnapshot = null;
-          shell.setTokens(snap.tokens);
-          shell.setRoutes(snap.routes);
-          if (snap.ballState.carrierId) {
-            shell.giveBall(snap.ballState.carrierId);
-          } else if (snap.ballState.position) {
-            shell.placeBall(snap.ballState.ballType ?? "footballSmall", snap.ballState.position);
-          } else {
-            shell.removeBall();
-          }
-          shell.setPassEvents(snap.passEvents);
-          setPassEvents(snap.passEvents);
-          for (const existing of shell.getShotEvents()) shell.removeShotEvent(existing.id);
-          for (const shot of snap.shotEvents) shell.addShotEvent(shot);
-          setShotEvents(snap.shotEvents);
-          shell.setZones(snap.zones);
-          setZones(snap.zones);
-          shell.setTrainingItems(snap.trainingItems);
-          setTrainingItems(snap.trainingItems);
-          setUnits(snap.units);
-          shell.setStartPositions();
+          applyScenarioContentRef.current(shell, snap);
+        } else if (!draftCheckedRef.current) {
+          // First mount only: offer to restore unsaved work from last time.
+          draftCheckedRef.current = true;
+          offerDraftRestoreRef.current();
         }
       });
     };
@@ -1540,16 +1564,8 @@ export default function TacticalPlaySurface() {
         : null;
       if (gl?.isContextLost()) {
         if (shellRef.current) {
-          lastSnapshot = {
-            tokens: shellRef.current.getTokens(),
-            routes: shellRef.current.getRoutes(),
-            ballState: shellRef.current.getBallState(),
-            passEvents: shellRef.current.getPassEvents(),
-            shotEvents: shellRef.current.getShotEvents(),
-            zones: shellRef.current.getZones(),
-            trainingItems: shellRef.current.getTrainingItems(),
-            units: unitsRef.current,
-          };
+          // Pure JS state on the shell — readable even though its GL context is gone.
+          lastSnapshot = captureScenarioContentRef.current(shellRef.current);
         }
         destroyShell?.();
         destroyShell = null;
@@ -1583,7 +1599,47 @@ export default function TacticalPlaySurface() {
     };
   }, []);
 
-  useEffect(() => { unitsRef.current = units; }, [units]);
+  // Autosave draft. Mirrors Tactical Slate's QuickBoard draft: every 1.2s,
+  // and whenever the app is hidden or closed, the board is written to the
+  // draft key — but only if it differs from what was last loaded, saved or
+  // reset, so an untouched board never leaves a draft behind. The board is
+  // captured from the sequence start, so playback never changes it.
+  useEffect(() => {
+    const persistDraft = () => {
+      const shell = shellRef.current;
+      if (!shell || draftDecisionPendingRef.current) return;
+      const playback = shell.getPlaybackState();
+      if (playback.isPlaying || playback.isPaused) return;
+      let content: TacticalScenarioContent;
+      let signature: string;
+      try {
+        content = captureScenarioContentRef.current(shell);
+        signature = JSON.stringify(content);
+      } catch {
+        return;
+      }
+      if (draftBaselineSignatureRef.current === null) {
+        draftBaselineSignatureRef.current = signature;
+        return;
+      }
+      if (signature === draftBaselineSignatureRef.current || signature === lastDraftSignatureRef.current) return;
+      const source = loadedScenarioRef.current;
+      if (saveScenarioDraft(content, { loadedScenarioId: source?.id ?? null, loadedScenarioName: source?.name ?? null })) {
+        lastDraftSignatureRef.current = signature;
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") persistDraft();
+    };
+    const intervalId = window.setInterval(persistDraft, 1200);
+    window.addEventListener("pagehide", persistDraft);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("pagehide", persistDraft);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     // Portrait is editable in both orientations; only the board orientation
@@ -2027,11 +2083,36 @@ export default function TacticalPlaySurface() {
     setZones([]);
   };
 
-  const onLoadScenario = (scenario: TacticalScenario) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    setPlaysOpen(false);
-    setActiveKitEditor(null);
+  /**
+   * The whole board as a saved play stores it — always from the sequence
+   * START (start positions and start ball), never from wherever playback
+   * happens to have left the players. Used by Save, Update, the autosave
+   * draft and WebGL context-loss recovery, so all four store the same thing.
+   */
+  const captureScenarioContent = (shell: MovementCanvasShellHandle): TacticalScenarioContent => {
+    const values = boardValuesRef.current;
+    return {
+      tokens: shell.getTokensAtStart(),
+      routes: shell.getRoutes(),
+      ballState: shell.getBallStateAtStart(),
+      passEvents: shell.getPassEvents(),
+      shotEvents: shell.getShotEvents(),
+      playbackSpeed: playbackSpeedPresetFor(values.playbackSpeedMultiplier),
+      playbackSpeedMultiplier: values.playbackSpeedMultiplier,
+      units: values.units,
+      zones: shell.getZones(),
+      items: shell.getTrainingItems(),
+      textAnnotations: values.textAnnotations.length > 0 ? values.textAnnotations : undefined,
+      ourTeamKit: values.ourTeamKit,
+      goalkeeperKit: values.goalkeeperKit,
+      bibKit: values.bibKit,
+      drawings: shell.getDrawings(),
+    };
+  };
+  captureScenarioContentRef.current = captureScenarioContent;
+
+  /** Puts a saved play's content on the board (positions at the sequence start). */
+  const applyScenarioContent = (shell: MovementCanvasShellHandle, scenario: TacticalScenarioContent) => {
     // Team-kit load: a scenario saved before team kits existed (no
     // ourTeamKit/goalkeeperKit/bibKit at all) gets sensible defaults seeded
     // from whatever colour its existing tokens already show, rather than a
@@ -2068,7 +2149,7 @@ export default function TacticalPlaySurface() {
       shell.addShotEvent(shot);
     }
     setShotEvents(loadedShots);
-    const speedMultiplier = TP_ENUM_TO_MULTIPLIER[scenario.playbackSpeed ?? "normal"] ?? TP_DEFAULT_SPEED_MULTIPLIER;
+    const speedMultiplier = resolveSavedSpeedMultiplier(scenario);
     setPlaybackSpeedMultiplier(speedMultiplier);
     shell.setSpeedMultiplier(speedMultiplier);
     shell.setStartPositions();
@@ -2099,47 +2180,192 @@ export default function TacticalPlaySurface() {
     const loadedNums: Record<string, number> = {};
     for (const t of scenario.tokens) loadedNums[t.id] = t.number;
     setTokenNumberById(loadedNums);
-    setScenarioRenameId(null);
+  };
+  applyScenarioContentRef.current = applyScenarioContent;
+
+  /**
+   * Marks the current board as matching what is stored, so autosave only
+   * writes later changes. With a shell, the baseline is taken now (Save /
+   * Update, where every board value is already current); without one it is
+   * taken on the next autosave tick (Load / Reset, whose React state is still
+   * being applied).
+   */
+  const markBoardAsStored = (shell?: MovementCanvasShellHandle) => {
+    draftBaselineSignatureRef.current = shell ? JSON.stringify(captureScenarioContent(shell)) : null;
+    lastDraftSignatureRef.current = null;
+    clearScenarioDraft();
   };
 
-  const onDeleteScenario = (id: string) => {
-    deleteScenario(id);
-    setScenarios(listScenarios());
+  /** True when the board has changes that are not in a saved play. */
+  const isBoardDirty = (shell: MovementCanvasShellHandle): boolean => {
+    const baseline = draftBaselineSignatureRef.current;
+    if (baseline === null) return false;
+    return JSON.stringify(captureScenarioContent(shell)) !== baseline;
+  };
+
+  /**
+   * First mount only: if unsaved work was left behind last time (app closed,
+   * reloaded or killed), ask before replacing the fresh board with it.
+   * "Start fresh" (also backdrop / Escape) does not delete the draft — it is
+   * only replaced once the coach actually changes the new board.
+   */
+  const offerDraftRestore = () => {
+    const { draft, isCorrupt } = loadScenarioDraft();
+    if (isCorrupt) {
+      clearScenarioDraft();
+      return;
+    }
+    if (!draft) return;
+    draftDecisionPendingRef.current = true;
+    const settle = () => {
+      draftDecisionPendingRef.current = false;
+      draftBaselineSignatureRef.current = null;
+      lastDraftSignatureRef.current = null;
+      setConfirmSheet(null);
+    };
+    setConfirmSheet({
+      title: "Unsaved work",
+      message: draft.loadedScenarioName
+        ? `You have unsaved changes to "${draft.loadedScenarioName}" from last time. Restore them?`
+        : "You have an unsaved board from last time. Restore it?",
+      confirmLabel: "Restore",
+      cancelLabel: "Start fresh",
+      onConfirm: () => {
+        const live = shellRef.current;
+        settle();
+        if (!live) return;
+        applyScenarioContentRef.current(live, draft.content);
+        const source = draft.loadedScenarioId
+          ? listScenarios().find((s) => s.id === draft.loadedScenarioId) ?? null
+          : null;
+        setLoadedScenario(source ? { id: source.id, name: source.name } : null);
+        // Restored work is still unsaved, so it must stay recoverable even if
+        // the coach changes nothing: a baseline no board can match keeps the
+        // draft being written until Save, Update, Load or Reset.
+        draftBaselineSignatureRef.current = RESTORED_UNSAVED_BASELINE;
+      },
+      onCancel: settle,
+    });
+  };
+  offerDraftRestoreRef.current = offerDraftRestore;
+
+
+  const onLoadScenario = (scenario: TacticalScenario) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    setPlaysOpen(false);
+    setActiveKitEditor(null);
+    applyScenarioContent(shell, scenario);
+    setScenarioRenameId(null);
+    setLoadedScenario({ id: scenario.id, name: scenario.name });
+    markBoardAsStored();
+  };
+
+  const closeConfirmSheet = () => setConfirmSheet(null);
+
+  const showStorageAlert = (message: string) => {
+    setConfirmSheet({
+      title: "Not saved",
+      message,
+      variant: "alert",
+      confirmLabel: "OK",
+      onConfirm: closeConfirmSheet,
+      onCancel: closeConfirmSheet,
+    });
+  };
+
+  // Load replaces the board. If it holds unsaved changes, ask first — the
+  // changes would otherwise be lost (and the autosave draft cleared).
+  const requestLoadScenario = (scenario: TacticalScenario) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    if (!isBoardDirty(shell)) {
+      onLoadScenario(scenario);
+      return;
+    }
+    setConfirmSheet({
+      title: "Unsaved changes",
+      message: `The current board has changes that are not saved. Open "${scenario.name}" and discard them?`,
+      confirmLabel: "Discard and open",
+      danger: true,
+      onConfirm: () => { closeConfirmSheet(); onLoadScenario(scenario); },
+      onCancel: closeConfirmSheet,
+    });
+  };
+
+  const showScenarioWriteFailure = (reason: ScenarioWriteFailure) => {
+    showStorageAlert(scenarioWriteFailureMessage(reason));
+  };
+
+  const onDeleteScenario = (scenario: TacticalScenario) => {
+    setConfirmSheet({
+      message: `Delete "${scenario.name}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        closeConfirmSheet();
+        if (!deleteScenario(scenario.id)) {
+          showStorageAlert("The play could not be deleted. Device storage may be unavailable.");
+          return;
+        }
+        if (loadedScenarioRef.current?.id === scenario.id) setLoadedScenario(null);
+        setScenarios(listScenarios());
+      },
+      onCancel: closeConfirmSheet,
+    });
   };
 
   const onDuplicateScenario = (id: string) => {
-    duplicateScenario(id);
+    const result = tryDuplicateScenario(id);
+    if (result.status === "failed") showScenarioWriteFailure(result.reason);
     setScenarios(listScenarios());
   };
 
   const onRenameScenario = (id: string, name: string) => {
-    renameScenario(id, name);
+    if (!renameScenario(id, name)) {
+      showStorageAlert("The play could not be renamed. Device storage may be unavailable.");
+      return;
+    }
+    const renamed = listScenarios().find((s) => s.id === id);
+    if (renamed && loadedScenarioRef.current?.id === id) {
+      setLoadedScenario({ id, name: renamed.name });
+    }
     setScenarios(listScenarios());
   };
 
+  /** Saves the board as a new play. Never deletes another play to make room. */
   const onSavePlays = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    const result = trySaveScenario(playsNameDraft.trim() || "Scenario", captureScenarioContent(shell));
+    setScenarios(listScenarios());
+    if (result.status === "failed") {
+      showScenarioWriteFailure(result.reason);
+      return;
+    }
+    setLoadedScenario({ id: result.scenario.id, name: result.scenario.name });
+    markBoardAsStored(shell);
     setSaveFlash(true);
     setTimeout(() => { setSaveFlash(false); }, 700);
-    saveScenario(
-      playsNameDraft.trim() || "Scenario",
-      shell.getTokensAtStart(),
-      shell.getRoutes(),
-      shell.getBallStateAtStart(),
-      shell.getPassEvents(),
-      shell.getShotEvents(),
-      multiplierToPlaybackSpeed(playbackSpeedMultiplier),
-      units,
-      shell.getZones(),
-      shell.getTrainingItems(),
-      textAnnotations.length > 0 ? textAnnotations : undefined,
-      ourTeamKit,
-      goalkeeperKit,
-      bibKit,
-      shell.getDrawings(),
-    );
+    setPlaysNameDraft("");
+  };
+
+  /** Saves the board over the play it was opened from (or last saved as). */
+  const onUpdatePlay = () => {
+    const shell = shellRef.current;
+    const target = loadedScenarioRef.current;
+    if (!shell || !target) return;
+    const result = tryUpdateScenario(target.id, captureScenarioContent(shell), playsNameDraft);
     setScenarios(listScenarios());
+    if (result.status === "failed") {
+      if (result.reason === "missing") setLoadedScenario(null);
+      showScenarioWriteFailure(result.reason);
+      return;
+    }
+    setLoadedScenario({ id: result.scenario.id, name: result.scenario.name });
+    markBoardAsStored(shell);
+    setUpdateFlash(true);
+    setTimeout(() => { setUpdateFlash(false); }, 700);
     setPlaysNameDraft("");
   };
 
@@ -2397,6 +2623,10 @@ export default function TacticalPlaySurface() {
     setTextAnnotations([]);
     setLabelToolActive(false);
     setActiveKitEditor(null);
+    // A reset board is a new, empty board: not the play it was opened from,
+    // and nothing left to recover.
+    setLoadedScenario(null);
+    markBoardAsStored();
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -3824,14 +4054,32 @@ export default function TacticalPlaySurface() {
                 onKeyDown={(e) => { if (e.key === "Enter") onSavePlays(); }}
               />
               <button type="button" style={saveFlash ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.80)", color: "#c4ffbf", background: "rgba(18, 56, 34, 0.82)" } : { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }} onClick={onSavePlays}>
-                {saveFlash ? "Saved ✓" : "Save"}
+                {saveFlash ? "Saved ✓" : loadedScenario ? "Save New" : "Save"}
               </button>
             </div>
+
+            {/* Update the play this board was opened from (or last saved as) */}
+            {loadedScenario ? (
+              <div style={PLAYS_ROW_STYLE}>
+                <span style={PLAYS_SCENARIO_NAME_STYLE} title={loadedScenario.name}>
+                  Open: {loadedScenario.name}
+                </span>
+                <button
+                  type="button"
+                  style={updateFlash
+                    ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.80)", color: "#c4ffbf", background: "rgba(18, 56, 34, 0.82)" }
+                    : { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }}
+                  onClick={onUpdatePlay}
+                >
+                  {updateFlash ? "Updated ✓" : "Update"}
+                </button>
+              </div>
+            ) : null}
 
             {scenarios.length > 0 ? (
               <>
                 <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0" }} />
-                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load Play</span>
+                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load Play · {scenarios.length}/{MAX_SCENARIOS}</span>
                 {scenarios.map((s) => (
                   <div key={s.id} style={{ display: "grid", gap: "3px" }}>
                     <div style={PLAYS_ROW_STYLE}>
@@ -3839,7 +4087,7 @@ export default function TacticalPlaySurface() {
                       <button
                         type="button"
                         style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(100, 200, 255, 0.30)", color: "rgba(160, 220, 255, 0.90)" }}
-                        onClick={() => onLoadScenario(s)}
+                        onClick={() => requestLoadScenario(s)}
                       >
                         Load
                       </button>
@@ -3867,7 +4115,7 @@ export default function TacticalPlaySurface() {
                       <button
                         type="button"
                         style={{ ...PLAYS_ACTION_BTN, color: "rgba(255, 160, 160, 0.88)" }}
-                        onClick={() => onDeleteScenario(s.id)}
+                        onClick={() => onDeleteScenario(s)}
                       >
                         Del
                       </button>

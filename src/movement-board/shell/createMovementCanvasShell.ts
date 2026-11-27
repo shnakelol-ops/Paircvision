@@ -929,7 +929,12 @@ export async function createMovementCanvasShell(
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
         longPressTriggered = true;
-        tokenTapStart = null;
+        // A long-press is a menu gesture, not a drag: end the drag that this
+        // pointerdown started. Otherwise it outlives the gesture (the
+        // long-press pointerup returns early, below) and the next pointer
+        // movement anywhere — e.g. tapping a button on the action sheet that
+        // opens now — drags this player to that point.
+        releaseDrag();
         options.onTokenLongPress!(tokenId);
       }, LONG_PRESS_MS);
     }
@@ -1094,7 +1099,7 @@ export async function createMovementCanvasShell(
       return;
     }
     if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
-    if (longPressTriggered) { longPressTriggered = false; tokenTapStart = null; return; }
+    if (longPressTriggered) { longPressTriggered = false; releaseDrag(); return; }
     if (tokenTapStart && (mode === "setup" || mode === "route") && !isPlaybackLocked()) {
       const endPoint = getStagePointFromEvent(event, app.stage);
       const moved = endPoint
