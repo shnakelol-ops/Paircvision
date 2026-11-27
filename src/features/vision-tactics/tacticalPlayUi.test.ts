@@ -7,6 +7,10 @@ import {
   computeAnyBottomPanelOpen,
   computeFloatingShareVisible,
   situationDisplayLabel,
+  playbackSpeedPresetFor,
+  resolveSavedSpeedMultiplier,
+  TP_DEFAULT_SPEED_MULTIPLIER,
+  TP_PRESET_SPEED_MULTIPLIER,
   type BottomPanelFlags,
 } from "./tacticalPlayUi";
 import { TACTICAL_TEMPLATES } from "./tacticalTemplates";
@@ -99,5 +103,33 @@ describe("Floating Share visibility", () => {
   it("is hidden during playback even with no panel open", () => {
     expect(computeFloatingShareVisible({ ...NO_PANELS, isPlaying: true, isPaused: false })).toBe(false);
     expect(computeFloatingShareVisible({ ...NO_PANELS, isPlaying: false, isPaused: true })).toBe(false);
+  });
+});
+
+describe("saved playback speed (audit D7)", () => {
+  it("every speed the control offers reopens exactly as saved", () => {
+    for (const { multiplier } of TP_SPEED_OPTIONS) {
+      const saved = { playbackSpeed: playbackSpeedPresetFor(multiplier), playbackSpeedMultiplier: multiplier };
+      expect(resolveSavedSpeedMultiplier(saved)).toBe(multiplier);
+    }
+  });
+
+  it("a play saved before the exact field existed reopens at its preset, as before", () => {
+    expect(resolveSavedSpeedMultiplier({ playbackSpeed: "slow" })).toBe(0.5);
+    expect(resolveSavedSpeedMultiplier({ playbackSpeed: "normal" })).toBe(1.0);
+    expect(resolveSavedSpeedMultiplier({ playbackSpeed: "fast" })).toBe(1.25);
+    expect(resolveSavedSpeedMultiplier({})).toBe(TP_DEFAULT_SPEED_MULTIPLIER);
+  });
+
+  it("an exact value the control does not offer falls back to the preset", () => {
+    expect(resolveSavedSpeedMultiplier({ playbackSpeed: "fast", playbackSpeedMultiplier: 9 })).toBe(1.25);
+    expect(resolveSavedSpeedMultiplier({ playbackSpeedMultiplier: Number.NaN })).toBe(TP_DEFAULT_SPEED_MULTIPLIER);
+  });
+
+  it("keeps the original preset thresholds for older builds", () => {
+    expect(playbackSpeedPresetFor(0.75)).toBe("slow");
+    expect(playbackSpeedPresetFor(1.0)).toBe("normal");
+    expect(playbackSpeedPresetFor(1.25)).toBe("fast");
+    expect(TP_PRESET_SPEED_MULTIPLIER).toEqual({ slow: 0.5, normal: 1.0, fast: 1.25 });
   });
 });

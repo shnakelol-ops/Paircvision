@@ -60,6 +60,7 @@ unsupported — never a surprise either way.
 | `paircvision_rapid_capture_active_v1` | Rapid Capture in-progress session — same reasoning |
 | `paircvision_board_active_draft_v1` | QuickBoard in-progress autosave draft — same reasoning |
 | `paircvision_board_active_draft_v1:<namespace>` | The Training Grass, Whiteboard and Rugby Slate autosave drafts (`:training`, `:whiteboard`, `:rugby`) — same reasoning as the GAA draft |
+| `paircvision-tp-active-draft-v1` | Tactical Sequence in-progress autosave draft (`features/vision-tactics/tacticalPlayStorage.ts`) — same reasoning as the QuickBoard draft; saved plays stay in `paircvision-tp-scenarios` above |
 | `paircvision_training_active_session_v1` | Training Tracker in-progress session pointer — same reasoning |
 | `pitchside.player-performance-tracker.v1` | Player Performance's *current in-progress* tracking session (`hasStarted`/`isRunning`/`logs`) — same reasoning; distinct from the durable season table and squads keys above |
 | `paircvision.reviewSession.v1.last` | Write-only cache (`StatsModeSurface.tsx`) — written once on export, never read back anywhere in the app; functionally inert |

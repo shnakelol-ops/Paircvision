@@ -79,3 +79,45 @@ export function computeFloatingShareVisible(
   const playbackFloatingVisible = flags.isPlaying || flags.isPaused;
   return !playbackFloatingVisible && !computeAnyBottomPanelOpen(flags);
 }
+
+// ---- Saved playback speed ----------------------------------------------------
+//
+// A play stores both its exact multiplier (`playbackSpeedMultiplier`) and the
+// nearest of the original three presets (`playbackSpeed`), so builds that
+// predate the exact field still reopen it at a sensible speed.
+
+export const TP_DEFAULT_SPEED_MULTIPLIER = 1.0;
+
+/** The original preset → multiplier mapping, used for plays saved before the exact multiplier existed. */
+export const TP_PRESET_SPEED_MULTIPLIER: Readonly<Record<"slow" | "normal" | "fast", number>> = {
+  slow: 0.5,
+  normal: 1.0,
+  fast: 1.25,
+};
+
+/** Nearest legacy preset for a multiplier (unchanged thresholds). */
+export function playbackSpeedPresetFor(multiplier: number): "slow" | "normal" | "fast" {
+  if (multiplier < 0.85) return "slow";
+  if (multiplier > 1.15) return "fast";
+  return "normal";
+}
+
+/**
+ * The multiplier to reopen a saved play at: its exact multiplier when it is
+ * one of the speeds the control offers, otherwise its legacy preset,
+ * otherwise 1×.
+ */
+export function resolveSavedSpeedMultiplier(saved: {
+  playbackSpeed?: string;
+  playbackSpeedMultiplier?: number;
+}): number {
+  const exact = saved.playbackSpeedMultiplier;
+  if (typeof exact === "number" && TP_SPEED_OPTIONS.some((option) => option.multiplier === exact)) {
+    return exact;
+  }
+  const preset = saved.playbackSpeed;
+  if (preset === "slow" || preset === "normal" || preset === "fast") {
+    return TP_PRESET_SPEED_MULTIPLIER[preset];
+  }
+  return TP_DEFAULT_SPEED_MULTIPLIER;
+}
