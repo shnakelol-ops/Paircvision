@@ -50,3 +50,23 @@ from the simulator's ground truth. Three credits differ:
 The current production engine agrees with all three credits: the engine path matches the
 ledgers' RESTART origin counts and values in every match, half and team. None of the three is an
 application defect. They remain documented here and in `VALIDATION.json`, unchanged.
+
+## Match D (added for Guardian V1 engine completion — not historical)
+
+Hand-scripted by `scripts/gen-fixture-d.mjs` (node built-ins only, deterministic) to close three
+coverage gaps in A–C. Ground truth (`truth`) is written by hand from the scenario, never from a
+calculator. Expected results come only from `reference.mjs` and `reference-kickout-phase.mjs`.
+
+| Gap | Events | Expected (reference) | Check against the written definitions |
+|---|---|---|---|
+| Player on a lost restart | D-005: home puckout lost, home #1 tagged; D-029: away puckout lost, away #1 tagged. The live picker shows the winner's squad; these represent legacy events (no `squadId`) corrected in Review, whose roster falls back to the restart owner. | home #1 and away #1: restarts lost 1 | `playerTable`: a restart counts as lost for a player whose team is not the winner. |
+| Unattributed score | D-032: first event of the 2nd half, a blocked home shot with no restart or turnover before it; Review-edited to a point. | ledger-D: UNATTRIBUTED home 1 score, 1 point; ledger-D-live: 0 | `applyReviewOp`: a former shot keeps no source; `attributeOrigins`: no source and no chain origin → UNATTRIBUTED. |
+| Hurling restart net disadvantage | Home win 8 puckouts and score from none; lose 9, the away team scores from 6. | restart won → score 0/8 (0%); restart lost → opposition score 6/9 (67%) | Hand count of the script; the gap (−67 points) produces the only intelligence sentence that uses the singular restart term. |
+
+Other hand-checked figures: FT Lab D Home 0-02 (2) v 2-07 (13) Lab D Away; HT 0-00 v 1-05;
+restart methods won 6 clean / 1 break / 1 foul, lost 7 clean / 2 break.
+
+The one change to a recovered script: `scripts/reference-kickout-phase.mjs` `TARGETS` gained
+`["D", "ledger-D"], ["D", "ledger-D-live"]`. Its computation is unchanged; ledgers A, B, B-live, C
+and their `VALIDATION.json` entries regenerate byte for byte. `VALIDATION.json` for D: 6 credited,
+6 correct, 0 wrong, 0 missed against the hand-written ground truth.

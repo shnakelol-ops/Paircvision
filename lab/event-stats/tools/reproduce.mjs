@@ -28,7 +28,7 @@ const check = (name, ok, detail = "") => results.push({ name, ok, detail });
 const read = (p) => readFileSync(p, "utf8");
 
 // 1. Independence
-const INDEPENDENT = ["scripts/reference.mjs", "scripts/reference-kickout-phase.mjs", "scripts/gen-fixtures.mjs"];
+const INDEPENDENT = ["scripts/reference.mjs", "scripts/reference-kickout-phase.mjs", "scripts/gen-fixtures.mjs", "scripts/gen-fixture-d.mjs"];
 for (const f of INDEPENDENT) {
   const imports = [...read(join(LAB, f)).matchAll(/^\s*import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
   const bad = imports.filter((s) => !s.startsWith("node:") && s !== "./reference.mjs");
@@ -45,8 +45,9 @@ function regenerate() {
   for (const d of ["scripts", "fixtures", "expected"]) cpSync(join(LAB, d), join(tmp, d), { recursive: true });
   const node = (args) => execFileSync(process.execPath, args, { cwd: tmp, stdio: "pipe" });
   node(["scripts/gen-fixtures.mjs", join(tmp, "generated")]);
+  node(["scripts/gen-fixture-d.mjs", join(tmp, "generated")]);
   mkdirSync(join(tmp, "ledgers"));
-  for (const m of ["A", "B", "C"]) node(["scripts/reference.mjs", `fixtures/match-${m}.json`, join(tmp, "ledgers", `ledger-${m}.json`)]);
+  for (const m of ["A", "B", "C", "D"]) node(["scripts/reference.mjs", `fixtures/match-${m}.json`, join(tmp, "ledgers", `ledger-${m}.json`)]);
   // Writes tmp/expected-authoritative/ (never the lab's own copy).
   node(["scripts/reference-kickout-phase.mjs"]);
   return tmp;
@@ -56,7 +57,7 @@ const runA = regenerate();
 const runB = regenerate();
 try {
   // 2. Fixtures
-  for (const [gen, committed] of [["match-A", "match-A"], ["match-B", "match-B.planned"], ["match-C", "match-C"]]) {
+  for (const [gen, committed] of [["match-A", "match-A"], ["match-B", "match-B.planned"], ["match-C", "match-C"], ["match-D", "match-D"]]) {
     check(`fixture: generator reproduces fixtures/${committed}.json`, read(join(runA, "generated", `${gen}.json`)) === read(join(LAB, "fixtures", `${committed}.json`)));
   }
   const planned = JSON.parse(read(join(LAB, "fixtures/match-B.planned.json")));
@@ -75,7 +76,7 @@ try {
     `dropped: ${dropped.map((d) => { const o = JSON.parse(d); return `${o.op} ${o.targetId}${o.newKind ? ` → ${o.newKind}` : ""}`; }).join("; ")}`);
 
   // 3. Ledgers
-  for (const l of ["A", "B", "B-live", "C"]) {
+  for (const l of ["A", "B", "B-live", "C", "D", "D-live"]) {
     check(`ledger: reference.mjs reproduces expected/ledger-${l}.json`, read(join(runA, "ledgers", `ledger-${l}.json`)) === read(join(LAB, "expected", `ledger-${l}.json`)));
   }
   for (const f of readdirSync(join(LAB, "expected-authoritative")).sort()) {

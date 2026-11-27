@@ -1,4 +1,24 @@
 {
- "_about": "Classification of engine-path mismatches. Keys: <ledger>|<scope>|<team>|<statistic>. Categories: confirmed-application-defect, reference-or-fixture-defect, approved-definition-change, harness-drift, unresolved. An entry never changes an expected value; it records why a mismatch exists, with evidence. Entries require human review.",
- "checks": {}
+ "_about": "Classification of laboratory mismatches. 'checks': engine-path mismatches, keyed <ledger>|<scope>|<team>|<statistic>. 'historicalValidation': differences recorded in expected-authoritative/VALIDATION.json, keyed '<ledger>: <restart> → <score>'. Categories: confirmed-application-defect, reference-or-fixture-defect, approved-definition-change, harness-drift, unresolved. An entry never changes an expected value; it records why a difference exists, with evidence. Every entry requires human review.",
+ "checks": {},
+ "historicalValidation": {
+  "ledger-A: A-118 → A-X02": {
+   "category": "reference-or-fixture-defect",
+   "status": "resolved — expected value upheld",
+   "evidence": "A-118: Lab A Away's own kickout, won clean (2H 1400 s). A-X02: Lab A Away penalty goal at 1403 s, nothing recorded in between. A-X02 is a scripted event (scripts/gen-fixtures.mjs, 'scripted extra events … penalties, marks, cards'); the generator gives scripted events truth origin OTHER without modelling possession. docs/KICKOUT-ORIGIN-DEFINITION.md credits 'every score in a possession that began with a kickout, including frees won during it'.",
+   "resolution": "The ledger's kickout-origin credit follows the written definition; the simulator's ground-truth label for the scripted event is the defect. The current production engine agrees with the ledger (engine path: origin RESTART rows match in every scope). VALIDATION.json is left unchanged as historical record."
+  },
+  "ledger-B: B-025 → B-026": {
+   "category": "reference-or-fixture-defect",
+   "status": "resolved — expected value upheld",
+   "evidence": "B-025: Lab B Away's own kickout, won clean (1H 301 s). B-026 was captured as a Lab B Away blocked/saved shot with truth origin RESTART B-025, then Review-edited to a point (fixtures/match-B.json reviewOps). VALIDATION.json compares the post-edit ledger with the pre-edit simulator truth, in which no score existed.",
+   "resolution": "After the Review edit the score genuinely belongs to B-025's kickout possession; the validation's truth predates the edit. ledger-B-live (before Review edits) has no difference. The current production engine agrees with ledger-B. VALIDATION.json is left unchanged as historical record."
+  },
+  "ledger-C: C-135 → C-X01": {
+   "category": "reference-or-fixture-defect",
+   "status": "resolved — expected value upheld",
+   "evidence": "C-135: Lab C Home wins Lab C Away's puckout, clean (2H 1198 s). C-X01: Lab C Home penalty goal at 1222 s, nothing recorded in between (next event C-136, a Lab C Home wide whose truth origin is RESTART C-135). C-X01 is a scripted event with truth origin OTHER, as for A-X02.",
+   "resolution": "Same cause and resolution as ledger-A: A-118 → A-X02. The current production engine agrees with the ledger. VALIDATION.json is left unchanged as historical record."
+  }
+ }
 }

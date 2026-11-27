@@ -184,7 +184,8 @@ function rescope(block, facts) {
   return { block: out, restarts };
 }
 
-const TARGETS = [["A", "ledger-A"], ["B", "ledger-B"], ["B", "ledger-B-live"], ["C", "ledger-C"]];
+// Match D (hand-scripted, Guardian V1 coverage additions) appended; A–C unchanged.
+const TARGETS = [["A", "ledger-A"], ["B", "ledger-B"], ["B", "ledger-B-live"], ["C", "ledger-C"], ["D", "ledger-D"], ["D", "ledger-D-live"]];
 const outDir = `${root}/expected-authoritative`;
 mkdirSync(outDir, { recursive: true });
 const validation = {};
