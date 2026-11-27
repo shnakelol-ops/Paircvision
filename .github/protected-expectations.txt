@@ -1,9 +1,9 @@
 # PáircVision Guardian V1 — protected Event Stats statistical expectations (SHA-256).
 # A change to any listed file needs this manifest updated in the same PR, which the guard
 # lists under REVIEW REQUIRED. Regenerate with `test-guard.mjs update` (owner-reviewed only).
-95ad85d1ae079c4cee82bedea6183bb3f5bd46f96349ffc8702a158b307cc91c  lab/event-stats/browser/coverage-minimum.json
+d97dcea6a6bf11f2d2d8c54ce8c543ad1bdb88aa5f0f91455c5353994c059ad1  lab/event-stats/browser/coverage-minimum.json
 b097c3c2b148f092e9475954ce53e3742d9b20764710d7b6cef285c6cec6b89e  lab/event-stats/browser/expected-pdf-pages.json
-5740e6cea51449b4d66d0bc25493cc04aab9e38af3bbf2cdc081ce91bb7dc16e  lab/event-stats/browser/known-findings.json
+d4cb8628ea827a028a5f37ae4b1a917df7ccec0d4fcedb6fca13df1cf388c75b  lab/event-stats/browser/known-findings.json
 ee4dbed3faa290f2877b5e6fef40b1d01b6916372076cdc28ef8b2cf2f599b5e  lab/event-stats/browser/offline-plan.json
 36b7ab1ce1d7f6f14695edddf619332a0454a17866ae7c32cd50a058002e7cca  lab/event-stats/docs/KICKOUT-ORIGIN-DEFINITION.md
 ab3d61cbeddab08d92228b91b351043908863620443f7a838816b547ae655420  lab/event-stats/engine/classifications.json
@@ -33,7 +33,7 @@ b997dd9d863a0c541b9e45ba88814d057fdcc170d5bf2c3f8ecb24e58558167a  lab/event-stat
 28a80a4bbb29a65918aebcdb4640f6adc70325496db90b788a867e4b6187c7eb  lab/event-stats/persistence/probe-sp.mjs
 3a3cf49261e19627c0550805e3287895cb8f2a5b6c11a88ee5e4d0a6027e5ab4  lab/event-stats/persistence/ui-driver.mjs
 0c529d3e4f86ff6b46b1da612a81c161eb23480a43bc64bd8bd4f502a8622fa5  lab/event-stats/scripts/compare-legacy.mjs
-4b2bb955ab67c1ee6f2f7d9169ac00f650a10de635279147e1f7bcd784497d50  lab/event-stats/scripts/compare.mjs
+b13079d64c25a02deac959ef91506fe41dc6dec24f30b298f2aa3d165d5240f0  lab/event-stats/scripts/compare.mjs
 99df7489eae7d775e9608a5730fd665664f1dc1861a5e62d4c31d63676978788  lab/event-stats/scripts/gen-fixture-d.mjs
 a36c93a1670fcc160f8687ab9216a72ca3ddfc88bdf254200387ed5894fb656a  lab/event-stats/scripts/gen-fixtures.mjs
 231a5766b005af40a98d3030bf1d5bb42d87894fea4d6a77e7686baa921431a2  lab/event-stats/scripts/reference-kickout-phase.mjs

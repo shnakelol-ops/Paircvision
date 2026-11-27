@@ -2,66 +2,40 @@
   "about": "Every browser-lab result that is not PASS must match an entry here, or the run fails as UNCLASSIFIED. Kinds: 'app-finding' = a genuine application defect, which still fails the run unless the product owner records ownerAccepted: true (with name and date in ownerAcceptance); 'live-not-supported' = a fixture scenario the live UI does not offer by design, so the browser path cannot reproduce it (covered by the engine path instead). Where a result lists occurrences (overlapping text pairs, wording hits), every occurrence must match an entry's 'occurrences' pattern, and every pattern must still occur in the run: an entry or pattern that matches nothing fails the run as STALE, so a fixed defect (or a partly fixed one) must be removed from this register. Expected values are never edited to match the app. Protected by the test-integrity guard.",
   "findings": [
     {
-      "id": "BL-F1",
-      "kind": "app-finding",
-      "severity": "P3 cosmetic",
-      "title": "HT and FT snapshot pages draw the STATISTICS badge over the PáircVision wordmark",
-      "where": "src/stats/reviewPdfExport.ts:13831 — snapshot pages call stampLayerBadge(canvas, layer) with the default 'stacked' placement; the Full Review uses 'inline' placement, whose comment (line 6740) says the stacked placement overlapped the wordmark.",
-      "evidence": "Every page of every HT and FT snapshot (matches A–D, live and reopened, and the offline run of A): the italic 'PáircVision' wordmark is drawn underneath the STATISTICS chip at the top right. Statistics are unaffected.",
-      "ownerAccepted": false,
-      "select": [
-        { "source": "compare", "matches": ["A", "B", "C", "D", "A-offline"], "surface": "^PDF (HT|FT) Snapshot( \\(reopened after review edits\\))?$", "stat": "^overlapping text boxes", "occurrences": [{ "pair": ["PáircVision", "STATISTICS"] }] }
-      ]
-    },
-    {
-      "id": "BL-F2",
-      "kind": "app-finding",
-      "severity": "P3 cosmetic",
-      "title": "Hurling shows a zero 'Sin Bins' row although the sport has no sin-bin sanction in the app",
-      "where": "src/pro-tagger/ProTaggerLiveScreen.tsx:1745 (Quick Review counts) and src/stats/reviewPdfExport.ts:4752 (Full Review Intelligence Summary team comparison) — not sport-filtered; getDisciplineOptions('hurling') has no SIN_BIN (src/pro-tagger/pro-tagger-discipline.test.ts:39).",
-      "evidence": "Matches C and D: Quick Review counts and page 2 at HT and FT show ['0', 'Sin Bins', '0']; Full Review page 25 (Intelligence Summary) shows a 'Sin bins' row.",
-      "ownerAccepted": false,
-      "select": [
-        { "source": "compare", "matches": ["C", "D"], "surface": "^Quick Review p2 \\(Counts\\)$", "stat": "^Sin Bins row absent in hurling", "actual": "^1$" },
-        { "source": "compare", "matches": ["C", "D"], "surface": "^Screens$", "stat": "^discipline: 'sin bin' shown where the sport has no sin bin$", "occurrences": [{ "where": "^Quick Review (HT|FT) (counts|page 2)$", "text": "^Sin Bins$" }] },
-        { "source": "compare", "matches": ["C", "D"], "surface": "^PDF Full Review", "stat": "^discipline: 'sin bin' shown where the sport has no sin bin$", "occurrences": [{ "where": "^p25 Intelligence Summary$", "text": "^Sin bins$" }] }
-      ]
-    },
-    {
-      "id": "BL-F3",
-      "kind": "app-finding",
-      "severity": "P3 terminology",
-      "title": "Hurling Full Review labels a puckout outcome 'Kicked Dead'",
-      "where": "src/stats/reviewPdfExport.ts:1098 (Match Summary) and :3345 / :3365 (Restart Chain Analysis) — the row label is not sport-aware (the section headings correctly read PUCKOUTS).",
-      "evidence": "Matches C and D Full Review page 1 (both team columns) and page 28 (both team panels): 'Kicked Dead'.",
-      "ownerAccepted": false,
-      "select": [
-        { "source": "compare", "matches": ["C", "D"], "surface": "^Full Review PDF", "stat": "^terminology: KICKOUTS section heading in hurling$", "actual": "^2$" },
-        { "source": "compare", "matches": ["C", "D"], "surface": "^PDF Full Review", "stat": "^terminology: football 'kick' wording in a hurling match$", "occurrences": [{ "where": "^p1 Match Summary$", "text": "^Kicked Dead$" }, { "where": "^p28 Restart Chain Analysis$", "text": "^Kicked Dead$" }] }
-      ]
-    },
-    {
-      "id": "BL-F4",
-      "kind": "app-finding",
-      "severity": "P3 terminology",
-      "title": "Hurling Full Review titles its frees page 'Free Kick Analysis'",
-      "where": "src/stats/reviewPdfExport.ts — page title and the contents / chapter lists (pages 2, 16 and 20 of the hurling Full Review).",
-      "evidence": "Matches C and D Full Review: '· Free Kick Analysis' (contents, page 2; Part 2 chapter page 16) and the page title 'Free Kick Analysis' (page 20). Approved wording for hurling and camogie: 'Free Analysis'.",
-      "ownerAccepted": false,
-      "select": [
-        { "source": "compare", "matches": ["C", "D"], "surface": "^PDF Full Review", "stat": "^terminology: football 'kick' wording in a hurling match$", "occurrences": [{ "where": "^p2 ", "text": "^· Free Kick Analysis$" }, { "where": "^p16 ", "text": "^· Free Kick Analysis$" }, { "where": "^p20 Free Kick Analysis$", "text": "^Free Kick Analysis$" }] }
-      ]
-    },
-    {
       "id": "BL-L1",
       "kind": "live-not-supported",
       "title": "Match D: a player of the team that LOST a restart (D-005 home #1, D-029 away #1)",
       "where": "Live player picker: on a lost restart it offers only the winning team's squad (observed: 'player picker does not offer D Home 1 (#1); offered: D Away 1').",
       "evidence": "Match D represents legacy events corrected in Review (PROVENANCE.md). The browser run tags these two events with no player (UNSUPPORTED_PLAYER=unknown) and records it; the engine path verifies the expected 'restarts lost' for both players.",
       "select": [
-        { "source": "verify", "matches": ["D"], "ids": ["D-005", "D-029"], "field": "player" },
-        { "source": "compare", "matches": ["D"], "surface": "^Capture$", "stat": "^player number recorded as tapped", "actual": "^2$" },
-        { "source": "compare", "matches": ["D"], "page": "^Player Breakdown$", "team": "^(FOR|OPP) #1$" }
+        {
+          "source": "verify",
+          "matches": [
+            "D"
+          ],
+          "ids": [
+            "D-005",
+            "D-029"
+          ],
+          "field": "player"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "D"
+          ],
+          "surface": "^Capture$",
+          "stat": "^player number recorded as tapped",
+          "actual": "^2$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "D"
+          ],
+          "page": "^Player Breakdown$",
+          "team": "^(FOR|OPP) #1$"
+        }
       ]
     }
   ]

@@ -462,9 +462,13 @@ function fullReview(pages, label) {
     check(surf, "Opposition Facts", "FULL", "restart share won by OPP", "OPP", `${S.OPP.restartsWon} of ${S.OPP.restartsWon + S.OPP.restartsLost}`, val(of, "Restart Share won by OPP", { maxDx: 920 }));
     check(surf, "Opposition Facts", "FULL", "turnovers gifted to OPP", "FOR", S.FOR.turnoversLost, valAbove(of, "TURNOVERS GIFTED TO OPPOSITION") ?? of.texts.find((t) => t.x > 960 && t.y > 590 && t.y < 620 && /^\d+$/.test(t.t))?.t);
   }
+  // Each analysis page must be present (a missing page is MISSING, never a silent skip). The frees page
+  // is titled per sport: "Free Analysis" in hurling (approved wording), "Free Kick Analysis" in football.
+  const FREE_TITLE = hurling ? "Free Analysis" : "Free Kick Analysis";
+  for (const t of ["Restart Analysis", "Turnover Analysis", FREE_TITLE]) check(surf, t, "FULL", "page present", null, "present", byTitle(pages, t) ? "present" : undefined);
   restartAnalysis(byTitle(pages, "Restart Analysis"), surf);
   turnoverAnalysis(byTitle(pages, "Turnover Analysis"), surf);
-  freeAnalysis(byTitle(pages, "Free Kick Analysis"), surf);
+  freeAnalysis(byTitle(pages, FREE_TITLE), surf, FREE_TITLE);
   originsPages(pages, surf);
   intelligencePages(pages, surf);
 }
@@ -562,9 +566,9 @@ function turnoverAnalysis(p, surf) {
   void o;
 }
 
-function freeAnalysis(p, surf) {
+function freeAnalysis(p, surf, title) {
   if (!p) return;
-  const S = L.FULL, pg = "Free Kick Analysis";
+  const S = L.FULL, pg = title;
   const pf = (n) => `${n} possession free${n === 1 ? "" : "s"}`;
   check(surf, pg, "FULL", "possession frees won", "FOR", `Won ${pf(S.FOR.freesWon)}`, firstMatch(p, /^Won \d+ possession frees?$/));
   check(surf, pg, "FULL", "possession frees won by opposition", "OPP", `Opposition won ${pf(S.OPP.freesWon)}`, firstMatch(p, /^Opposition won \d+ possession frees?$/));
@@ -637,6 +641,11 @@ function intelligencePages(pages, surf) {
     check(surf, pg, "FULL", `${AWAY} longest burst`, "OPP", burst(S.longestRun.OPP), lv(`${AWAY} longest burst`));
     for (const [lab, key] of [["Yellow cards", "yellow"], ["Sin bins", "sinBin"], ["Red cards", "red"]]) {
       const r = rightOf(p, lab);
+      // Hurling has no sin-bin sanction: with none recorded (reference count 0) the row must be absent.
+      if (lab === "Sin bins" && hurling && S.FOR.cards.sinBin === 0 && S.OPP.cards.sinBin === 0) {
+        check(surf, pg, "FULL", "team comparison — Sin bins row (none recorded, hurling)", null, "absent", r === undefined ? "absent" : `shown: ${r.join(" ")}`);
+        continue;
+      }
       check(surf, pg, "FULL", `team comparison — ${lab}`, "FOR", S.FOR.cards[key], r?.[0]);
       check(surf, pg, "FULL", `team comparison — ${lab}`, "OPP", S.OPP.cards[key], r?.[1]);
     }
