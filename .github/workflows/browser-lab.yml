@@ -1,0 +1,90 @@
+# PáircVision Guardian V1 — Event Stats browser laboratory (engineering infrastructure only).
+#
+# Drives the real Event Stats UI of the production build in Chromium (Playwright) with
+# synthetic matches A–F (E Ladies Football, F Camogie): capture, HT/FT, Quick Review, HT/FT Snapshot and Full Review
+# PDFs, save, Review edits, reload and reopen; persistence probes (kill/reload/background,
+# storage full and unreadable stores, save/finish); a legacy-format import and a hurling Review
+# Edit probe (constructed tests). Results are compared with the independent expected ledgers in
+# lab/event-stats/expected-authoritative/. See lab/event-stats/docs/BROWSER-LAB.md.
+#
+# When it runs: the FULL laboratory on every pull request to main, every push to main, weekly
+# (Monday 02:41 UTC) and on demand. There is no path filter: Event Stats imports code from across
+# src/, so a path-based skip could report success for a change the laboratory never exercised.
+# A pull request's run is cancelled by a newer push to the same pull request; runs on main are
+# never cancelled, so every change merged to main is verified.
+#
+# It changes nothing: read-only token, no secrets, no deployments, no merges, no retries, no
+# repairs. Nothing under lab/ is built into, or served by, the app. The fast engine laboratory
+# stays in ci.yml and runs on every pull request.
+#
+# Third-party actions are pinned to full commit SHAs (tag in the comment).
+
+name: Event Stats browser lab
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Pull requests share one group per PR, so a newer push cancels the older run. Every other run
+  # (push to main, schedule, manual) gets its own group: a shared group keeps only one pending run
+  # and silently cancels older pending ones, which could drop the verification of a merge.
+  group: ${{ github.event_name == 'pull_request' && format('browser-lab-pr-{0}', github.ref) || format('browser-lab-run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  browser:
+    name: Event Stats laboratory (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # npm ci deletes the tracked (Windows) node_modules before installing.
+      - run: npm ci --no-audit --no-fund
+      # The Chromium build matching the exact Playwright version in package-lock.json.
+      - name: Install Chromium for Playwright
+        run: npx --no-install playwright install --with-deps chromium
+      # Same command as vercel.json "buildCommand".
+      - name: Production build
+        run: node node_modules/vite/bin/vite.js build
+      - name: Serve the build
+        run: |
+          nohup node node_modules/vite/bin/vite.js preview --port 5199 --strictPort > "$RUNNER_TEMP/preview.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5199/pro-tagger > /dev/null; then echo "Serving after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/preview.log"; echo "::error::vite preview did not start"; exit 1
+      - name: Browser laboratory (matches A–F; offline; cross-sport; persistence; constructed tests; PDFs)
+        run: node lab/event-stats/tools/run-browser-lab.mjs --base http://localhost:5199 --summary "$GITHUB_STEP_SUMMARY"
+      - name: Upload report and PDFs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: event-stats-browser-lab-${{ github.run_id }}
+          retention-days: 14
+          # A run that produced no report or PDFs fails here too.
+          if-no-files-found: error
+          path: |
+            lab/event-stats/out/
+            lab/event-stats/results/
+            lab/event-stats/runs/*/pdf/
+            lab/event-stats/runs/*/state/run-log.json
+            lab/event-stats/persistence/results/

@@ -1,0 +1,113 @@
+{
+  "about": "Independent sport rules for the Event Stats laboratory: what each sport's scoring, restarts, discipline and wording must be, with the official source of every Ladies Football and Camogie rule. Used by the reference calculator (scripts/reference.mjs), the fixture generator, the engine and browser laboratories (capture-option probes, wording checks). Never derived from the app. Protected by the test-integrity guard.",
+  "rulesets": {
+    "ladies_football": {
+      "name": "LGFA Official Guide 2026 (Part 2 Playing Rules) as amended by the motions approved at LGFA Special Congress, 15 April 2026",
+      "applies": "Senior adult club championship 2026 ('the new playing rules must be implemented … for all adult club championships in 2026' — Special Congress implementation proposal)",
+      "documents": [
+        "LGFA Official Guide 2026 (PDF created 7 April 2026)",
+        "LGFA Playing Rules — Motions Approved at Special Congress, 15th April 2026 (rule numbers as per the 2025 Official Guide)",
+        "LGFA New Playing Rules Enhancements Summary (17 April 2026)"
+      ]
+    },
+    "camogie": {
+      "name": "Camogie Association Official Guide 2025 — Part 2 Playing Rules (23 May 2025) and Part 1 (1 May 2025); standard playing rules, no trial rules",
+      "applies": "Senior adult club championship (standard rules)",
+      "documents": ["Camogie Official Guide Part 2 (Playing Rules), 23-05-25", "Camogie Official Guide Part 1, 01-05-25"]
+    },
+    "football": { "name": "Existing laboratory definition for men's Gaelic Football (GAA playing rules not supplied; matches A and B unchanged)" },
+    "hurling": { "name": "Existing laboratory definition for hurling (GAA playing rules not supplied; matches C and D unchanged)" }
+  },
+  "sports": {
+    "ladies_football": {
+      "appSport": "ladies_football",
+      "goal": { "value": 3, "rule": "Official Guide 2026 Rule 399 (scores)" },
+      "point": { "value": 1, "rule": "Official Guide 2026 Rule 399" },
+      "twoPoint": {
+        "sources": {
+          "Play": { "valid": true, "rule": "Special Congress Motion 3: kicked by a player with at least one foot on or outside the 40m arc, no team-mate touch; a bounce over counts. A fisted/palmed score is not 'kicked' and is worth 1." },
+          "Free": { "valid": true, "rule": "Special Congress Motions 3, 4, 5, 6 and 11: free kick or solo-and-go from on or outside the 40m arc (incl. a free taken back to the arc after an advance, a 45-foul free from the arc, a team-official misconduct free from the arc apex)" },
+          "45": { "valid": true, "rule": "Special Congress Motion 11 (amends Rule 368/371): a 45m kick that goes directly over, is deflected over by a defender, or bounces over with no team-mate touch counts 2" },
+          "Mark": { "valid": true, "rule": "Special Congress Motion 1 (kick-out mark, free from the hands at the mark) with Motion 3: 2 points when kicked from on or outside the 40m arc. Ladies has no advanced (attacking) mark — the only mark is the kick-out mark." },
+          "Penalty": { "valid": false, "rule": "Official Guide 2026 Rule 426: a penalty is taken from 11 metres, inside the 40m arc — a goal (3) or a point (1), never 2" }
+        }
+      },
+      "onePointFrom45": { "valid": true, "rule": "Special Congress Motion 11: where a team-mate of the 45 taker plays the ball again and it goes over, one point is allowed" },
+      "markSource": { "valid": true, "meaning": "kick-out mark only", "rule": "Special Congress Motion 1" },
+      "sidelineScoringSource": { "valid": false, "rule": "No sideline two-point score in Ladies Football; a sideline kick that scores is a 1-point score from play" },
+      "endLineFree": { "term": "45", "rule": "Official Guide 2026 Rule 371 / Special Congress Motion 11 (45-metre kick)" },
+      "restartTerm": { "term": "kickout", "rule": "Official Guide 2026 Rules 432–435 (kick out)" },
+      "discipline": {
+        "model": "lgfa",
+        "options": ["Yellow", "Red"],
+        "noSeparateSinBin": "A first Yellow Card offence is itself the sin bin (Rule 327); there is no separate sin-bin or black-card sanction.",
+        "firstYellowSinBinSeconds": { "halvesOf30OrMore": 600, "halvesUnder30": 300, "halvesOf15OrLess": 180, "rule": "Official Guide 2026 Rule 327: 10 minutes Playing Time in games of one hour; 5 minutes where less than 30 minutes a half; 3 minutes where 15 minutes or less per half" },
+        "secondYellow": { "result": "red card, dismissed for the rest of the game", "rule": "Official Guide 2026 Rule 327" },
+        "definitions": {
+          "yellow": "recorded Yellow cards",
+          "sinBin": "sin-bin incidents: each player's first Yellow (an unattributed Yellow counts as one incident); recorded historical Sin Bin events also count",
+          "red": "dismissals: distinct players with a recorded Red or a second Yellow (a second Yellow followed by an explicit Red counts once); an unattributed Red counts once"
+        }
+      },
+      "durationHalfMinutes": { "value": 30, "rule": "Official Guide 2026 Rule 350" },
+      "substitutions": { "value": 5, "rule": "Official Guide 2026 Rule 323: 5 in adult provincial/national championships; county boards set club limits — fixture uses 5" },
+      "wording": {
+        "forbidden": [
+          { "id": "puck", "pattern": "\\bpuck", "flags": "i", "why": "Ladies Football uses kick-outs (Rule 432)" },
+          { "id": "65", "pattern": "^65( Won| Lost)?$|\\b65s\\b", "flags": "", "why": "Ladies Football's end-line free is a 45 (Rule 371)" },
+          { "id": "sin-bin-separate", "pattern": "^Sin Bin$", "flags": "", "where": "capture", "why": "No separate sin-bin sanction (Rule 327)" }
+        ]
+      },
+      "captureProbes": [
+        { "family": "TWO_POINT", "familyLabel": "2PT", "present": ["Play", "Free", "45", "Mark"], "absent": ["Penalty"], "rule": "Special Congress Motions 1, 3, 11; Rule 426" },
+        { "family": "POINT", "familyLabel": "Point", "present": ["Play", "Free", "Penalty", "Mark", "45"], "absent": [], "rule": "Rules 399, 426; Motions 1, 11" },
+        { "family": "DISCIPLINE", "familyLabel": "Discipline", "present": ["Yellow", "Red"], "absent": ["Sin Bin"], "rule": "Rule 327" }
+      ]
+    },
+    "camogie": {
+      "appSport": "camogie",
+      "goal": { "value": 3, "rule": "Part 2 Rule 15.1 ('A goal will be equal to three points')" },
+      "point": { "value": 1, "rule": "Part 2 Rule 15.2" },
+      "twoPoint": {
+        "sources": {
+          "Sideline": { "valid": true, "rule": "Part 2 Rule 15.4: 'When the sliotar is played directly over the crossbar from a sideline sliotar, the score will be worth two points, provided it is not touched in flight by any player'" },
+          "Play": { "valid": false, "rule": "Rule 15: no other two-point score" },
+          "Free": { "valid": false, "rule": "Rule 15" },
+          "45": { "valid": false, "rule": "Rule 15" },
+          "Mark": { "valid": false, "rule": "No mark in camogie" },
+          "Penalty": { "valid": false, "rule": "Rule 15" }
+        }
+      },
+      "onePointFromSideline": { "valid": true, "rule": "Part 2 Rule 15.4 (a sideline score touched in flight is not worth two) with Rule 15.2" },
+      "sidelineScoringSource": { "valid": true, "placed": true, "rule": "Part 2 Rule 11.3 'For all frees, including a side-line puck' — a sideline puck is a placed ball" },
+      "markSource": { "valid": false, "rule": "Camogie Official Guide 2025 has no mark" },
+      "endLineFree": { "term": "45", "rule": "Part 2 Rule 11.14 '45 Metre Free'; Rule 13 (a delayed puck-out gives a 45-metre free)" },
+      "restartTerm": { "term": "puckout", "rule": "Part 2 Rule 13 (Puck-Out from Goal)" },
+      "discipline": {
+        "model": "camogie",
+        "options": ["Yellow", "Red"],
+        "yellow": "warning only — no time off (Part 2 Rule 10, penalty for a first offence)",
+        "secondYellow": { "result": "second yellow followed by a red card, dismissed", "rule": "Part 2 Rule 10 (second offence)" },
+        "sinBin": { "exists": false, "rule": "No sin bin in the standard playing rules (Part 1 permits trial rules; none supplied)" },
+        "definitions": { "yellow": "recorded Yellow cards", "sinBin": "none", "red": "recorded Red cards (the coach records the red shown after a second yellow)" }
+      },
+      "durationHalfMinutes": { "value": 30, "rule": "Part 2 Rule 4.1 (sixty minutes)" },
+      "substitutions": { "value": 5, "rule": "Part 2 Rule 5.1" },
+      "wording": {
+        "forbidden": [
+          { "id": "kick", "pattern": "\\bkick", "flags": "i", "why": "Camogie uses puck-outs and frees are struck" },
+          { "id": "65", "pattern": "^65( Won| Lost)?$|\\b65s\\b|^· 65$", "flags": "", "why": "Camogie's end-line free is a 45 (Rule 11.14)" },
+          { "id": "football-two-point", "pattern": "2-POINT PROFILE|45\\+2|40m arc|\\barc\\b", "flags": "i", "why": "Camogie must not inherit football's two-point arc analysis" },
+          { "id": "sin-bin", "pattern": "sin[- ]?bin", "flags": "i", "why": "No sin bin in camogie's standard rules" }
+        ]
+      },
+      "captureProbes": [
+        { "family": "TWO_POINT", "familyLabel": "2PT", "present": ["Sideline"], "absent": ["Play", "Free", "Penalty", "Mark", "45"], "rule": "Part 2 Rule 15.4" },
+        { "family": "POINT", "familyLabel": "Point", "present": ["Play", "Free", "Penalty", "45", "Sideline"], "absent": ["Mark"], "rule": "Rules 15.2, 15.4, 11.14; no mark" },
+        { "family": "WIDE", "familyLabel": "Wide", "present": ["Play", "Free", "Penalty", "45", "Sideline"], "absent": ["Mark"], "rule": "Rules 11.3, 11.14; no mark" },
+        { "family": "GOAL", "familyLabel": "Goal", "present": ["Play", "Free", "Penalty"], "absent": ["Mark"], "rule": "Rule 15.1; no mark" },
+        { "family": "DISCIPLINE", "familyLabel": "Discipline", "present": ["Yellow", "Red"], "absent": ["Sin Bin"], "rule": "Part 2 Rule 10; no sin bin" }
+      ]
+    }
+  }
+}

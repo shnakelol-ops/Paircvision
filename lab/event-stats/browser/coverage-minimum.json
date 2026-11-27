@@ -1,0 +1,36 @@
+{
+  "about": "Minimum coverage a browser-lab run must reach to pass. requiredMatches must all run, and the offline reliability run (match A entirely offline, key 'A-offline', browser/offline-plan.json) must run too, and so must the cross-sport switching test (scripts/run-cross-sport.mjs, at least crossSportChecksMin checks) (a partial run is INCOMPLETE, never PASS). compareChecksMin: UI/PDF comparison checks per match (raised with each added check — last after the BL-F1–F4 repairs added \"page present\" checks; never lowered to make a run pass). pdfsPerMatch / legacyPdfs: every report export a run must produce. Other counts (taps, lifecycle steps, Review operations, persistence scenarios) come from the fixtures and the pass rules in tools/run-browser-lab.mjs. Protected by the test-integrity guard.",
+  "requiredMatches": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+  ],
+  "compareChecksMin": {
+    "A": 641,
+    "B": 1093,
+    "C": 651,
+    "D": 1026,
+    "A-offline": 641,
+    "E": 1054,
+    "F": 1092
+  },
+  "pdfsPerMatch": [
+    "HT-snapshot-live",
+    "HT-snapshot-reopened",
+    "FT-snapshot-live",
+    "FT-snapshot-reopened",
+    "FT-snapshot-reopened2",
+    "FullReview-live",
+    "FullReview-reopened"
+  ],
+  "legacyPdfs": [
+    "L-HT-snapshot-legacy",
+    "L-FT-snapshot-legacy",
+    "L-FullReview-legacy"
+  ],
+  "persistenceScenarios": 18,
+  "crossSportChecksMin": 202
+}

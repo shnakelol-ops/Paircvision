@@ -4,7 +4,8 @@
 // Match time is advanced with Playwright's fake clock so events carry realistic
 // match-clock timestamps without waiting in real time.
 
-export const CHROME = "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome";
+/** Chromium binary: PLAYWRIGHT_CHROMIUM_EXECUTABLE if set, otherwise the browser installed for the project's pinned Playwright (`npx playwright install chromium`). */
+export const CHROME = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 
 const FAMILY_LABEL = {
   football: { GOAL: "Goal", POINT: "Point", TWO_POINT: "2PT", SHOT: "Shot", WIDE: "Wide", RESTART: "Kickout", FORTY_FIVE: "45", SIDELINE: "Sideline", TURNOVER: "Turnover", FREE: "Free", DISCIPLINE: "Discipline" },
@@ -16,12 +17,31 @@ const TURNOVER_ROW_LABEL = {
   OPP: { Tackle: "Dispossessed", Interception: "Intercepted", "HP Error": "HP Error", "KP Error": "KP Error", Overcarried: "Overcarried" },
 };
 
+/** Thrown when the live screen does not offer a fixture event's family or tile (recorded, never substituted). */
+export class NotOffered extends Error {}
+
+/**
+ * Labels the app may show for the same fact. Camogie's end-line free is a "45" (Camogie Official
+ * Guide Rule 11.14); the app currently shows "65" (finding CF-1) — the event is still entered, and
+ * the label shown is recorded so the wording checks report it.
+ */
+const LABEL_ALTERNATIVES = { camogie: { family: { FORTY_FIVE: ["45", "65"] }, tile: { "45": ["45", "65"] } } };
+
 /** Marks the exact tile button with data-audit-target and returns its selector. */
-async function markTile(page, sportKey, family, row, tile) {
-  const familyLabel = FAMILY_LABEL[sportKey][family];
-  let display = tile;
-  if (family === "TURNOVER") display = TURNOVER_ROW_LABEL[row][tile];
-  const ok = await page.evaluate(({ familyLabel, row, display }) => {
+async function markTile(page, sportKey, family, row, tile, sport) {
+  const alts = LABEL_ALTERNATIVES[sport] ?? {};
+  const familyLabels = alts.family?.[family] ?? [FAMILY_LABEL[sportKey][family]];
+  const displays = family === "TURNOVER" ? [TURNOVER_ROW_LABEL[row][tile]] : (alts.tile?.[tile] ?? [tile]);
+  for (const familyLabel of familyLabels) for (const display of displays) {
+    if (familyLabel == null) continue;
+    const found = await markTileLabel(page, familyLabel, row, display);
+    if (found) return { selector: "[data-audit-target='1']", familyLabel, display };
+  }
+  throw new NotOffered(`not offered: ${family}/${row}/${tile} (looked for family ${familyLabels.join(" | ")}, tile ${displays.join(" | ")})`);
+}
+
+async function markTileLabel(page, familyLabel, row, display) {
+  return page.evaluate(({ familyLabel, row, display }) => {
     document.querySelectorAll("[data-audit-target]").forEach((n) => n.removeAttribute("data-audit-target"));
     const spans = Array.from(document.querySelectorAll("span")).filter((s) => s.textContent === familyLabel.toUpperCase() || s.textContent === familyLabel);
     for (const span of spans) {
@@ -39,8 +59,24 @@ async function markTile(page, sportKey, family, row, tile) {
     }
     return false;
   }, { familyLabel, row, display });
-  if (!ok) throw new Error(`tile not found: ${family}/${row}/${tile}`);
-  return "[data-audit-target='1']";
+}
+
+/**
+ * The tiles the live screen renders for each family (home row), read without tapping — for the
+ * capture-option probes in rules/sport-rules.json. Returns null for a family that is not shown.
+ */
+export async function readFamilyTiles(page, familyLabels) {
+  return page.evaluate((labels) => {
+    const out = {};
+    for (const label of labels) {
+      const span = Array.from(document.querySelectorAll("span")).find((s) => s.textContent === label.toUpperCase() || s.textContent === label);
+      const header = span?.parentElement, card = header?.parentElement;
+      if (!card) { out[label] = null; continue; }
+      const tiles = Array.from(card.querySelectorAll("button")).filter((b) => !header.contains(b) && !(b.getAttribute("aria-label") || "").startsWith("Opposition ")).map((b) => b.textContent.trim());
+      out[label] = [...new Set(tiles)];
+    }
+    return out;
+  }, familyLabels);
 }
 
 async function setOwner(page, sportKey, owner) {
@@ -69,14 +105,57 @@ export async function pitchTap(page, nx, ny) {
   await page.mouse.click(box.x + offX + svgX * scale, box.y + offY + svgY * scale);
 }
 
+/** Thrown when the live player picker does not offer the fixture's player (e.g. the wrong squad is shown). */
+export class PickerUnsupported extends Error {}
+
+/**
+ * Marks the player-picker button for a shirt number. Each picker button's text starts with the
+ * shirt number (the jersey graphic and the label both show it, then the name), so match the first
+ * line exactly rather than a text prefix ("8" must not match "88…" or "18"). When the squad name is
+ * known it must also appear on the button, so a same-numbered player of the other team never passes.
+ */
+async function markPlayer(page, number, name) {
+  const found = await page.evaluate(([n, nm]) => {
+    document.querySelectorAll("[data-audit-player]").forEach((x) => x.removeAttribute("data-audit-player"));
+    const byNumber = Array.from(document.querySelectorAll("button")).filter((b) => b.innerText.split("\n")[0].trim() === String(n));
+    const hits = nm ? byNumber.filter((b) => b.innerText.split("\n").some((l) => l.trim() === nm)) : byNumber;
+    if (hits.length === 1) hits[0].setAttribute("data-audit-player", "1");
+    return { hits: hits.length, offered: byNumber.map((b) => b.innerText.split("\n").at(-1).trim()) };
+  }, [number, name ?? null]);
+  if (found.hits === 0 && name) throw new PickerUnsupported(`player picker does not offer ${name} (#${number}); offered: ${found.offered.join(", ") || "none"}`);
+  if (found.hits !== 1) throw new Error(`player picker: expected exactly one button for #${number}${name ? ` (${name})` : ""}, found ${found.hits}`);
+  return "[data-audit-player='1']";
+}
+
 /** Enters one fixture event through the live UI. */
-export async function tagEvent(page, sportKey, ev) {
+export async function tagEvent(page, sportKey, ev, squads, { unsupportedPlayer = "throw", sport = null, notOffered = "throw" } = {}) {
   if (ev.family === "RESTART") await setOwner(page, sportKey, ev.owner);
-  const sel = await markTile(page, sportKey, ev.family, ev.row, ev.tile);
-  await page.locator(sel).click();
+  let marked;
+  try {
+    marked = await markTile(page, sportKey, ev.family, ev.row, ev.tile, sport);
+  } catch (e) {
+    // Only with an explicit opt-in (Golden Matches E and F): record that the app does not offer this
+    // event and enter nothing in its place. The stored-event check reports it as not entered.
+    if (!(e instanceof NotOffered) || notOffered !== "record") throw e;
+    ev._notOffered = e.message;
+    return;
+  }
+  if (marked.display !== ev.tile && ev.family !== "TURNOVER") ev._labelShown = marked.display;
+  await page.locator(marked.selector).click();
   // Player picker
   if (ev.player == null) await page.getByRole("button", { name: "No player / Unknown" }).click();
-  else await page.locator("button").filter({ hasText: new RegExp(`^${ev.player.number}(?!\\d)`) }).first().click();
+  else {
+    const name = squads?.[ev.player.team]?.find((p) => p.number === ev.player.number)?.name;
+    try {
+      await page.locator(await markPlayer(page, ev.player.number, name)).click();
+    } catch (e) {
+      // Only with an explicit opt-in: record the unsupported player and tag the event with no player,
+      // so the run continues and the stored-event check reports the difference (never hidden).
+      if (!(e instanceof PickerUnsupported) || unsupportedPlayer !== "unknown") throw e;
+      ev._pickerUnsupported = e.message;
+      await page.getByRole("button", { name: "No player / Unknown" }).click();
+    }
+  }
   await pitchTap(page, ev.nx, ev.ny);
   // Wrong-way guard: a second tap within 3 s overrides (fixture never relies on it, but report it).
   const warn = await page.getByText("Wrong way? Tap again to override").count();

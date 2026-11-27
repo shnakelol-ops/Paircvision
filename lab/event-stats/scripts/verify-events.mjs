@@ -20,14 +20,22 @@ const [id, runDir, outFile] = process.argv.slice(2);
 const root = new URL("..", import.meta.url).pathname;
 const fx = JSON.parse(readFileSync(`${root}/fixtures/match-${id}.json`, "utf8"));
 const other = (t) => (t === "FOR" ? "OPP" : "FOR");
-const SOURCE = { PLAY: "Play", FREE: "Free", PENALTY: "Penalty", MARK: "Mark", "45": "45", "65": "65" };
+const SOURCE = { PLAY: "Play", FREE: "Free", PENALTY: "Penalty", MARK: "Mark", "45": "45", "65": "65", SIDELINE: "Sideline" };
+// Events the run could not enter because the app does not offer them (run-match NOT_OFFERED=record).
+// Each is reported as its own mismatch ("not entered"); the remaining events stay aligned.
+let NOT_ENTERED = new Set();
 
 function decode(e, squads) {
   const k = e.kind;
   const playerTeam = e.squadId === squads.home ? "FOR" : e.squadId === squads.away ? "OPP" : null;
   const player = e.playerNumber != null ? { number: e.playerNumber, team: playerTeam } : null;
   const base = { half: e.half, clock: e.matchClockSeconds, player };
-  const src = (e.tags ?? []).map((t) => SOURCE[t]).find(Boolean) ?? null;
+  const tagSrc = (e.tags ?? []).map((t) => SOURCE[t]).find(Boolean) ?? null;
+  // Stored tags are internal codes, not wording. The app stores the end-line free of hurling and
+  // camogie under one code ("65"); for camogie that code IS the 45-metre free (Rule 11.14), so it is
+  // decoded to "45" here. The coach-facing wording is verified separately (capture tiles, UI and PDF
+  // terminology checks), where "65" in camogie remains a failure. Any other stored source is compared as is.
+  const src = fx.sport === "camogie" && tagSrc === "65" ? "45" : tagSrc;
   if (["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"].includes(k)) return { ...base, type: "score", team: e.teamSide, value: k === "GOAL" ? 3 : k === "POINT" ? 1 : 2, goal: k === "GOAL", source: k === "FORTY_FIVE_TWO_POINT" ? "45" : src };
   if (k === "WIDE") return { ...base, type: "wide", team: e.teamSide, source: src };
   if (k === "SHOT") return { ...base, type: "shot", team: e.teamSide };
@@ -58,8 +66,9 @@ function compareStage(label, storeFile, facts, deleted) {
   const squads = { home: match.homeSquad.id, away: match.awaySquad.id };
   // Stored events are in tap order; fixture live taps (minus undone taps, minus deletes) give their ids.
   const byId = new Map(facts.map((f) => [f.id, f]));
-  const ids = fx.steps.filter((s) => s.op === "tag" && !s.ev.erroneous).map((s) => s.ev.id).filter((x) => !deleted.has(x) && byId.has(x));
-  const rows = [];
+  const allIds = fx.steps.filter((s) => s.op === "tag" && !s.ev.erroneous).map((s) => s.ev.id).filter((x) => !deleted.has(x) && byId.has(x));
+  const ids = allIds.filter((x) => !NOT_ENTERED.has(x));
+  const rows = allIds.filter((x) => NOT_ENTERED.has(x)).map((x) => ({ id: x, field: "event", expected: "stored", actual: "not entered — not offered by the app", kind: "notEntered" }));
   if (ids.length !== match.events.length) rows.push({ id: "(count)", field: "events", expected: ids.length, actual: match.events.length });
   ids.forEach((fid, i) => {
     const e = match.events[i];
@@ -73,9 +82,10 @@ function compareStage(label, storeFile, facts, deleted) {
     if (got.type === "turnover" && got.sideField !== "FOR") rows.push({ id: fid, field: "turnover teamSide", expected: "FOR", actual: got.sideField });
   });
   const fieldsChecked = ids.reduce((n, fid) => n + Object.keys(expectedOf(byId.get(fid))).length, 0);
-  return { stage: label, events: ids.length, stored: match.events.length, fieldsChecked, mismatches: rows };
+  return { stage: label, events: allIds.length, stored: match.events.length, fieldsChecked, mismatches: rows, notEntered: allIds.length - ids.length };
 }
 
+try { NOT_ENTERED = new Set(JSON.parse(readFileSync(`${runDir}/state/tag-results.json`, "utf8")).filter((t) => t.notOffered).map((t) => t.id)); } catch { /* no tag results: nothing skipped */ }
 const liveFacts = buildFacts({ ...fx, reviewOps: [] });
 const finalFacts = buildFacts(fx);
 const deleted = new Set((fx.reviewOps ?? []).filter((o) => o.op === "delete").map((o) => o.targetId));

@@ -7,7 +7,7 @@ import { PRO_TAGGER_FAMILIES, getFamilyLabel, getRestartTerm, resolvePickerTeamS
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
-import { buildDisciplineStatusMap } from "./pro-tagger-discipline";
+import { buildDisciplineStatusMap, showSinBinRow } from "./pro-tagger-discipline";
 import {
   deleteProTaggerMatchResult,
   saveFailureText,
@@ -1744,7 +1744,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                       ["Yellow Cards",   forCts.yellowCards,  oppCts.yellowCards],
                       ["Sin Bins",       forCts.sinBins,      oppCts.sinBins],
                       ["Red Cards",      forCts.redCards,     oppCts.redCards],
-                    ] as [string, number, number][]).map(([label, fv, ov]) => (
+                    ] as [string, number, number][]).filter(([label, fv, ov]) => label !== "Sin Bins" || showSinBinRow(session.sport, fv, ov)).map(([label, fv, ov]) => (
                       <div key={label} style={CS.row}>
                         <span style={CS.val}>{fv}</span>
                         <span style={CS.rowLabel}>{label}</span>

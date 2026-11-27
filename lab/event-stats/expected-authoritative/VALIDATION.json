@@ -63,5 +63,66 @@
   "wrong": [],
   "truthKickoutOriginScores": 6,
   "missed": []
+ },
+ "ledger-E": {
+  "credited": 20,
+  "correct": 19,
+  "wrong": [
+   {
+    "restart": "E-078",
+    "score": "E-079"
+   }
+  ],
+  "truthKickoutOriginScores": 22,
+  "missed": [
+   {
+    "score": "E-017",
+    "restart": "E-014"
+   },
+   {
+    "score": "E-022",
+    "restart": "E-020"
+   },
+   {
+    "score": "E-077",
+    "restart": "E-075"
+   }
+  ]
+ },
+ "ledger-E-live": {
+  "credited": 21,
+  "correct": 21,
+  "wrong": [],
+  "truthKickoutOriginScores": 22,
+  "missed": [
+   {
+    "score": "E-017",
+    "restart": "E-014"
+   }
+  ]
+ },
+ "ledger-F": {
+  "credited": 20,
+  "correct": 20,
+  "wrong": [],
+  "truthKickoutOriginScores": 21,
+  "missed": [
+   {
+    "score": "F-098",
+    "restart": "F-095"
+   }
+  ]
+ },
+ "ledger-F-live": {
+  "credited": 20,
+  "correct": 20,
+  "wrong": [],
+  "truthKickoutOriginScores": 21,
+  "missed": [
+   {
+    "score": "F-098",
+    "restart": "F-095"
+   }
+  ]
  }
 }

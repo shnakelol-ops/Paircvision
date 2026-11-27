@@ -1,0 +1,294 @@
+{
+  "about": "Every browser-lab result that is not PASS must match an entry here, or the run fails as UNCLASSIFIED. Kinds: 'app-finding' = a genuine application defect, which still fails the run unless the product owner records ownerAccepted: true (with name and date in ownerAcceptance); 'live-not-supported' = a fixture scenario the live UI does not offer by design, so the browser path cannot reproduce it (covered by the engine path instead). Where a result lists occurrences (overlapping text pairs, wording hits), every occurrence must match an entry's 'occurrences' pattern, and every pattern must still occur in the run: an entry or pattern that matches nothing fails the run as STALE, so a fixed defect (or a partly fixed one) must be removed from this register. Expected values are never edited to match the app. Protected by the test-integrity guard.",
+  "findings": [
+    {
+      "id": "BL-L1",
+      "kind": "live-not-supported",
+      "title": "Match D: a player of the team that LOST a restart (D-005 home #1, D-029 away #1)",
+      "where": "Live player picker: on a lost restart it offers only the winning team's squad (observed: 'player picker does not offer D Home 1 (#1); offered: D Away 1').",
+      "evidence": "Match D represents legacy events corrected in Review (PROVENANCE.md). The browser run tags these two events with no player (UNSUPPORTED_PLAYER=unknown) and records it; the engine path verifies the expected 'restarts lost' for both players.",
+      "select": [
+        {
+          "source": "verify",
+          "matches": [
+            "D"
+          ],
+          "ids": [
+            "D-005",
+            "D-029"
+          ],
+          "field": "player"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "D"
+          ],
+          "surface": "^Capture$",
+          "stat": "^player number recorded as tapped",
+          "actual": "^2$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "D"
+          ],
+          "page": "^Player Breakdown$",
+          "team": "^(FOR|OPP) #1$"
+        }
+      ]
+    },
+    {
+      "id": "LF-1",
+      "kind": "app-finding",
+      "status": "open — approved for repair in Phase C (not yet repaired)",
+      "title": "Ladies Football: a penalty two-pointer can be recorded",
+      "where": "Live capture: the 2PT family offers a 'Penalty' source tile; Review Edit offers TWO_POINTER for a penalty point (E-091).",
+      "rule": "LGFA Official Guide 2026 Rule 426 — a penalty is taken from 11 m, inside the 40 m arc: a goal (3) or a point (1), never 2.",
+      "evidence": "Golden Match E capture-option probe (rules/sport-rules.json captureProbes) and Review probe E-091. The fixture never records an invalid penalty two-pointer (no event substituted). Also seen by the cross-sport switching test (scripts/run-cross-sport.mjs) in every fresh and switched profile.",
+      "select": [
+        {
+          "source": "item",
+          "matches": [
+            "E"
+          ],
+          "item": "^capture option TWO_POINT: tile \\\"Penalty\\\" not offered"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "E"
+          ],
+          "item": "^Review probe E-091 — notOffered$"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^ladies_football \\(.*\\): capture option TWO_POINT: tile \\\"Penalty\\\" not offered"
+        }
+      ]
+    },
+    {
+      "id": "LF-2",
+      "kind": "app-finding",
+      "status": "open — approved for repair in Phase C (not yet repaired)",
+      "title": "Ladies Football: discipline modelled as a separate Sin Bin card instead of a first Yellow = sin bin",
+      "where": "Live capture and Review Edit offer a separate 'Sin Bin' discipline option; Quick Review and the Full Review Intelligence Summary count only SIN_BIN events as sin bins (expected each player's first Yellow) and only RED_CARD events as red cards (a second Yellow is a dismissal).",
+      "rule": "LGFA Official Guide 2026 Rule 327 — a first Yellow Card offence is the sin bin (10 min in a one-hour game); a second Yellow is a red card.",
+      "evidence": "Golden Match E: OPP #4 first Yellow 1H 10:00 and second Yellow 2H 20:00 (dismissal); FOR #6 Yellow, Yellow, Red; OPP #12 direct Red. Expected sin bins FOR 1 / OPP 1 (HT FOR 1 / OPP 1), red cards OPP 2. Duplicate discipline capture (a SIN_BIN alongside the Yellow) is detected by the capture-option and Review probes. Also seen by the cross-sport switching test (scripts/run-cross-sport.mjs) in every fresh and switched profile.",
+      "select": [
+        {
+          "source": "item",
+          "matches": [
+            "E"
+          ],
+          "item": "^capture option DISCIPLINE: tile \\\"Sin Bin\\\" not offered"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "E"
+          ],
+          "item": "^Review probe E-X01 — notOffered$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "E"
+          ],
+          "surface": "^Quick Review",
+          "stat": "^(Sin Bins|Red Cards)$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "E"
+          ],
+          "page": "^Intelligence Summary$",
+          "stat": "^team comparison — (Sin bins|Red cards)$"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^ladies_football \\(.*\\): capture option DISCIPLINE: tile \\\"Sin Bin\\\" not offered"
+        }
+      ]
+    },
+    {
+      "id": "CF-1",
+      "kind": "app-finding",
+      "status": "open — approved for repair in Phase C (not yet repaired)",
+      "title": "Camogie: the 45-metre free is labelled '65' (and its rows are missing under the '45' name)",
+      "where": "Capture tiles show '65' instead of '45'; Quick Review '65 Won/Lost'; Full Review Match Summary shot-detail row and Shot & Scoring Efficiency source row say '65'; FT snapshot source row '65'. Display only: the stored code '65' is decoded as the 45-metre free by verify-events.mjs.",
+      "rule": "Camogie Official Guide 2025 Part 2 Rule 11.14 ('45 Metre Free'); Rule 13.",
+      "evidence": "Golden Match F events F-073, F-074, F-134, F-146 and the terminology checks built from rules/sport-rules.json wording.forbidden. Also seen by the cross-sport switching test (scripts/run-cross-sport.mjs) in every fresh and switched profile.",
+      "select": [
+        {
+          "source": "item",
+          "matches": [
+            "F"
+          ],
+          "item": "^capture option (POINT|WIDE): tile \\\"45\\\" offered"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "surface": "^Quick Review",
+          "stat": "^45 (Won|Lost)$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "page": "Shot & Scoring Efficiency$",
+          "stat": "^source 45: "
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "page": "^p1 Match Summary$",
+          "stat": "^(45 \\(row\\)|terminology: shot-detail row says '45' in camogie)$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "stat": "^terminology \\(camogie\\): Camogie's end-line free is a 45",
+          "occurrences": [
+            {
+              "text": "^65( Won| Lost)?$"
+            }
+          ]
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^camogie \\(.*\\): capture option (POINT|WIDE): tile \\\"45\\\" offered"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^camogie \\(.*\\): live-screen wording: Camogie's end-line free is a 45"
+        }
+      ]
+    },
+    {
+      "id": "CF-2",
+      "kind": "app-finding",
+      "status": "open — approved for repair in Phase C (not yet repaired)",
+      "blockedCapture": [
+        "F"
+      ],
+      "title": "Camogie: sideline scoring cannot be recorded (sideline 2-pointer, sideline point, sideline wide)",
+      "where": "Live capture offers no 2PT family and no 'Sideline' source tile on Point / Wide, so F-016, F-039, F-059, F-089, F-112 cannot be entered (recorded as not entered, never substituted). Reports have no 'Sideline 2PT' Quick Review row, no 'Sideline 2-pointers' Match Summary row and the Opposition Facts points label omits sideline 2-pointers. Every other UI/PDF difference that disappears when the reference is recomputed without those 5 events is DOWNSTREAM of this defect and attributed here.",
+      "rule": "Camogie Official Guide 2025 Part 2 Rule 15.4 (sideline puck directly over = 2 points unless touched in flight) with Rules 15.2 and 11.3 (sideline puck is a placed ball).",
+      "evidence": "Golden Match F: 2 successful sideline 2-pointers (FOR 1H, OPP 2H), 1 touched sideline point, 2 sideline wides. Approved report design (Phase A approval). Also seen by the cross-sport switching test (scripts/run-cross-sport.mjs) in every fresh and switched profile.",
+      "select": [
+        {
+          "source": "verify",
+          "matches": [
+            "F"
+          ],
+          "notEntered": true
+        },
+        {
+          "source": "item",
+          "matches": [
+            "F"
+          ],
+          "item": "^capture — F-\\d+: not offered by the app \\(not entered\\)$"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "F"
+          ],
+          "item": "^capture option TWO_POINT: (family offered|tile \\\"Sideline\\\" offered)"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "F"
+          ],
+          "item": "^capture option (POINT|WIDE): tile \\\"Sideline\\\" offered"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "surface": "^Capture$",
+          "stat": "^(stored events after undo of erroneous taps|stored events after review edits/deletes|taps not entered \\(not offered by the app\\))$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "stat": "^(Sideline 2PT|Sideline 2-pointers)$"
+        },
+        {
+          "source": "compare",
+          "matches": [
+            "F"
+          ],
+          "page": "^Opposition Facts$",
+          "stat": "^OPP points value — 'Points \\(incl\\. frees & sideline 2-pointers\\)'$"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^camogie \\(.*\\): capture option TWO_POINT: (family offered|tile \\\"Sideline\\\" offered)"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^camogie \\(.*\\): capture option (POINT|WIDE): tile \\\"Sideline\\\" offered"
+        }
+      ]
+    },
+    {
+      "id": "XS-1",
+      "kind": "app-finding",
+      "status": "open — approved for repair in Phase C (not yet repaired)",
+      "title": "Camogie: a 'Mark' source is offered although camogie has no mark",
+      "where": "Live capture source tiles for Goal / Point / Wide include 'Mark' in camogie (hurling shares the tile set).",
+      "rule": "Camogie Official Guide 2025: no mark rule (Part 2 Rules 11, 15). Ladies Football keeps its kick-out mark (Special Congress Motion 1).",
+      "evidence": "Golden Match F capture-option probes (rules/sport-rules.json captureProbes). Also seen by the cross-sport switching test (scripts/run-cross-sport.mjs) in every fresh and switched profile.",
+      "select": [
+        {
+          "source": "item",
+          "matches": [
+            "F"
+          ],
+          "item": "^capture option (GOAL|POINT|WIDE): tile \\\"Mark\\\" not offered"
+        },
+        {
+          "source": "item",
+          "matches": [
+            "Cross-sport"
+          ],
+          "item": "^camogie \\(.*\\): capture option (GOAL|POINT|WIDE): tile \\\"Mark\\\" not offered"
+        }
+      ]
+    }
+  ]
+}

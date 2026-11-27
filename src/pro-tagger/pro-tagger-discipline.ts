@@ -42,6 +42,15 @@ export function getDisciplineOptions(sport: ProTaggerSport): readonly ProTaggerD
   return ["YELLOW_CARD", "RED_CARD"];
 }
 
+/**
+ * Whether a Sin Bins count row belongs on a screen for this sport: always where the sport has the
+ * sanction; otherwise only if sin bins were somehow recorded (e.g. imported data), so recorded
+ * discipline data is never hidden.
+ */
+export function showSinBinRow(sport: ProTaggerSport, forCount: number, oppCount: number): boolean {
+  return getDisciplineOptions(sport).includes("SIN_BIN") || forCount > 0 || oppCount > 0;
+}
+
 export type DisciplinePlayerStatus = "RED" | "SIN_BIN";
 
 /**

@@ -13,13 +13,15 @@ storage, download or processing cost for coaches.
 | `scripts/gen-fixtures.mjs` | Seeded generator of the three synthetic matches (seeds 20261107–09). |
 | `fixtures/match-{A,B,C}.json` | Synthetic matches: A football (60 min), B football stress (undo, reloads, storage failure, tab close, Review edits), C hurling. `match-B.planned.json` is the generator's plan; `match-B.json` is as run. |
 | `fixtures/match-D.json`, `scripts/gen-fixture-d.mjs` | Hand-scripted hurling match D (48 events) closing three coverage gaps: a player on a lost restart, an unattributed score, a restart net-disadvantage sentence. See `PROVENANCE.md`. |
+| `fixtures/match-{E,F}.json`, `scripts/gen-fixture-ef.mjs` | **Golden Matches E (Ladies Football) and F (Camogie)**: seeded simulation plus rule scenarios played at possession boundaries, each scenario citing its rule. See `PROVENANCE.md`. |
+| `rules/sport-rules.json` | **Independent sport rules** for Ladies Football (LGFA Official Guide 2026 as amended by Special Congress, 15 April 2026) and Camogie (Official Guide 2025): score values and valid two-point sources, discipline model, end-line free and restart terms, forbidden wording, capture-option probes — every rule with its citation. Read by the reference, the engine lab and the browser lab; never derived from the app. |
 | `expected-authoritative/` | **The expected results** (authoritative kickout-origin definition) + `VALIDATION.json`. |
 | `expected/` | The same ledgers under the previous restart rule — kept because `reference-kickout-phase.mjs` must reproduce them before it recomputes. |
 | `docs/KICKOUT-ORIGIN-DEFINITION.md` | The written kickout-origin definition the reference implements. |
 | `engine/` | **Engine path**: feeds each match into the current production engine the way the live screen does and compares with the ledgers. `classifications.json` records why any mismatch exists. |
 | `tools/reproduce.mjs` | Independence + reproducibility check (no `src/`). |
 | `tools/recover-from-history.mjs` | The one-off recovery from branch `claude/pairc-event-stats-audit-ca55sj` @ `76c6139` (see `PROVENANCE.md`). |
-| `scripts/` (other), `persistence/` | Browser path (real UI in Chromium) — recovered, **not yet restored or verified**; see `docs/BROWSER-READINESS.md` and `docs/BROWSER-LAB-PLAN.md`. |
+| `scripts/` (other), `persistence/`, `browser/`, `tools/run-browser-lab.mjs` | **Browser path**: the real Event Stats UI in Chromium (Playwright) — capture, stored events, persistence, Review edits, PDFs — vs the same ledgers. `browser/known-findings.json` registers every accepted non-pass. See `docs/BROWSER-LAB.md`. |
 
 ## Run (repo root, after `npm ci`)
 
@@ -36,7 +38,7 @@ classified as an application defect or unresolved. In CI the same steps run as t
 report, a lab test skipped or not run, fewer checks than `engine/coverage-minimum.json`, a match
 or ledger missing) and writes the per-match result to the job summary.
 
-## What the engine path verifies (per match A, B and D before and after Review edits, C)
+## What the engine path verifies (per match A, B, D, E and F before and after Review edits, C)
 
 - Team totals for FULL / 1H / 2H, both teams: score, goals, 2-pointers, scores/attempts, shooting %,
   wides, short / post / blocked shots, own restarts retained / lost, restart share, turnovers,
@@ -52,10 +54,23 @@ or ledger missing) and writes the per-match result to the job summary.
   team and states a number; no kickout / 2-pointer wording for hurling; the restart net-disadvantage
   sentence is produced wherever the reference shows a gap of more than 10 points).
 - Every difference recorded in `VALIDATION.json` has an entry in `engine/classifications.json`.
+- E and F: capture options against `rules/sport-rules.json` (an event the app does not offer is
+  reported as blocked, never replaced); Ladies Football discipline (first Yellow = sin bin, second
+  Yellow = dismissal) including constructed probes for 30-, 25- and 15-minute halves and half-time
+  transitions; every failure is classified **direct** or **downstream** (it passes against the
+  reference recomputed without the blocked events).
 
 Not verifiable on this path: per-player cards (the app keeps a live sin-bin / red status, not a
 per-player card count), anything needing the browser (persistence, reloads, storage failure,
-substitutions, PDFs themselves).
+substitutions, PDFs themselves) — those are the browser path's job.
+
+## Browser path
+
+`node lab/event-stats/tools/run-browser-lab.mjs` against a served production build (including an
+offline run of match A from the service worker); in CI the
+**Event Stats laboratory (browser)** check (`.github/workflows/browser-lab.yml`: weekly, on demand,
+and on PRs and pushes that touch Event Stats). What it checks, the failure rules and the register:
+`docs/BROWSER-LAB.md`.
 
 ## Rules
 

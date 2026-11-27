@@ -17,14 +17,31 @@ const frac = (num, den, definition) => ({ num, den, pct: pct(num, den), definiti
 
 const PLACED_SOURCES = new Set(["Free", "Penalty", "Mark", "45", "65"]);
 
+// Ladies Football and Camogie rules, each citing its official source (rules/sport-rules.json).
+// Football and hurling (matches A–D) keep the original definitions below, unchanged.
+const SPORT_RULES = JSON.parse(readFileSync(new URL("../rules/sport-rules.json", import.meta.url), "utf8")).sports;
+
+/** Is a score / wide from this source a placed ball? Camogie's sideline puck is one (Part 2 Rule 11.3). */
+function isPlaced(sport, tile) {
+  if (tile === "Sideline") return SPORT_RULES[sport]?.sidelineScoringSource?.placed === true;
+  return PLACED_SOURCES.has(tile);
+}
+
 /** Points value of a score under the sport's rules. */
 function scoreValue(sport, family, tile) {
-  if (family === "GOAL") return 3; // goal = 3 points in football and hurling
+  const rules = SPORT_RULES[sport];
+  if (rules && tile === "Mark" && !rules.markSource.valid) throw new Error(`${sport}: no mark (${rules.markSource.rule})`);
+  if (rules && tile === "Sideline" && !rules.sidelineScoringSource.valid) throw new Error(`${sport}: no sideline scoring source (${rules.sidelineScoringSource.rule})`);
+  if (family === "GOAL") return rules ? rules.goal.value : 3; // goal = 3 points in football and hurling
   if (family === "TWO_POINT") {
     if (sport === "hurling") throw new Error("hurling has no two-point score");
+    if (rules) {
+      const src = rules.twoPoint.sources[tile];
+      if (!src?.valid) throw new Error(`${sport}: no two-point score from ${tile} (${src?.rule ?? "not a two-point source"})`);
+    }
     return 2; // 2025 football rules: point from outside the 40m arc (incl. 45s)
   }
-  return 1;
+  return rules ? rules.point.value : 1;
 }
 
 function factFromTap(sport, ev) {
@@ -35,9 +52,10 @@ function factFromTap(sport, ev) {
   switch (ev.family) {
     case "GOAL": case "POINT": case "TWO_POINT":
       return { ...base, type: "score", team: ev.row, value: scoreValue(sport, ev.family, ev.tile), goal: ev.family === "GOAL",
-        source: ev.tile, placed: PLACED_SOURCES.has(ev.tile) };
+        source: ev.tile, placed: isPlaced(sport, ev.tile) };
     case "WIDE":
-      return { ...base, type: "wide", team: ev.row, source: ev.tile, placed: PLACED_SOURCES.has(ev.tile) };
+      if (SPORT_RULES[sport] && ev.tile === "Mark" && !SPORT_RULES[sport].markSource.valid) throw new Error(`${sport}: no mark`);
+      return { ...base, type: "wide", team: ev.row, source: ev.tile, placed: isPlaced(sport, ev.tile) };
     case "SHOT":
       // Event Stats' Shot tiles (Short / Block/Save / Post) record no source.
       return { ...base, type: "shot", team: ev.row, outcome: ev.tile, source: null, placed: false };
@@ -91,11 +109,39 @@ function applyReviewOp(facts, op) {
 
 export function buildFacts(fixture) {
   const facts = fixture.steps
-    .filter((s) => s.op === "tag" && !s.ev.erroneous)
+    .filter((s) => s.op === "tag" && !s.ev.erroneous && !(fixture.excludeIds ?? []).includes(s.ev.id))
     .map((s) => factFromTap(fixture.sport, s.ev));
-  for (const op of fixture.reviewOps ?? []) applyReviewOp(facts, op);
+  for (const op of fixture.reviewOps ?? []) if (!(fixture.excludeIds ?? []).includes(op.targetId)) applyReviewOp(facts, op);
   // Chronological order: half, then clock (stable on ties = tap order).
-  return facts.map((f, i) => ({ ...f, _seq: i })).sort((a, b) => a.half - b.half || a.clock - b.clock || a._seq - b._seq);
+  const sorted = facts.map((f, i) => ({ ...f, _seq: i })).sort((a, b) => a.half - b.half || a.clock - b.clock || a._seq - b._seq);
+  if (SPORT_RULES[fixture.sport]?.discipline?.model === "lgfa") annotateLgfaCards(sorted);
+  return sorted;
+}
+
+/**
+ * LGFA discipline (Official Guide 2026 Rule 327), over the whole match in order: a player's first
+ * Yellow is a sin-bin incident; a second Yellow is a dismissal; a Red is a dismissal unless the
+ * player was already dismissed (a second Yellow followed by an explicit Red counts once). An
+ * unattributed Yellow counts as one sin-bin incident, an unattributed Red as one dismissal.
+ */
+function annotateLgfaCards(facts) {
+  const yellows = new Map(), dismissed = new Set();
+  for (const f of facts) {
+    if (f.type !== "card") continue;
+    const who = f.player ? `${f.player.team} #${f.player.number}` : null;
+    if (f.card === "Yellow") {
+      const n = who ? (yellows.get(who) ?? 0) + 1 : 1;
+      if (who) yellows.set(who, n);
+      f.lgfa = { yellowNo: n, sinBinIncident: n === 1, dismissal: n === 2 && !dismissed.has(who) };
+      if (n === 2 && who) dismissed.add(who);
+    } else if (f.card === "Red") {
+      const already = who != null && dismissed.has(who);
+      f.lgfa = { dismissal: !already, directRed: !already && (who == null || (yellows.get(who) ?? 0) < 2) };
+      if (who) dismissed.add(who);
+    } else if (f.card === "Sin Bin") {
+      f.lgfa = { sinBinIncident: true, historicalSinBin: true };
+    }
+  }
 }
 
 // ─── 2. Statistics ──────────────────────────────────────────────────────────
@@ -373,14 +419,22 @@ function teamBlock(fixture, facts, team) {
         unattributed: row((f) => !f.placed && f.source == null),
       };
     })(),
-    bySource: Object.fromEntries(["Play", "Free", "Mark", "45", "65", "Penalty", null].map((src) => {
+    bySource: Object.fromEntries([...["Play", "Free", "Mark", "45", "65", "Penalty"], ...(fixture.sport === "camogie" ? ["Sideline"] : []), null].map((src) => {
       const a = att.filter((f) => (f.source ?? null) === src);
       return [src ?? "Unclassified", { attempts: a.length, scores: a.filter((f) => f.type === "score").length, misses: a.filter((f) => f.type !== "score").length }];
     })),
     twoPointBySource: {
-      fromPlayFreeMark: scores.filter((f) => f.value === 2 && f.source !== "45").length,
+      fromPlayFreeMark: scores.filter((f) => f.value === 2 && f.source !== "45" && f.source !== "Sideline").length,
       from45: scores.filter((f) => f.value === 2 && f.source === "45").length,
+      ...(fixture.sport === "camogie" ? { fromSideline: scores.filter((f) => f.value === 2 && f.source === "Sideline").length } : {}),
     },
+    // Camogie sideline scoring (Part 2 Rules 11.3, 15.4): every attempt from a sideline puck.
+    ...(fixture.sport === "camogie" ? { sidelineScoring: (() => {
+      const a = att.filter((f) => f.source === "Sideline");
+      const sc = a.filter((f) => f.type === "score");
+      return { attempts: a.length, scores: sc.length, twoPointers: sc.filter((f) => f.value === 2).length, onePointers: sc.filter((f) => f.value === 1).length,
+        misses: a.length - sc.length, pointsValue: sc.reduce((x, f) => x + f.value, 0) };
+    })() } : {}),
     restartMethods: {
       wonClean: methodCount(koWonAll, "Clean"), wonBreak: methodCount(koWonAll, "Break"), wonFoul: methodCount(koWonAll, "Foul"),
       lostClean: methodCount(koLostAll, "Clean"), lostBreak: methodCount(koLostAll, "Break"), lostFoul: methodCount(koLostAll, "Foul"),
@@ -401,7 +455,12 @@ function teamBlock(fixture, facts, team) {
     },
     fortyFivesWon: facts.filter((f) => f.type === "fortyFive" && f.winner === team).length,
     sidelinesWon: facts.filter((f) => f.type === "sideline" && f.winner === team).length,
-    cards: { yellow: cards.filter((c) => c.card === "Yellow").length, sinBin: cards.filter((c) => c.card === "Sin Bin").length, red: cards.filter((c) => c.card === "Red").length },
+    cards: SPORT_RULES[fixture.sport]?.discipline?.model === "lgfa"
+      // LGFA definitions (rules/sport-rules.json): sin bins = first-yellow incidents (+ historical Sin
+      // Bin events); red = dismissals (second yellow or red, once per player); directRed separately.
+      ? { yellow: cards.filter((c) => c.card === "Yellow").length, sinBin: cards.filter((c) => c.lgfa?.sinBinIncident).length,
+          red: cards.filter((c) => c.lgfa?.dismissal).length, directRed: cards.filter((c) => c.lgfa?.directRed).length }
+      : { yellow: cards.filter((c) => c.card === "Yellow").length, sinBin: cards.filter((c) => c.card === "Sin Bin").length, red: cards.filter((c) => c.card === "Red").length },
     turnoversWonOwnHalf: toWon.filter((f) => inOwnHalf(fixture, team, f.half, f.nx)).length,
     turnoversWonOppHalf: toWon.filter((f) => !inOwnHalf(fixture, team, f.half, f.nx)).length,
     turnoversLostOwnHalf: toLost.filter((f) => inOwnHalf(fixture, team, f.half, f.nx)).length,

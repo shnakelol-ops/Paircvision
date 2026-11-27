@@ -1,5 +1,5 @@
 # PáircVision Guardian V1 — every existing Vitest test, by file and full name.
-# 3821 tests in 271 files. New tests are accepted; removing one needs this file updated
+# 3829 tests in 272 files. New tests are accepted; removing one needs this file updated
 # in the same PR, which the guard lists under REVIEW REQUIRED. Regenerate (owner-reviewed only):
 #   npx vitest run --reporter=json --outputFile=vitest-report.json
 #   node .github/scripts/test-guard.mjs update --report vitest-report.json
@@ -3950,6 +3950,15 @@
   splitPercentages — exhaustive partitions always total 100 is deterministic for three-way ties and sums to 100
   splitPercentages — exhaustive partitions always total 100 returns null when there is nothing to divide
   splitPercentages — exhaustive partitions always total 100 treats negative and non-finite counts as zero
+@ src/stats/reporting/sportPresentationRepairs.test.ts
+  freeAnalysisTitle — BL-F4 football keeps 'Free Kick Analysis'
+  freeAnalysisTitle — BL-F4 hurling and camogie say 'Free Analysis'
+  restartDeadLabel — BL-F3 football keeps 'Kicked Dead'
+  restartDeadLabel — BL-F3 hurling and camogie say 'Puckout Dead'
+  sin-bin row — BL-F2 football always shows the Sin Bins row, even at zero
+  sin-bin row — BL-F2 hurling and camogie hide a zero Sin Bins row
+  sin-bin row — BL-F2 recorded sin bins are never hidden, whatever the sport
+  sin-bin row — BL-F2 the Full Review rule matches the app's discipline ruleset for every Event Stats sport
 @ src/stats/reporting/surfaceParity.test.ts
   instant-score parity — opposition instant-score marker excluded consistently everywhere Coaching Brief — ledger opposition scoreline is unchanged
   instant-score parity — opposition instant-score marker excluded consistently everywhere Full Review PDF — Match Summary Table (OPP) is unchanged

@@ -16,11 +16,21 @@
 
 import { chromium, devices } from "playwright";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { CHROME, tagEvent, readOwnerToggle } from "./ui-driver.mjs";
+import { spawn } from "node:child_process";
+import { CHROME, tagEvent, readOwnerToggle, readFamilyTiles } from "./ui-driver.mjs";
 
-const [fixturePath, outDir, baseUrl = "http://localhost:5199"] = process.argv.slice(2);
+const [fixturePath, outDir, baseUrlArg = "http://localhost:5199"] = process.argv.slice(2);
+// OFFLINE_SERVE_ROOT=<repo root with a production build in dist/>: offline mode. This runner starts its
+// own `vite preview` of that build, installs the app online, then stops the server and takes the
+// browser offline before the match is created — every later step runs from the service worker.
+// OFFLINE_PLAN=<json>: lifecycle steps (close / reload) inserted after given tap counts.
+const OFFLINE_ROOT = process.env.OFFLINE_SERVE_ROOT ?? null;
+const OFFLINE_PORT = Number(process.env.OFFLINE_PORT ?? 5299);
+let baseUrl = OFFLINE_ROOT ? `http://localhost:${OFFLINE_PORT}` : baseUrlArg;
 const fx = JSON.parse(readFileSync(fixturePath, "utf8"));
-const sportKey = fx.sport === "hurling" ? "hurling" : "football";
+// Laboratory sport → driver labels (kick-out / puck-out families) and the app's sport button.
+const sportKey = fx.sport === "hurling" || fx.sport === "camogie" ? "hurling" : "football";
+const SPORT_BUTTON = { football: "Gaelic Football", ladies_football: "Ladies Football", hurling: "Hurling", camogie: "Camogie" };
 mkdirSync(`${outDir}/pdf`, { recursive: true });
 mkdirSync(`${outDir}/pdf-text`, { recursive: true });
 mkdirSync(`${outDir}/screens`, { recursive: true });
@@ -172,13 +182,55 @@ async function captureQuickReview(label) {
   return data;
 }
 
+// ── 0. Offline mode: install online, then go genuinely offline ─────────────
+const offline = OFFLINE_ROOT ? { port: OFFLINE_PORT } : null;
+if (offline) {
+  const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "preview", "--port", String(OFFLINE_PORT), "--strictPort"], { cwd: OFFLINE_ROOT, stdio: "ignore" });
+  // The runner never waits on its server: it is stopped below, and killed on any exit path.
+  server.unref();
+  offline.stopServer = () => { try { server.kill("SIGKILL"); } catch { /* already gone */ } };
+  process.on("exit", offline.stopServer);
+  const up = async () => { try { return (await fetch(`${baseUrl}/pro-tagger`)).ok; } catch { return false; } };
+  for (let i = 0; i < 100 && !(await up()); i++) await new Promise((r) => setTimeout(r, 200));
+  offline.serverUpBeforeInstall = await up();
+  // Negative control: service workers blocked, the same app loaded online in its own context.
+  const negContext = await browser.newContext({ serviceWorkers: "block", viewport: { width: 430, height: 932 } });
+  const negPage = await negContext.newPage();
+  await negPage.goto(`${baseUrl}/pro-tagger`);
+  offline.negativeLoadedOnline = await negPage.getByText("New Match").isVisible();
+  // Install: first load registers the service worker (on window load); a reload makes it control the page.
+  await page.goto(`${baseUrl}/pro-tagger`);
+  offline.swActive = await page.evaluate(() => Promise.race([navigator.serviceWorker.ready.then((r) => !!r.active), new Promise((r) => setTimeout(() => r(false), 15000))]));
+  await page.reload();
+  offline.controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
+  offline.precache = await page.evaluate(async () => { const ks = await caches.keys(); let n = 0; for (const k of ks) n += (await (await caches.open(k)).keys()).length; return { caches: ks.length, entries: n }; });
+  // Genuinely offline: the server is stopped (and must not answer) and the browser is offline.
+  server.kill("SIGTERM");
+  await new Promise((r) => server.once("exit", r));
+  offline.serverStopped = !(await up());
+  await context.setOffline(true);
+  await negContext.setOffline(true);
+  offline.networkResponsesWhileOffline = 0;
+  context.on("response", (r) => { if (r.url().startsWith(baseUrl) && !r.fromServiceWorker()) offline.networkResponsesWhileOffline++; });
+  // Same-origin requests that fail offline (not precached, e.g. PNG / JPG images): recorded as evidence.
+  offline.failedRequestsWhileOffline = [];
+  context.on("requestfailed", (r) => { if (r.url().startsWith(baseUrl)) { const u = r.url().slice(baseUrl.length); if (!offline.failedRequestsWhileOffline.includes(u)) offline.failedRequestsWhileOffline.push(u); } });
+  // The negative control must fail: without a service worker nothing can open offline.
+  try { await negPage.reload({ timeout: 10000 }); offline.negativeControl = { navigationFailed: false, appShown: await negPage.getByText("New Match").isVisible().catch(() => false) }; }
+  catch (e) { offline.negativeControl = { navigationFailed: true, error: String(e.message).split("\n")[0].slice(0, 200) }; }
+  await negContext.close();
+  writeFileSync(`${outDir}/state/offline-checks.json`, JSON.stringify(offline, null, 1));
+  note("offline: installed, server stopped, browser offline", offline);
+}
+
 // ── 1. Create match ──────────────────────────────────────────────────────────
 await page.goto(`${baseUrl}/pro-tagger`);
+if (offline) offline.openedOffline = await page.getByText("New Match").isVisible();
 await page.getByText("New Match").click();
-await clickByText(fx.sport === "hurling" ? "Hurling" : "Gaelic Football");
+await clickByText(SPORT_BUTTON[fx.sport]);
 await page.getByPlaceholder("e.g. Kilkenny").fill(fx.homeTeam);
 await page.getByPlaceholder("e.g. Tipperary").fill(fx.awayTeam);
-await page.getByPlaceholder("e.g. Synthetic Venue D").fill(fx.venue);
+await page.getByPlaceholder("e.g. Croke Park").fill(fx.venue);
 await clickByText(fx.matchType);
 await clickByText(`${fx.halfMinutes} min`);
 await shot("01-setup");
@@ -201,6 +253,18 @@ await page.getByText(fx.attackDirection === "right" ? "RIGHT" : "LEFT", { exact:
 await clickByText("▶ Start");
 note("match started");
 
+// Capture options the sport's rules require (rules/sport-rules.json → captureProbes): the tiles the
+// live screen renders for each listed family, read before any tap.
+{
+  const rules = JSON.parse(readFileSync(new URL("../rules/sport-rules.json", import.meta.url), "utf8")).sports[fx.sport];
+  const probes = rules?.captureProbes ?? [];
+  if (probes.length) {
+    const tiles = await readFamilyTiles(page, probes.map((p) => p.familyLabel));
+    writeFileSync(`${outDir}/state/capture-probes.json`, JSON.stringify({ sport: fx.sport, probes, tiles }, null, 1));
+    note("capture options read", tiles);
+  }
+}
+
 // ── 2. Replay the fixture through the UI ────────────────────────────────────
 const ownerToggleChecks = [];
 const tagResults = [];
@@ -210,16 +274,25 @@ const reachability = [];
 const lifecycleChecks = [];   // substitutions, storage failure, closure — each with its observed result
 let liveCount = 0;            // events that should be in the match right now
 let pendingRecoveryCheck = null;
+/** The stored events of the live match, exactly as saved (for identity checks across close / reload). */
+const storedEventsJson = async () => page.evaluate(() => { try { return JSON.stringify(JSON.parse(localStorage.getItem("pitchflow_pro_tagger_matches_v1") || "[]")[0]?.events ?? null); } catch { return null; } });
 const storedEvents = async () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem("pitchflow_pro_tagger_matches_v1") || "[]")[0]?.events?.length ?? 0; } catch { return -1; } });
 const saveStripText = async () => page.evaluate(() => { const t = document.body.innerText; const m = t.match(/(✓ Event saved|Save failed[^\n]*|Save blocked[^\n]*)/); return m ? m[1] : null; });
 let half = 1;
-for (const step of fx.steps) {
+// Offline plan: extra close / reload steps after given tap counts (stat-neutral; each is judged).
+const OFFLINE_PLAN = process.env.OFFLINE_PLAN ? JSON.parse(readFileSync(process.env.OFFLINE_PLAN, "utf8")).insert : [];
+const runSteps = [];
+{ let taps = 0;
+  for (const st of fx.steps) { runSteps.push(st); if (st.op === "tag") { taps++; for (const x of OFFLINE_PLAN.filter((y) => y.afterTap === taps)) runSteps.push({ op: x.op, planned: true }); } } }
+for (const step of runSteps) {
   if (step.op === "tag") {
     const ev = step.ev;
     await advanceTo(ev.clock);
-    await tagEvent(page, sportKey, ev);
-    if (!ev.erroneous) liveCount++;
-    tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride });
+    await tagEvent(page, sportKey, ev, fx.squads, { unsupportedPlayer: process.env.UNSUPPORTED_PLAYER === "unknown" ? "unknown" : "throw", sport: fx.sport, notOffered: process.env.NOT_OFFERED === "record" ? "record" : "throw" });
+    if (!ev.erroneous && !ev._notOffered) liveCount++;
+    tagResults.push({ id: ev.id, erroneous: !!ev.erroneous, wrongWayOverride: !!ev._wrongWayOverride, ...(ev._pickerUnsupported ? { pickerUnsupported: ev._pickerUnsupported } : {}), ...(ev._notOffered ? { notOffered: ev._notOffered } : {}), ...(ev._labelShown ? { labelShown: ev._labelShown } : {}) });
+    if (ev._notOffered) { note("NOT OFFERED BY THE APP — not entered", { id: ev.id, detail: ev._notOffered }); continue; }
+    if (ev._pickerUnsupported) note("PLAYER NOT OFFERED BY LIVE PICKER — tagged with no player", { id: ev.id, detail: ev._pickerUnsupported });
     if (pendingRecoveryCheck) {
       await page.clock.runFor(300);
       const stored = await storedEvents();
@@ -234,6 +307,12 @@ for (const step of fx.steps) {
     await page.getByRole("button", { name: "↩", exact: true }).first().click();
     await page.waitForTimeout(100);
     note("undo", { undoes: step.undoes });
+    // The undone tap must leave storage. While writes are failing the stored match stays frozen at
+    // the count before the failure (checked separately), so that is what is expected then.
+    const failing = lifecycleChecks.findLast((c) => c.op === "storageFail" || c.op === "storageRestore")?.op === "storageFail";
+    const expectedStored = failing ? lifecycleChecks.findLast((c) => c.op === "storageFail").storedBefore : liveCount;
+    const stored = await storedEvents();
+    lifecycleChecks.push({ op: "undo", check: `undo of ${step.undoes}: the undone event is not stored`, undoes: step.undoes, storageFailing: failing, stored, expectedStored, pass: stored === expectedStored });
   } else if (step.op === "sub") {
     await advanceTo(Math.max(await readClock(), step.clock));
     await page.getByRole("button", { name: "⇄ Subs", exact: true }).first().click();
@@ -285,6 +364,7 @@ for (const step of fx.steps) {
     await page.clock.runFor(1500);
     const before = await readClock().catch(() => null);
     const storedBefore = await storedEvents();
+    const jsonBefore = await storedEventsJson();
     await page.close();
     page = await context.newPage();
     attach(page);
@@ -297,19 +377,25 @@ for (const step of fx.steps) {
     if (sawResume) await resumeBtn.click();
     const after = await readClock().catch(() => null);
     const stored = await storedEvents();
-    lifecycleChecks.push({ op: "close", check: "tab closed and app reopened: every event kept, clock resumes where it stopped", storedBefore, stored, expectedStored: liveCount, clockBefore: before, clockAfter: after, sawResumeScreen: sawResume > 0,
-      pass: stored === liveCount && storedBefore === liveCount && after === before });
+    const eventsIdentical = jsonBefore != null && jsonBefore === (await storedEventsJson());
+    lifecycleChecks.push({ op: "close", check: "tab closed and app reopened: every event kept unchanged, clock resumes where it stopped", storedBefore, stored, expectedStored: liveCount, clockBefore: before, clockAfter: after, sawResumeScreen: sawResume > 0, eventsIdentical,
+      pass: stored === liveCount && storedBefore === liveCount && after === before && eventsIdentical });
     note("tab closed + app reopened", { clockBefore: before, clockAfter: after, stored });
   } else if (step.op === "pause") {
-    const before = await readClock();
+    const beforePress = await readClock();
     await clickByText("⏸ Pause");
+    // Read once paused: the clock runs in real time until the press lands, so a read taken before
+    // the press can be a second behind. The check is that a paused clock does not move.
+    const before = await readClock();
     await page.clock.runFor(step.realSeconds * 1000);
     const during = await readClock();
     await clickByText("▶ Resume");
-    note("pause/resume", { before, afterPause: during, realSeconds: step.realSeconds });
+    note("pause/resume", { beforePress, before, afterPause: during, realSeconds: step.realSeconds });
+    lifecycleChecks.push({ op: "pause", check: `pause for ${step.realSeconds}s: the match clock does not advance`, before, during, pass: before === during });
   } else if (step.op === "reload") {
     await page.clock.runFor(1500); // let the 1.2 s autosave debounce fire, as on a real device
     const before = await readClock().catch(() => null);
+    const jsonBefore = await storedEventsJson();
     await page.reload();
     await page.getByText("Resume in-progress match").click();
     await page.waitForTimeout(300);
@@ -317,7 +403,10 @@ for (const step of fx.steps) {
     const resumeBtn = page.getByRole("button", { name: "RESUME MATCH", exact: true });
     if (await resumeBtn.count()) await resumeBtn.click();
     const after = await readClock().catch(() => null);
-    note("reload + resume", { clockBefore: before, clockAfter: after, events: (await dumpStore(`reload-${tagResults.length}`))[0]?.events.length });
+    const storedAfterReload = (await dumpStore(`reload-${tagResults.length}`))[0]?.events.length;
+    note("reload + resume", { clockBefore: before, clockAfter: after, events: storedAfterReload });
+    const eventsIdentical = jsonBefore != null && jsonBefore === (await storedEventsJson());
+    lifecycleChecks.push({ op: "reload", check: "reload: every event kept unchanged, clock resumes where it stopped", clockBefore: before, clockAfter: after, stored: storedAfterReload, expectedStored: liveCount, eventsIdentical, pass: before != null && before === after && storedAfterReload === liveCount && eventsIdentical });
   } else if (step.op === "halftime") {
     await advanceTo(Math.max(await readClock(), step.clock));
     await clickByText("HT");
@@ -343,9 +432,23 @@ for (const step of fx.steps) {
     await openOptions();
     await exportPdf("FT Snapshot PDF", "FT-snapshot-live");
     await exportPdf("Full Review PDF", "FullReview-live");
-    await clickByText("Save Match");
-    await closeOptions();
-    note("full time + saved");
+    if (offline) {
+      // Offline run: the coach's Save & Finish (the online runs keep Options → Save Match).
+      await closeOptions();
+      await page.getByRole("button", { name: "Save & Finish", exact: true }).click();
+      await page.waitForTimeout(100);
+      const feedback = await page.evaluate(() => (document.body.innerText.match(/(Match saved[^\n]*|Save failed[^\n]*|Save blocked[^\n]*)/) || [])[1] ?? null);
+      await page.clock.runFor(3500);
+      await page.waitForTimeout(200);
+      const leftToHome = await page.evaluate(() => /New Match/.test(document.body.innerText));
+      const m = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem("pitchflow_pro_tagger_matches_v1") || "[]")[0] ?? null; } catch { return null; } });
+      offline.saveAndFinish = { feedback, leftToHome, storedState: m?.restoreContext?.matchState ?? null, storedEvents: m?.events?.length ?? null, expectedEvents: liveCount };
+      note("full time + Save & Finish (offline)", offline.saveAndFinish);
+    } else {
+      await clickByText("Save Match");
+      await closeOptions();
+      note("full time + saved");
+    }
   }
 }
 writeFileSync(`${outDir}/state/owner-toggle-checks.json`, JSON.stringify(ownerToggleChecks, null, 1));
@@ -366,13 +469,20 @@ if (fx.reviewOps?.length) {
   const store = await dumpStore("before-review-ops");
   const saved = store.find((m) => m.homeTeamName === fx.homeTeam);
   // Map fixture ids → stored events by tap order (undone taps were removed by ↩).
-  const liveTags = fx.steps.filter((s) => s.op === "tag" && !s.ev.erroneous).map((s) => s.ev);
+  const notEntered = new Set(tagResults.filter((t) => t.notOffered).map((t) => t.id));
+  const liveTags = fx.steps.filter((s) => s.op === "tag" && !s.ev.erroneous && !notEntered.has(s.ev.id)).map((s) => s.ev);
   if (liveTags.length !== saved.events.length) note("EVENT COUNT MISMATCH before review ops", { fixture: liveTags.length, stored: saved.events.length });
   const idMap = new Map(liveTags.map((e, i) => [e.id, saved.events[i]]));
   await page.getByRole("button", { name: /Event Map/ }).first().click();
   await page.waitForTimeout(1200);
   for (const op of fx.reviewOps) {
     const target = idMap.get(op.targetId);
+    if (!target && notEntered.has(op.targetId)) {
+      // The target could not be entered (the app does not offer it): reported, never retargeted.
+      reachability.push({ targetId: op.targetId, op: op.op, kind: null, opened: false, notEntered: true, taps: 0 });
+      note("REVIEW OP: target was not entered (not offered by the app)", { op });
+      continue;
+    }
     await applyReviewOp(op, target);
   }
   await clickByText("← Review");
@@ -387,7 +497,9 @@ async function applyReviewOp(op, target) {
   // covers it, tap the uncovered edge of it, or try a different filter view.
   const CATEGORY = { GOAL: "SCORES", POINT: "SCORES", TWO_POINTER: "SCORES", FORTY_FIVE_TWO_POINT: "SCORES", SHOT: "SHOTS", WIDE: "WIDES",
     TURNOVER_WON: "T/O", TURNOVER_LOST: "T/O", KICKOUT_WON: "K/O", KICKOUT_CONCEDED: "K/O", FREE_WON: "FREES", FREE_CONCEDED: "FREES" };
-  const cat = CATEGORY[target.kind] ?? "ALL";
+  // The restart filter chip is sport-aware in the app's Review screen: "P/O" for hurling / camogie.
+  const cat0 = CATEGORY[target.kind] ?? "ALL";
+  const cat = cat0 === "K/O" && sportKey === "hurling" ? "P/O" : cat0;
   const halfBtn = target.period === "1H" ? "H1" : "H2";
   const views = [[halfBtn, target.teamSide, cat], [halfBtn, "ALL", cat], [halfBtn, target.teamSide, "ALL"], ["ALL", target.teamSide, cat]];
   const mm = String(Math.floor(target.matchClockSeconds / 60)).padStart(2, "0");
@@ -414,8 +526,8 @@ async function applyReviewOp(op, target) {
       // Read the detail panel's own Time row (a list of nearby events may also show times).
       const shownTime = await page.evaluate(() => { const t = document.body.innerText; const i = t.search(/EVENT DETAIL/i); return i < 0 ? null : ((t.slice(i).match(/\nTime\s*\n\s*(\d{2}:\d{2})/i) || [])[1] ?? null); });
       if (shownTime === `${mm}:${ss}`) { opened = true; openedView = { half: h, team: t, category: c, dx, dy }; break; }
-      // USE_SPOT_LIST=1: the marker that took the tap lists the events at its spot (N-1 repair) — pick the target there.
-      if (process.env.USE_SPOT_LIST) {
+      // The marker that took the tap lists the events at its spot ("Events at this spot", as a coach would use it) — pick the target there. USE_SPOT_LIST=0 disables.
+      if (process.env.USE_SPOT_LIST !== "0") {
         const items = page.locator('[aria-label="Events at this spot"] button').filter({ hasText: `${mm}:${ss}` });
         if (await items.count()) {
           await items.first().click();
@@ -501,5 +613,7 @@ await page.waitForTimeout(400);
 await exportPdf("FT Snapshot PDF", "FT-snapshot-reopened2");
 
 writeFileSync(`${outDir}/state/run-log.json`, JSON.stringify(log, null, 1));
+if (offline) writeFileSync(`${outDir}/state/offline-checks.json`, JSON.stringify(offline, null, 1));
 await browser.close();
+offline?.stopServer();
 note("done");

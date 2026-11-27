@@ -1,6 +1,97 @@
 {
  "_about": "Classification of laboratory mismatches. 'checks': engine-path mismatches, keyed <ledger>|<scope>|<team>|<statistic>. 'historicalValidation': differences recorded in expected-authoritative/VALIDATION.json, keyed '<ledger>: <restart> → <score>'. Categories: confirmed-application-defect, reference-or-fixture-defect, approved-definition-change, harness-drift, unresolved. An entry never changes an expected value; it records why a difference exists, with evidence. Every entry requires human review.",
- "checks": {},
+ "checks": {
+  "review|E|probe E-091": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-1",
+   "evidence": "Review Edit offers TWO_POINTER for a Ladies Football point from a penalty. A penalty is taken from 11 m, inside the 40m arc — a goal or a point, never 2 (LGFA Official Guide 2026 Rule 426).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "options|ladies_football|TWO_POINT|tile \"Penalty\" not offered": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-1",
+   "evidence": "The Ladies Football 2PT family offers a Penalty source (pro-tagger-families.ts TWO_POINT tiles). Rule 426: never a two-point score.",
+   "status": "open — approved for repair in Phase C"
+  },
+  "review|E|probe E-X01": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2",
+   "evidence": "Review Edit offers SIN_BIN for a Ladies Football yellow card. A first Yellow Card offence is itself the sin bin; there is no separate sin-bin sanction (Rule 327).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "options|ladies_football|DISCIPLINE|tile \"Sin Bin\" not offered": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2",
+   "evidence": "Ladies Football capture offers a separate Sin Bin tile (getDisciplineOptions). Rule 327: the first yellow is the sin bin — recording both double-records one incident.",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^ledger-E(-live)?\\|(FULL|H1|H2)\\|(FOR|OPP)\\|(live strip: )?(sin bins|red cards)$": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2",
+   "evidence": "Counts follow recorded SIN_BIN / RED_CARD events only. Rule 327: each first yellow is a sin-bin incident; a second yellow is a dismissal (counted once with an explicit red).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^discipline\\|ladies_football\\|(30|25|15)-min halves: first yellow .* active": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2",
+   "evidence": "buildDisciplineStatusMap derives no sin-bin status from a Ladies Football first yellow (Rule 327: 10 / 5 / 3 minutes of playing time by half length).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^discipline\\|ladies_football\\|first yellow at 27:00 .*active": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2",
+   "evidence": "No sin-bin status from a first yellow; the sin bin must carry its remaining playing time into the second half (Rule 327).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^discipline\\|ladies_football\\|second yellow": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2",
+   "evidence": "A second yellow does not dismiss the player (Rule 327: second yellow followed by a red card).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^discipline\\|ladies_football\\|historical Sin Bin": {
+   "category": "confirmed-application-defect",
+   "finding": "LF-2T",
+   "evidence": "Half-time timing: a sin bin issued at 27:00 of a 30-minute first half stays active indefinitely after half-time (buildDisciplineStatusMap keeps any earlier-period sanction active). Playing time carries across the interval — it must end at 07:00 of the second half. The same function serves men's football (report only).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^capture\\|F\\|(TWO_POINT|POINT|WIDE)/Sideline$": {
+   "category": "confirmed-application-defect",
+   "finding": "CF-2",
+   "evidence": "Camogie offers no sideline scoring source and no two-point family, so a sideline score (2 points if direct and untouched — Camogie Official Guide Part 2 Rule 15.4; 1 point otherwise) or a missed sideline attempt cannot be entered. Recorded as not entered; never replaced by another event.",
+   "status": "open — approved for repair in Phase C"
+  },
+  "options|camogie|TWO_POINT|family offered": {
+   "category": "confirmed-application-defect",
+   "finding": "CF-2",
+   "evidence": "No two-point family for camogie; Rule 15.4 provides the sideline two-point score.",
+   "status": "open — approved for repair in Phase C"
+  },
+  "options|camogie|TWO_POINT|tile \"Sideline\" offered": {
+   "category": "confirmed-application-defect",
+   "finding": "CF-2",
+   "evidence": "Rule 15.4: the only two-point score in camogie is from a sideline puck.",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^options\\|camogie\\|(POINT|WIDE)\\|tile \"Sideline\" offered$": {
+   "category": "confirmed-application-defect",
+   "finding": "CF-2",
+   "evidence": "Rules 11.3 and 15.4: a sideline puck is a placed-ball scoring source (1-point score if touched in flight; a wide is a missed attempt).",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^options\\|camogie\\|(POINT|WIDE)\\|tile \"45\" offered$": {
+   "category": "confirmed-application-defect",
+   "finding": "CF-1",
+   "evidence": "The camogie end-line free is shown as \"65\"; Camogie Official Guide Part 2 Rule 11.14 '45 Metre Free'. Display only — the stored tag \"65\" is kept.",
+   "status": "open — approved for repair in Phase C"
+  },
+  "re:^options\\|camogie\\|(GOAL|POINT|WIDE)\\|tile \"Mark\" not offered$": {
+   "category": "confirmed-application-defect",
+   "finding": "XS-1",
+   "evidence": "Camogie capture offers a Mark scoring source; the Camogie Official Guide 2025 has no mark.",
+   "status": "open — approved for repair in Phase C"
+  }
+ },
  "historicalValidation": {
   "ledger-A: A-118 → A-X02": {
    "category": "reference-or-fixture-defect",
@@ -19,6 +110,12 @@
    "status": "resolved — expected value upheld",
    "evidence": "C-135: Lab C Home wins Lab C Away's puckout, clean (2H 1198 s). C-X01: Lab C Home penalty goal at 1222 s, nothing recorded in between (next event C-136, a Lab C Home wide whose truth origin is RESTART C-135). C-X01 is a scripted event with truth origin OTHER, as for A-X02.",
    "resolution": "Same cause and resolution as ledger-A: A-118 → A-X02. The current production engine agrees with the ledger. VALIDATION.json is left unchanged as historical record."
+  },
+  "ledger-E: E-078 → E-079": {
+   "category": "reference-or-fixture-defect",
+   "status": "resolved — expected value upheld",
+   "evidence": "E-079 was captured as a wide in the possession of Lab E Home's kickout E-078 (lost) and a Review edit made it a point. VALIDATION.json compares the post-edit ledger with pre-edit simulator truth (no score existed there before the edit) — the same pattern as ledger-B: B-025 → B-026.",
+   "resolution": "The credit follows the written kickout-origin definition. VALIDATION.json is left unchanged."
   }
  }
 }

@@ -54,12 +54,22 @@ export const PROTECTED = [
   /^src\/StatsModeSurface\.saved-match-persistence\.test\.ts$/,
   // Event Stats laboratory: independent reference calculators, generator, synthetic matches,
   // expected ledgers, the kickout-origin definition, and the engine comparison + its classifications.
-  /^lab\/event-stats\/scripts\/(reference|reference-kickout-phase|gen-fixtures|gen-fixture-d)\.mjs$/,
+  /^lab\/event-stats\/scripts\/(reference|reference-kickout-phase|gen-fixtures|gen-fixture-d|gen-fixture-ef)\.mjs$/,
+  /^lab\/event-stats\/scripts\/reference-kickout-phase\.d\.mts$/,
+  // Independent sport rules (Ladies Football / Camogie scoring, discipline, wording, capture probes).
+  /^lab\/event-stats\/rules\//,
   /^lab\/event-stats\/(fixtures|expected|expected-authoritative)\//,
   /^lab\/event-stats\/docs\/KICKOUT-ORIGIN-DEFINITION\.md$/,
   /^lab\/event-stats\/engine\//,
-  /^lab\/event-stats\/tools\/(reproduce|check-lab-types|verify-lab-run)\.mjs$/,
+  /^lab\/event-stats\/tools\/(reproduce|check-lab-types|verify-lab-run|planted-defects)\.mjs$/,
   /^lab\/event-stats\/tsconfig\.json$/,
+  // Browser laboratory: the comparators that turn ledgers into expected UI/PDF text, the runner and
+  // probes that compute pass/fail, the run's pass rules, the known-findings register, the coverage
+  // minimums and the expected PDF page counts.
+  /^lab\/event-stats\/scripts\/(verify-events|compare|compare-legacy|run-match|ui-driver|run-legacy-import|run-edit-probe|run-cross-sport)\.mjs$/,
+  /^lab\/event-stats\/persistence\/(probe-p0|probe-sp|probe-final|ui-driver)\.mjs$/,
+  /^lab\/event-stats\/tools\/run-browser-lab\.mjs$/,
+  /^lab\/event-stats\/browser\//,
 ];
 
 /** skip / only / todo / conditional / expected-failure markers that stop a test from really running. */
